@@ -1,5 +1,5 @@
 const cluster = require('cluster');
-const modulesRouter = require('./modules/index').router;
+const applicationsRouter = require('./applications/index').router;
 const config = require('../config');
 const db = require('./db');
 const migrations = require('./migrations');
@@ -30,7 +30,7 @@ const initWorker = () => {
 
 	db.init();
 	const app = express();
-	app.use(modulesRouter);
+	app.use(applicationsRouter);
 	app.listen(process.env.port, () => {
 		console.log(`#NOTE# Cluster worker id ${cluster.worker.id} is listening on port ${process.env.port}`);
 	});

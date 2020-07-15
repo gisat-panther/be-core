@@ -8,7 +8,6 @@ const _ = require('lodash');
 const q = require('./query');
 const db = require('../../db');
 const Joi = require('../../joi');
-const plan = require('../rest/plan');
 
 const GUEST_KEY = 'cad8ea0d-f95e-43c1-b162-0704bfc1d3f6';
 
@@ -54,7 +53,7 @@ function createAuthToken(payload) {
     });
 }
 
-function formatPermissions(permissions) {
+function formatPermissions(permissions, plan) {
     const permissionsByResourceType = _.groupBy(
         permissions,
         (p) => p.resourceType
@@ -81,7 +80,7 @@ function formatPermissions(permissions) {
     return formattedPermissions;
 }
 
-async function getLoginInfo(user, token) {
+async function getLoginInfo(user, token, plan) {
     const [userInfo, permissions] = await Promise.all([
         q.getUserInfoByKey(user.realKey),
         q.userPermissionsByKey(user.realKey),
@@ -94,7 +93,7 @@ async function getLoginInfo(user, token) {
             email: _.get(userInfo, 'email', null),
             phone: _.get(userInfo, 'phone', null),
         },
-        permissions: formatPermissions(permissions),
+        permissions: formatPermissions(permissions, plan),
         authToken: token,
     };
 }
@@ -121,7 +120,7 @@ const LoginBodySchema = Joi.object().meta({className: 'Login'}).keys({
     password: Joi.string().required(),
 });
 
-module.exports = [
+module.exports = (plan) => [
     {
         path: '/rest/logged',
         method: 'get',
@@ -171,7 +170,8 @@ module.exports = [
                     .json(
                         await getLoginInfo(
                             Object.assign({}, user, {realKey: user.key}),
-                            token
+                            token,
+                            plan
                         )
                     );
             } catch (err) {
@@ -201,7 +201,9 @@ module.exports = [
         handler: async function (request, response) {
             response
                 .status(200)
-                .json(await getLoginInfo(request.user, request.authToken));
+                .json(
+                    await getLoginInfo(request.user, request.authToken, plan)
+                );
         },
     },
 ];
