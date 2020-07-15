@@ -3,6 +3,17 @@ const config = require('../../../config');
 const fetch = require('node-fetch');
 const jwt = require('jsonwebtoken');
 const uuid = require('../../../src/uuid');
+const _ = require('lodash/fp');
+
+const testedPermissions = [
+    'application',
+    'dataSources',
+    'metadata',
+    'relations',
+    'specific',
+    'user',
+    'views',
+];
 
 function url(path) {
     return 'http://localhost:' + config.clusterPorts[0] + path;
@@ -53,6 +64,11 @@ describe('modules/login', function () {
                 return response.json().then((data) => {
                     const token = data.authToken;
                     delete data.authToken;
+                    data = _.update(
+                        'permissions',
+                        _.pick(testedPermissions),
+                        data
+                    );
 
                     assert.isString(token);
                     assert.deepStrictEqual(data, {
@@ -244,6 +260,12 @@ describe('modules/login', function () {
             }).then((response) => {
                 assert.strictEqual(response.status, 200);
                 return response.json().then((data) => {
+                    data = _.update(
+                        'permissions',
+                        _.pick(testedPermissions),
+                        data
+                    );
+
                     assert.deepStrictEqual(data, {
                         key: '3e3f4300-1336-4043-baa3-b65a025c2d83',
                         data: {
@@ -286,6 +308,12 @@ describe('modules/login', function () {
             }).then((response) => {
                 assert.strictEqual(response.status, 200);
                 return response.json().then((data) => {
+                    data = _.update(
+                        'permissions',
+                        _.pick(testedPermissions),
+                        data
+                    );
+
                     assert.deepStrictEqual(data, {
                         key: key,
                         data: {
