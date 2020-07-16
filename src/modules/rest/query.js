@@ -282,10 +282,13 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
     const table = _.get(typeSchema, 'table', type);
+    const columnsConfig = plan[group][type].columns;
 
     const sqlMap = qb.append(
         qb.merge(
-            qb.select(columns.map((c) => 't.' + c)),
+            qb.select(
+                columns.map((c) => columnsConfig[c].selectExpr({alias: 't'}))
+            ),
             qb.from(`${group}.${table}`, 't')
         ),
         listPermissionQuery({user, type}, 't'),
