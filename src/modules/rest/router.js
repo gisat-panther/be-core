@@ -1,6 +1,7 @@
 const parameters = require('../../middlewares/parameters');
 const userMiddleware = require('../../middlewares/user');
 const authMiddleware = require('../../middlewares/auth');
+const autoLoginMiddleware = require('../../middlewares/auto-login');
 const permission = require('../../permission');
 const _ = require('lodash');
 const schema = require('./schema');
@@ -84,7 +85,12 @@ function createGroup(plan, group) {
                 body: schema.listBody(plan, group),
             },
             responses: {200: {}},
-            middlewares: [parameters, userMiddleware, authMiddleware],
+            middlewares: [
+                parameters,
+                userMiddleware,
+                autoLoginMiddleware,
+                authMiddleware,
+            ],
             handler: async function (request, response) {
                 const types = request.parameters.path.types;
                 const parameters = request.parameters.body;
@@ -138,7 +144,12 @@ function createGroup(plan, group) {
                 body: schema.createBody(plan, group),
             },
             responses: {201: {}},
-            middlewares: [parameters, userMiddleware, authMiddleware],
+            middlewares: [
+                parameters,
+                userMiddleware,
+                autoLoginMiddleware,
+                authMiddleware,
+            ],
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
@@ -190,7 +201,12 @@ function createGroup(plan, group) {
                 body: schema.updateBody(plan, group),
             },
             responses: {200: {}},
-            middlewares: [parameters, userMiddleware, authMiddleware],
+            middlewares: [
+                parameters,
+                userMiddleware,
+                autoLoginMiddleware,
+                authMiddleware,
+            ],
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
@@ -244,7 +260,12 @@ function createGroup(plan, group) {
             },
             parameters: {body: schema.deleteBody(plan, group)},
             responses: {200: {}},
-            middlewares: [parameters, userMiddleware, authMiddleware],
+            middlewares: [
+                parameters,
+                userMiddleware,
+                autoLoginMiddleware,
+                authMiddleware,
+            ],
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
