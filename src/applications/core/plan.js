@@ -1349,31 +1349,13 @@ module.exports = {
             },
             context: {
                 list: {
-                    columns: [
-                        'key',
-                        'nameInternal',
-                        'attribution',
-                        'type',
-                        'sourceKey',
-                    ],
+                    columns: ['key', 'nameInternal', 'attribution', 'type'],
                 },
                 create: {
-                    columns: [
-                        'key',
-                        'nameInternal',
-                        'attribution',
-                        'type',
-                        'sourceKey',
-                    ],
+                    columns: ['key', 'nameInternal', 'attribution', 'type'],
                 },
                 update: {
-                    columns: [
-                        'key',
-                        'nameInternal',
-                        'attribution',
-                        'type',
-                        'sourceKey',
-                    ],
+                    columns: ['key', 'nameInternal', 'attribution', 'type'],
                 },
             },
             columns: {
@@ -1392,15 +1374,12 @@ module.exports = {
                 type: {
                     defaultValue: null,
                     schema: Joi.string().valid(
+                        null,
                         'raster',
                         'vector',
                         'wms',
                         'wmts'
                     ),
-                },
-                sourceKey: {
-                    defaultValue: null,
-                    schema: Joi.string().uuid(),
                 },
             },
         },

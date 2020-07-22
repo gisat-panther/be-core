@@ -1,5 +1,6 @@
 const Joi = require('../../joi');
 const _ = require('lodash');
+const _fp = require('lodash/fp');
 
 function colFilterSchema(col) {
     const type = col.schema.type;
@@ -43,6 +44,8 @@ function colFilterSchema(col) {
             );
         case 'object':
             return null;
+        case 'array':
+            return null;
     }
 
     throw new Error(`Type "${type}" is not supported in filter.`);
@@ -84,7 +87,18 @@ function mergeColumns(columns) {
 }
 
 function listBody(plan, group) {
-    const columns = mergeColumns(_.flatMap(plan[group], (s) => s.columns));
+    const columns = mergeColumns(
+        _.flatMap(plan[group], (s) => {
+            const types = _.get(s, ['type', 'types'], {});
+
+            return mergeColumns(
+                _.concat(
+                    s.columns,
+                    _.map(types, (t) => t.columns)
+                )
+            );
+        })
+    );
 
     return Joi.object()
         .meta({className: `${group}List`})
@@ -142,6 +156,78 @@ function relationSchemas(plan, group, type) {
 
 function createBody(plan, group) {
     const dataKeys = _.mapValues(plan[group], function (typeSchema, type) {
+        if (typeSchema.type != null) {
+            const validTypes = Array.from(
+                typeSchema.columns[typeSchema.type.dispatchColumn].schema
+                    ._valids._values
+            );
+
+            return Joi.alternatives().try(
+                ..._.map(validTypes, (currentType) => {
+                    const columns = _.merge(
+                        {},
+                        _.pick(
+                            _fp.update(
+                                [typeSchema.type.dispatchColumn, 'schema'],
+                                function (schema) {
+                                    return schema.valid(
+                                        Joi.override,
+                                        currentType
+                                    );
+                                },
+                                typeSchema.columns
+                            ),
+                            typeSchema.context.create.columns
+                        ),
+                        _.pick(
+                            _.get(
+                                typeSchema,
+                                ['type', 'types', currentType, 'columns'],
+                                {}
+                            ),
+                            _.get(
+                                typeSchema,
+                                [
+                                    'type',
+                                    'types',
+                                    currentType,
+                                    'context',
+                                    'create',
+                                    'columns',
+                                ],
+                                []
+                            )
+                        )
+                    );
+
+                    const keyCol = columns.key;
+                    const dataCols = _.omit(columns, ['key']);
+
+                    const rs = relationSchemas(plan, group, type);
+
+                    return Joi.array()
+                        .items(
+                            Joi.object().keys({
+                                key: keyCol.schema.default(keyCol.defaultValue),
+                                data: Joi.object()
+                                    .keys(
+                                        Object.assign(
+                                            {},
+                                            _.mapValues(
+                                                dataCols,
+                                                dataColCreateSchema
+                                            ),
+                                            rs
+                                        )
+                                    )
+                                    .required(),
+                            })
+                        )
+                        .min(1);
+                })
+            );
+        }
+
         const columns = _.pick(
             typeSchema.columns,
             typeSchema.context.create.columns
@@ -184,6 +270,78 @@ function dataColUpdateSchema(col) {
 
 function updateBody(plan, group) {
     const dataKeys = _.mapValues(plan[group], function (typeSchema, type) {
+        if (typeSchema.type != null) {
+            const validTypes = Array.from(
+                typeSchema.columns[typeSchema.type.dispatchColumn].schema
+                    ._valids._values
+            );
+
+            return Joi.alternatives().try(
+                ..._.map(validTypes, (currentType) => {
+                    const columns = _.merge(
+                        {},
+                        _.pick(
+                            _fp.update(
+                                [typeSchema.type.dispatchColumn, 'schema'],
+                                function (schema) {
+                                    return schema.valid(
+                                        Joi.override,
+                                        currentType
+                                    );
+                                },
+                                typeSchema.columns
+                            ),
+                            typeSchema.context.create.columns
+                        ),
+                        _.pick(
+                            _.get(
+                                typeSchema,
+                                ['type', 'types', currentType, 'columns'],
+                                {}
+                            ),
+                            _.get(
+                                typeSchema,
+                                [
+                                    'type',
+                                    'types',
+                                    currentType,
+                                    'context',
+                                    'create',
+                                    'columns',
+                                ],
+                                []
+                            )
+                        )
+                    );
+
+                    const keyCol = columns.key;
+                    const dataCols = _.omit(columns, ['key']);
+
+                    const rs = relationSchemas(plan, group, type);
+
+                    return Joi.array().items(
+                        Joi.object()
+                            .keys({
+                                key: keyCol.schema.required(),
+                                data: Joi.object()
+                                    .keys(
+                                        Object.assign(
+                                            {},
+                                            _.mapValues(
+                                                dataCols,
+                                                dataColUpdateSchema
+                                            ),
+                                            rs
+                                        )
+                                    )
+                                    .required(),
+                            })
+                            .min(1)
+                    );
+                })
+            );
+        }
+
         const columns = _.pick(
             typeSchema.columns,
             typeSchema.context.update.columns
