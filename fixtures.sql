@@ -3,7 +3,16 @@ BEGIN;
 -- guest: 52ddabec-d01a-49a0-bb4d-5ff931bd346e
 -- user: e56f3545-57f5-44f9-9094-2750a69ef67e
 
-TRUNCATE "user"."users", "user"."groups", "user"."permissions" CASCADE;
+TRUNCATE
+  "user"."users",
+  "user"."groups",
+  "user"."permissions",
+  "dataSources"."dataSource",
+  "dataSources"."raster",
+  "dataSources"."vector",
+  "dataSources"."wms",
+  "dataSources"."wmts"
+  CASCADE;
 
 INSERT INTO "user"."users"
   ("key", "email", "password", "phone", "name")
@@ -52,6 +61,10 @@ VALUES
   ('913e3bae-e5dd-4600-a854-ca7b65199bbf', null, 'user', 'update'),
   ('9ac648e7-00d0-4196-be44-9ae2d7cfb598', null, 'user', 'delete'),
   ('828af8c1-5438-475b-9f91-af432745e83f', null, 'user', 'view'),
+  ('9d2b52c0-ced8-4a3c-b5ae-ea97befd3305', null, 'dataSource', 'create'),
+  ('2f8f7e58-2c55-4c06-90c6-a5a164c3f1f1', null, 'dataSource', 'update'),
+  ('92901779-f29f-44a3-ab05-2a22b6a94848', null, 'dataSource', 'delete'),
+  ('d116a380-4cf2-4241-9b88-3c0488848a05', null, 'dataSource', 'view'),
   ('f2ead234-6402-4a6e-9374-b243647edc44', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'view'),
   ('4f2b3dc7-9b3f-4624-82c0-93d139e19baa', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'update'),
   ('e84dfa30-f2fc-4a1f-988c-b7f4e2489f2f', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'delete'),
@@ -70,6 +83,14 @@ VALUES
   ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '913e3bae-e5dd-4600-a854-ca7b65199bbf'),
   -- user: admin@example.com             ,  users:delete
   ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '9ac648e7-00d0-4196-be44-9ae2d7cfb598'),
+  -- user: admin@example.com             , dataSource:create
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '9d2b52c0-ced8-4a3c-b5ae-ea97befd3305'),
+  -- user: admin@example.com             , dataSource:update
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '2f8f7e58-2c55-4c06-90c6-a5a164c3f1f1'),
+  -- user: admin@example.com             , dataSource:delete
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '92901779-f29f-44a3-ab05-2a22b6a94848'),
+  -- user: admin@example.com             , dataSource:view
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', 'd116a380-4cf2-4241-9b88-3c0488848a05'),
   -- user: specificPermsAdmin@example.com, users[key]:update
   ('39ed471f-8383-4283-bb8a-303cb05cadef', '4f2b3dc7-9b3f-4624-82c0-93d139e19baa'),
   -- user: specificPermsAdmin@example.com, users[key]:delete

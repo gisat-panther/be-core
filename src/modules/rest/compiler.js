@@ -26,8 +26,17 @@ function compileColumns(columns) {
     return mapValuesWithKeys(compileColumn, columns);
 }
 
+function compileTypes(types) {
+    return _.mapValues(compileType, types);
+}
+
 function compileType(type) {
-    return _.update('columns', compileColumns, type);
+    const withColumns = _.update('columns', compileColumns, type);
+    if (type.type == null) {
+        return withColumns;
+    }
+
+    return _.update(['type', 'types'], compileTypes, withColumns);
 }
 
 function compileGroup(group) {

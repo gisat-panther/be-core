@@ -1,6 +1,7 @@
 const db = require('../../db');
 const qb = require('@imatic/pgqb');
 const _ = require('lodash');
+const _fp = require('lodash/fp');
 const {SQL} = require('sql-template-strings');
 
 const GUEST_KEY = 'cad8ea0d-f95e-43c1-b162-0704bfc1d3f6';
@@ -278,6 +279,84 @@ async function lastChange({group, type}) {
     return _.first(_.map(res.rows, (row) => row.change));
 }
 
+function listDependentTypeQuery({plan, group, type}, alias) {
+    const typeSchema = plan[group][type];
+    if (typeSchema.type == null) {
+        return {};
+    }
+
+    const relationKey = typeSchema.type.key;
+    const dispatchColumn = typeSchema.type.dispatchColumn;
+
+    const selectByColumn = {};
+
+    const joins = qb.append(
+        ..._fp.map((table) => {
+            const al = `_t_${table}`;
+            const columns = _fp.get(
+                ['type', 'types', table, 'columns'],
+                typeSchema,
+                {}
+            );
+
+            _.forEach(columns, (c, name) => {
+                selectByColumn[name] = selectByColumn[name] || [];
+                selectByColumn[name].push(c.selectExpr({alias: al}));
+            });
+
+            return qb.merge(
+                qb.joins(
+                    qb.leftJoin(
+                        `${group}.${table}`,
+                        al,
+                        qb.expr.and(
+                            qb.expr.eq(
+                                `${alias}.${dispatchColumn}`,
+                                qb.val.inlineParam(table)
+                            ),
+                            qb.expr.eq(`${alias}.${relationKey}`, `${al}.key`)
+                        )
+                    )
+                ),
+                qb.groupBy([`${al}.key`])
+            );
+        }, _.keys(typeSchema.type.types))
+    );
+
+    return qb.merge(
+        qb.select(
+            _.map(selectByColumn, (selects, name) => {
+                return qb.expr.as(qb.expr.fn('COALESCE', ...selects), name);
+            })
+        ),
+        joins
+    );
+}
+
+function cleanDependentTypeCols({plan, group, type}, rows) {
+    const typeSchema = plan[group][type];
+    if (typeSchema.type == null) {
+        return rows;
+    }
+
+    const allTypeCols = _fp.uniq(
+        _fp.flatMap((t) => _fp.keys(t.columns), typeSchema.type.types)
+    );
+
+    const omitColByType = _fp.mapValues(function (type) {
+        return _fp.difference(allTypeCols, _fp.keys(type.columns));
+    }, typeSchema.type.types);
+    omitColByType[null] = allTypeCols;
+
+    const dispatchColumn = typeSchema.type.dispatchColumn;
+
+    return _fp.map((row) => {
+        const currentType = row[dispatchColumn];
+
+        return _fp.omit(omitColByType[currentType], row);
+    }, rows);
+}
+
 function list({plan, group, type, client, user}, {sort, filter, page}) {
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
@@ -319,7 +398,8 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
                             qb.groupBy(['t.key']),
                             sortToSqlExpr(sort, 't'),
                             pageToQuery(page)
-                        )
+                        ),
+                        listDependentTypeQuery({plan, group, type}, 't')
                     )
                 )
             )
@@ -328,7 +408,7 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
             .query(qb.toSql(countSqlMap))
             .then((res) => _.get(res.rows[0], 'count', 0)),
     ]).then(([rows, count]) => ({
-        rows,
+        rows: cleanDependentTypeCols({plan, group, type}, rows),
         count: Number(count),
     }));
 }
@@ -339,22 +419,73 @@ function recordValues(record, columns, columnsConfig) {
     return columns.map((c) => columnsConfig[c].modifyExpr({value: data[c]}));
 }
 
+// todo: make batches by type
+function createDependentType({plan, group, type}, record) {
+    const typeSchema = plan[group][type];
+    if (typeSchema.type == null) {
+        return Promise.resolve(null);
+    }
+
+    const dispatchColumn = typeSchema.type.dispatchColumn;
+    const dispatchValue = _fp.get(['data', dispatchColumn], record);
+    if (dispatchValue == null) {
+        return Promise.resolve(null);
+    }
+
+    const columnsConfig = typeSchema.type.types[dispatchValue].columns;
+    const validColumns = new Set(Object.keys(columnsConfig));
+    const columns = _.keys(record.data).filter((c) => validColumns.has(c));
+
+    const sqlMap = qb.merge(
+        qb.insertInto(`${group}.${dispatchValue}`),
+        qb.columns(columns),
+        qb.values([recordValues(record, columns, columnsConfig)]),
+        qb.returning(['key'])
+    );
+
+    return db
+        .query(qb.toSql(sqlMap))
+        .then((res) => res.rows.map((r) => r.key)[0]);
+}
+
 async function create({plan, group, type, client}, records) {
-    const columnsConfig = plan[group][type].columns;
+    const typeSchema = plan[group][type];
+    const typeKey = _fp.get(['type', 'key'], typeSchema);
+
+    const dependentTypes =
+        typeKey == null
+            ? null
+            : await Promise.all(
+                  records.map(async (r) => {
+                      return await createDependentType({plan, group, type}, r);
+                  })
+              );
+
+    const columnsConfig = typeSchema.columns;
     const validColumns = new Set(Object.keys(columnsConfig));
     const columns = ['key', ...Object.keys(records[0].data)].filter((c) =>
         validColumns.has(c)
     );
-    const table = _.get(plan[group][type], 'table', type);
+    const table = _.get(typeSchema, 'table', type);
 
-    const sqlMap = qb.merge(
-        qb.insertInto(`${group}.${table}`),
-        qb.columns(columns),
-        qb.values(records.map((r) => recordValues(r, columns, columnsConfig))),
-        qb.returning(['key'])
+    const sqlMap = qb.append(
+        qb.merge(
+            qb.insertInto(`${group}.${table}`),
+            qb.columns(columns),
+            qb.values(
+                records.map((r) => recordValues(r, columns, columnsConfig))
+            ),
+            qb.returning(['key'])
+        ),
+        dependentTypes == null
+            ? {}
+            : qb.merge(
+                  qb.columns([typeKey]),
+                  qb.values(dependentTypes.map((v) => [qb.val.inlineParam(v)]))
+              )
     );
 
-    const relationsByCol = _.mapKeys(plan[group][type].relations, function (
+    const relationsByCol = _.mapKeys(typeSchema.relations, function (
         rel,
         name
     ) {
