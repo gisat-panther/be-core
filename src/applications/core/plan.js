@@ -1230,6 +1230,123 @@ module.exports = {
             },
         },
         dataSource: {
+            type: {
+                dispatchColumn: 'type',
+                key: 'sourceKey',
+                types: {
+                    vector: {
+                        context: {
+                            list: {
+                                columns: ['layerName', 'tableName'],
+                            },
+                            create: {
+                                columns: ['layerName', 'tableName'],
+                            },
+                            update: {
+                                columns: ['layerName', 'tableName'],
+                            },
+                        },
+                        columns: {
+                            layerName: {
+                                defaultValue: null,
+                                schema: Joi.string(),
+                            },
+                            tableName: {
+                                defaultValue: null,
+                                schema: Joi.string(),
+                            },
+                        },
+                    },
+                    raster: {
+                        context: {
+                            list: {
+                                columns: ['layerName', 'tableName'],
+                            },
+                            create: {
+                                columns: ['layerName', 'tableName'],
+                            },
+                            update: {
+                                columns: ['layerName', 'tableName'],
+                            },
+                        },
+                        columns: {
+                            layerName: {
+                                defaultValue: null,
+                                schema: Joi.string(),
+                            },
+                            tableName: {
+                                defaultValue: null,
+                                schema: Joi.string(),
+                            },
+                        },
+                    },
+                    wms: {
+                        context: {
+                            list: {
+                                columns: [
+                                    'url',
+                                    'layers',
+                                    'styles',
+                                    'configuration',
+                                ],
+                            },
+                            create: {
+                                columns: [
+                                    'url',
+                                    'layers',
+                                    'styles',
+                                    'configuration',
+                                ],
+                            },
+                            update: {
+                                columns: [
+                                    'url',
+                                    'layers',
+                                    'styles',
+                                    'configuration',
+                                ],
+                            },
+                        },
+                        columns: {
+                            url: {
+                                defaultValue: null,
+                                schema: Joi.string(),
+                            },
+                            layers: {
+                                defaultValue: null,
+                                schema: Joi.string(),
+                            },
+                            styles: {
+                                defaultValue: null,
+                                schema: Joi.string(),
+                            },
+                            configuration: {
+                                defaultValue: null,
+                                schema: Joi.object(),
+                            },
+                        },
+                    },
+                    wmts: {
+                        context: {
+                            list: {
+                                columns: ['urls'],
+                            },
+                            create: {
+                                columns: ['urls'],
+                            },
+                            update: {
+                                columns: ['urls'],
+                            },
+                        },
+                        columns: {
+                            urls: {
+                                defaultValue: null,
+                                schema: Joi.array().items(Joi.string()),
+                            },
+                        },
+                    },
+                },
+            },
             context: {
                 list: {
                     columns: [
@@ -1274,7 +1391,12 @@ module.exports = {
                 },
                 type: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().valid(
+                        'raster',
+                        'vector',
+                        'wms',
+                        'wmts'
+                    ),
                 },
                 sourceKey: {
                     defaultValue: null,
