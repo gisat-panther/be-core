@@ -2,6 +2,7 @@ const {assert} = require('chai');
 const fetch = require('node-fetch');
 const jwt = require('jsonwebtoken');
 const config = require('../../config');
+const _ = require('lodash/fp');
 
 function url(path) {
     return 'http://localhost:' + config.clusterPorts[0] + path;
@@ -49,6 +50,37 @@ describe('/rest/dataSources', function () {
                                     type: 'raster',
                                     layerName: 'lr',
                                     tableName: 'tr',
+                                },
+                            },
+                            {
+                                key: 'cb007139-9b66-4e71-a092-8c779a9a1d90',
+                                data: {
+                                    nameInternal: 'vector type',
+                                    attribution: 'vattr',
+                                    type: 'vector',
+                                    layerName: 'lv',
+                                    tableName: 'tv',
+                                },
+                            },
+                            {
+                                key: 'db60a6f7-6a35-4bcb-af9a-24b8149f7bc5',
+                                data: {
+                                    nameInternal: 'wms type',
+                                    attribution: 'wattr',
+                                    type: 'wms',
+                                    url: 'localhost',
+                                    layers: 'wms_layers',
+                                    styles: 'wms_styles',
+                                    configuration: {k: 'v'},
+                                },
+                            },
+                            {
+                                key: 'afed9af4-f48c-4e0c-a22b-9f958161e55d',
+                                data: {
+                                    nameInternal: 'wmts type',
+                                    attribution: 'wmattr',
+                                    type: 'wmts',
+                                    urls: ['loc1', 'loc2'],
                                 },
                             },
                         ],
@@ -104,10 +136,83 @@ describe('/rest/dataSources', function () {
                                         },
                                     },
                                 },
+                                {
+                                    key: 'afed9af4-f48c-4e0c-a22b-9f958161e55d',
+                                    data: {
+                                        nameInternal: 'wmts type',
+                                        attribution: 'wmattr',
+                                        type: 'wmts',
+                                        urls: ['loc1', 'loc2'],
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: true,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                                {
+                                    key: 'cb007139-9b66-4e71-a092-8c779a9a1d90',
+                                    data: {
+                                        nameInternal: 'vector type',
+                                        attribution: 'vattr',
+                                        type: 'vector',
+                                        layerName: 'lv',
+                                        tableName: 'tv',
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: true,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                                {
+                                    key: 'db60a6f7-6a35-4bcb-af9a-24b8149f7bc5',
+                                    data: {
+                                        nameInternal: 'wms type',
+                                        attribution: 'wattr',
+                                        type: 'wms',
+                                        url: 'localhost',
+                                        layers: 'wms_layers',
+                                        styles: 'wms_styles',
+                                        configuration: {k: 'v'},
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: true,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
                             ],
                         },
                         success: true,
-                        total: 2,
+                        total: 5,
                     },
                 },
             },
@@ -124,7 +229,12 @@ describe('/rest/dataSources', function () {
                 assert.strictEqual(response.status, 201);
 
                 const data = await response.json();
-                assert.deepStrictEqual(data, test.expectedResult.body);
+                const sortedData = _.update(
+                    ['data', 'dataSource'],
+                    (ds) => _.sortBy((r) => r.key, ds),
+                    data
+                );
+                assert.deepStrictEqual(sortedData, test.expectedResult.body);
             });
         });
     });
