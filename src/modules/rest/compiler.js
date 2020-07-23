@@ -64,7 +64,23 @@ function compileGroup(group) {
  * ### modifyExpr (optional)
  *   Returns query expression used as a value in create and update queries.
  *
- * ## relations
+ * ## type (optional)
+ *
+ * Adds support for many types inside of this type. Each type can have it's own additional set of columns.
+ *
+ * ### dispatchColumn (required)
+ *
+ * Column name that decided of which type given record is.
+ *
+ * ### key (required)
+ *
+ * Db column that stores type of type specific table table.
+ *
+ * ### types (required)
+ *
+ * Map with type as key. Value is map with supported keys: columns, context, that are merged into based type.
+ *
+ * ## relations (optional)
  *
  * ## context (required)
  *
