@@ -4,9 +4,14 @@ const authMiddleware = require('../../middlewares/auth');
 const autoLoginMiddleware = require('../../middlewares/auto-login');
 const permission = require('../../permission');
 const _ = require('lodash');
+const _fp = require('lodash/fp');
 const schema = require('./schema');
 const q = require('./query');
 const db = require('../../db');
+const {query} = require('express');
+const Joi = require('@hapi/joi');
+const apiUtil = require('../../util/api');
+const {HttpError} = require('../error');
 
 const defaultPermissions = {
     view: false,
@@ -70,6 +75,90 @@ function filterListParamsByType(plan, group, type, params) {
 
         return v;
     });
+}
+
+function createDependentTypeMiddleware({plan, group}) {
+    return async function (request, response, next) {
+        let validationError = null;
+        const parameters = request.match.data.parameters;
+        const data = request.parameters.body.data;
+        const BodySchema = parameters.body;
+
+        const newData = await Promise.all(
+            _.map(data, async function (records, type) {
+                const typeSchema = plan[group][type];
+                if (typeSchema.type == null) {
+                    return records;
+                }
+
+                const dispatchColumn = typeSchema.type.dispatchColumn;
+                const relationKey = typeSchema.type.key;
+
+                const typeColumns = await q.typeColumns(
+                    {plan, group, type},
+                    records
+                );
+
+                const typeColumnsByKey = _fp.indexBy((r) => r.key, typeColumns);
+
+                const recordsWithType = _fp.map((r) => {
+                    const val = _fp.get(
+                        [r.key, dispatchColumn],
+                        typeColumnsByKey
+                    );
+
+                    if (
+                        val === undefined ||
+                        r.data.hasOwnProperty(dispatchColumn)
+                    ) {
+                        return r;
+                    }
+
+                    return _fp.set(['data', dispatchColumn], val, r);
+                }, records);
+
+                if (BodySchema != null) {
+                    const validationResult = BodySchema.validate(
+                        {data: {[type]: recordsWithType}},
+                        {
+                            abortEarly: false,
+                        }
+                    );
+                    if (validationResult.error) {
+                        validationError = validationResult.error;
+                    }
+                }
+
+                const recordsWithKeyAndRelation = _fp.map((r) => {
+                    const val = _fp.get(r.key, typeColumnsByKey);
+
+                    if (val == null) {
+                        return r;
+                    }
+
+                    return _fp.set(
+                        'type',
+                        _fp.pick([relationKey, dispatchColumn], val),
+                        r
+                    );
+                }, recordsWithType);
+
+                return recordsWithKeyAndRelation;
+            })
+        );
+
+        if (validationError == null) {
+            request.parameters.body.data = _.zipObject(_.keys(data), newData);
+            next();
+        } else {
+            return next(
+                new HttpError(
+                    400,
+                    apiUtil.createDataErrorObject(validationError)
+                )
+            );
+        }
+    };
 }
 
 function createGroup(plan, group) {
@@ -206,6 +295,7 @@ function createGroup(plan, group) {
                 userMiddleware,
                 autoLoginMiddleware,
                 authMiddleware,
+                createDependentTypeMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
                 const data = request.parameters.body.data;

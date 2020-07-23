@@ -419,8 +419,7 @@ function recordValues(record, columns, columnsConfig) {
     return columns.map((c) => columnsConfig[c].modifyExpr({value: data[c]}));
 }
 
-// todo: make batches by type
-function createDependentType({plan, group, type}, record) {
+function createDependentType({plan, group, type, client}, record) {
     const typeSchema = plan[group][type];
     if (typeSchema.type == null) {
         return Promise.resolve(null);
@@ -443,9 +442,69 @@ function createDependentType({plan, group, type}, record) {
         qb.returning(['key'])
     );
 
-    return db
+    return getDb(client)
         .query(qb.toSql(sqlMap))
         .then((res) => res.rows.map((r) => r.key)[0]);
+}
+
+function updateDependentType({plan, group, type, client}, record) {
+    const typeSchema = plan[group][type];
+    if (typeSchema.type == null) {
+        return Promise.resolve(null);
+    }
+
+    const dispatchColumn = typeSchema.type.dispatchColumn;
+    const dispatchValue = _fp.get(['type', dispatchColumn], record);
+    if (dispatchValue == null) {
+        return Promise.resolve(null);
+    }
+
+    const relationKey = typeSchema.type.key;
+    const relationKeyValue = _fp.get(['type', relationKey], record);
+    if (relationKeyValue == null) {
+        return Promise.resolve(null);
+    }
+
+    const columnsConfig = typeSchema.type.types[dispatchValue].columns;
+    const validColumns = new Set(Object.keys(columnsConfig));
+    const columns = _.keys(record.data).filter((c) => validColumns.has(c));
+    const data = _.pick(record.data, columns);
+
+    const sqlMap = qb.merge(
+        qb.update(`${group}.${dispatchValue}`),
+        qb.set(updateExprs(data, columnsConfig)),
+        qb.where(qb.expr.eq('key', qb.val.inlineParam(relationKeyValue))),
+        qb.returning(['key'])
+    );
+
+    return getDb(client)
+        .query(qb.toSql(sqlMap))
+        .then((res) => res.rows.map((r) => r.key)[0]);
+}
+
+function deleteDependentType({plan, group, type, client}, record) {
+    const typeSchema = plan[group][type];
+    if (typeSchema.type == null) {
+        return Promise.resolve();
+    }
+
+    const dispatchColumn = typeSchema.type.dispatchColumn;
+    const dispatchValue = _fp.get(['type', dispatchColumn], record);
+    if (dispatchValue == null) {
+        return Promise.resolve();
+    }
+
+    const relationKey = typeSchema.type.key;
+    const relationKeyValue = _fp.get(['type', relationKey], record);
+    if (relationKeyValue == null) {
+        return Promise.resolve();
+    }
+
+    return client.query(
+        SQL``
+            .append(`DELETE FROM "${group}".${dispatchValue} WHERE`)
+            .append(SQL` "key" = ${relationKeyValue}`)
+    );
 }
 
 async function create({plan, group, type, client}, records) {
@@ -564,21 +623,32 @@ function updateExprs(recordData, columnsConfig) {
     });
 }
 
-function updateRecord({plan, group, type, client}, record) {
-    const columnsConfig = plan[group][type].columns;
+function updateRecord({plan, group, type, client}, record, dependentType) {
+    const typeSchema = plan[group][type];
+    const columnsConfig = typeSchema.columns;
     const validColumns = new Set(Object.keys(columnsConfig));
     const columns = _.keys(record.data).filter((c) => validColumns.has(c));
-    const table = _.get(plan[group][type], 'table', type);
+    const table = _.get(typeSchema, 'table', type);
+    const typeKey = _.get(typeSchema, ['type', 'key']);
 
     const data = _.pick(record.data, columns);
     if (_.isEmpty(data)) {
         return Promise.resolve();
     }
 
-    const sqlMap = qb.merge(
-        qb.update(`${group}.${table}`, 'r'),
-        qb.set(updateExprs(data, columnsConfig)),
-        qb.where(qb.expr.eq('r.key', qb.val.inlineParam(record.key)))
+    const sqlMap = qb.append(
+        qb.merge(
+            qb.update(`${group}.${table}`, 'r'),
+            qb.set(updateExprs(data, columnsConfig)),
+            qb.where(qb.expr.eq('r.key', qb.val.inlineParam(record.key)))
+        ),
+        typeKey == null
+            ? {}
+            : qb.merge(
+                  qb.set([
+                      qb.expr.eq(typeKey, qb.val.inlineParam(dependentType)),
+                  ])
+              )
     );
 
     return client.query(qb.toSql(sqlMap));
@@ -683,10 +753,36 @@ async function updateRecordRelation({plan, group, type, client}, record) {
     await Promise.all(_.map(relationQueries, (sql) => client.query(sql)));
 }
 
+function updateType({plan, group, type, client}, record) {
+    const typeSchema = plan[group][type];
+    if (typeSchema.type == null) {
+        return Promise.resolve(null);
+    }
+
+    const dispatchColumn = typeSchema.type.dispatchColumn;
+    const dispatchValue = record.data[dispatchColumn];
+    const prevDispatchValue = record.type[dispatchColumn];
+
+    if (dispatchValue === prevDispatchValue) {
+        return updateDependentType({plan, group, type, client}, record);
+    } else {
+        return Promise.all([
+            deleteDependentType({plan, group, type, client}, record),
+            createDependentType({plan, group, type, client}, record),
+        ]).then(([r1, r2]) => r2);
+    }
+}
+
 async function update({plan, group, type, client}, records) {
     return client.transactional(async (client) => {
+        const dependentTypes = await Promise.all(
+            records.map((r) => updateType({plan, group, type, client}, r))
+        );
+
         await Promise.all(
-            records.map((r) => updateRecord({plan, group, type, client}, r))
+            records.map((r, i) =>
+                updateRecord({plan, group, type, client}, r, dependentTypes[i])
+            )
         );
 
         await Promise.all(
@@ -710,7 +806,32 @@ async function deleteRecords({plan, group, type, client}, records) {
     );
 }
 
+function typeColumns({plan, group, type}, records) {
+    const typeSchema = plan[group][type];
+    const table = _.get(typeSchema, 'table', type);
+    const keys = _.map(records, (r) => r.key);
+    if (keys.length === 0) {
+        return Promise.resolve();
+    }
+
+    const dispatchColummn = typeSchema.type.dispatchColumn;
+    const relationKey = typeSchema.type.key;
+
+    const sqlMap = qb.merge(
+        qb.select([
+            't.key',
+            `t.${relationKey}`,
+            typeSchema.columns[dispatchColummn].selectExpr({alias: 't'}),
+        ]),
+        qb.from(`${group}.${table}`, 't'),
+        qb.where(qb.expr.in('t.key', _.map(keys, qb.val.inlineParam)))
+    );
+
+    return db.query(qb.toSql(sqlMap)).then((res) => res.rows);
+}
+
 module.exports = {
+    typeColumns,
     list,
     create,
     update,
