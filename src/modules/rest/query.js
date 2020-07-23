@@ -293,10 +293,10 @@ function listDependentTypeQuery({plan, group, type}, alias) {
     const joins = qb.append(
         ..._fp.map((table) => {
             const al = `_t_${table}`;
-            const columns = _fp.get(
+            const columns = _fp.getOr(
+                {},
                 ['type', 'types', table, 'columns'],
-                typeSchema,
-                {}
+                typeSchema
             );
 
             _.forEach(columns, (c, name) => {
@@ -765,12 +765,12 @@ function updateType({plan, group, type, client}, record) {
 
     if (dispatchValue === prevDispatchValue) {
         return updateDependentType({plan, group, type, client}, record);
-    } else {
-        return Promise.all([
-            deleteDependentType({plan, group, type, client}, record),
-            createDependentType({plan, group, type, client}, record),
-        ]).then(([r1, r2]) => r2);
     }
+
+    return Promise.all([
+        deleteDependentType({plan, group, type, client}, record),
+        createDependentType({plan, group, type, client}, record),
+    ]).then(([r1, r2]) => r2);
 }
 
 async function update({plan, group, type, client}, records) {
