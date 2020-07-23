@@ -52,26 +52,30 @@ function getDb(client) {
  *   operator: <string>
  * }
  */
-function createFilters(requestFilter, alias) {
+function createFilters(requestFilter, columnToAliases) {
     const filters = [];
     _.forEach(requestFilter, (filterData, field) => {
-        const column = `${alias}.${field}`;
+        filters.push(
+            _.map(columnToAliases[field], (alias) => {
+                const column = `${alias}.${field}`;
 
-        if (_.isObject(filterData)) {
-            const type = Object.keys(filterData)[0];
+                if (_.isObject(filterData)) {
+                    const type = Object.keys(filterData)[0];
 
-            return filters.push({
-                column: column,
-                value: filterData[type],
-                operator: type,
-            });
-        }
+                    return {
+                        column: column,
+                        value: filterData[type],
+                        operator: type,
+                    };
+                }
 
-        filters.push({
-            column: column,
-            value: filterData,
-            operator: 'eq',
-        });
+                return {
+                    column: column,
+                    value: filterData,
+                    operator: 'eq',
+                };
+            })
+        );
     });
 
     return filters;
@@ -80,9 +84,19 @@ function createFilters(requestFilter, alias) {
 function filtersToSqlExpr(filters) {
     const exprs = filters
         .map((filter) => {
-            const createExpr = filterOperatorToSqlExpr[filter.operator];
-            if (createExpr) {
-                return createExpr(filter);
+            const filters = _.isArray(filter) ? filter : [filter];
+
+            const exprs = _.map(filters, (filter) => {
+                const createExpr = filterOperatorToSqlExpr[filter.operator];
+                if (createExpr) {
+                    return createExpr(filter);
+                }
+            }).filter((f) => f != null);
+
+            if (exprs.length === 1) {
+                return exprs[0];
+            } else if (exprs.length > 1) {
+                return qb.expr.or(...exprs);
             }
         })
         .filter((f) => f != null);
@@ -279,6 +293,10 @@ async function lastChange({group, type}) {
     return _.first(_.map(res.rows, (row) => row.change));
 }
 
+function listDependentTypeAlias(table) {
+    return '_t_' + table;
+}
+
 function listDependentTypeQuery({plan, group, type}, alias) {
     const typeSchema = plan[group][type];
     if (typeSchema.type == null) {
@@ -292,7 +310,7 @@ function listDependentTypeQuery({plan, group, type}, alias) {
 
     const joins = qb.append(
         ..._fp.map((table) => {
-            const al = `_t_${table}`;
+            const al = listDependentTypeAlias(table);
             const columns = _fp.getOr(
                 {},
                 ['type', 'types', table, 'columns'],
@@ -363,27 +381,50 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
     const table = _.get(typeSchema, 'table', type);
     const columnsConfig = plan[group][type].columns;
 
+    const columnToAliases = _.reduce(
+        [
+            _.zipObject(columns, _.fill(new Array(columns.length), ['t'])),
+            ..._.map(_.get(typeSchema, ['type', 'types'], {}), (t, name) => {
+                const columns = _.get(t, ['context', 'list', 'columns'], []);
+
+                return _.zipObject(
+                    columns,
+                    _.fill(new Array(columns.length), [
+                        listDependentTypeAlias(name),
+                    ])
+                );
+            }),
+        ],
+        function (res, next) {
+            return _.mergeWith(res, next, function (x, y) {
+                if (x === undefined) {
+                    return y;
+                }
+
+                return _.concat(x, y);
+            });
+        },
+        {}
+    );
+
     const sqlMap = qb.append(
         qb.merge(
             qb.select(
                 columns.map((c) => columnsConfig[c].selectExpr({alias: 't'}))
             ),
-            qb.from(`${group}.${table}`, 't')
+            qb.from(`${group}.${table}`, 't'),
+            qb.groupBy(['t.key'])
         ),
         listPermissionQuery({user, type}, 't'),
         listUserPermissionsQuery({user, type}, 't'),
-        filtersToSqlExpr(createFilters(filter, 't')),
+        listDependentTypeQuery({plan, group, type}, 't'),
+        filtersToSqlExpr(createFilters(filter, columnToAliases)),
         relationsQuery({plan, group, type}, 't')
     );
 
     const countSqlMap = qb.merge(
-        sqlMap,
-        qb.select([
-            qb.expr.as(
-                qb.expr.fn('COUNT ', qb.val.raw('DISTINCT "t"."key"')),
-                'count'
-            ),
-        ])
+        qb.select([qb.expr.as(qb.expr.fn('COUNT', qb.val.raw(1)), 'count')]),
+        qb.from(qb.merge(sqlMap, qb.select(['t.key'])), '_gt')
     );
 
     const db = getDb(client);
@@ -392,14 +433,10 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
         db
             .query(
                 qb.toSql(
-                    qb.append(
-                        qb.merge(
-                            sqlMap,
-                            qb.groupBy(['t.key']),
-                            sortToSqlExpr(sort, 't'),
-                            pageToQuery(page)
-                        ),
-                        listDependentTypeQuery({plan, group, type}, 't')
+                    qb.merge(
+                        sqlMap,
+                        sortToSqlExpr(sort, 't'),
+                        pageToQuery(page)
                     )
                 )
             )

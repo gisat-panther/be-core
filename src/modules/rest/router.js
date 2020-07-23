@@ -58,7 +58,14 @@ function formatList(recordsByType, page) {
 }
 
 function filterListParamsByType(plan, group, type, params) {
-    const columnNames = Object.keys(plan[group][type].columns);
+    const typeSchema = plan[group][type];
+    const columnNames = _.concat(
+        _.keys(_.get(typeSchema, 'columns', {})),
+        _.flatMap(_.get(typeSchema, ['type', 'types'], {}), (type) =>
+            _.keys(_.get(type, 'columns', {}))
+        )
+    );
+
     const columnNamesSet = new Set(columnNames);
 
     return _.mapValues(params, function (v, name) {

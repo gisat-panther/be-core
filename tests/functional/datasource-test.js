@@ -386,6 +386,102 @@ describe('/rest/dataSources', function () {
                     },
                 },
             },
+            {
+                name: 'filtered by ordinary column',
+                headers: new fetch.Headers({
+                    Authorization: createAdminToken(),
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    filter: {nameInternal: {eq: 'raster type'}},
+                    order: [['key', 'ascending']],
+                }),
+                expectedResult: {
+                    body: {
+                        data: {
+                            dataSource: [
+                                {
+                                    key: '44e47b74-fb6c-434a-a678-340fb2c6236a',
+                                    data: {
+                                        nameInternal: 'raster type',
+                                        attribution: 'attr',
+                                        type: 'raster',
+                                        layerName: 'lr',
+                                        tableName: 'tr',
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: true,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                        limit: 100,
+                        offset: 0,
+                        changes: {},
+                    },
+                },
+            },
+            {
+                name: 'filtered by dependent column',
+                headers: new fetch.Headers({
+                    Authorization: createAdminToken(),
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    filter: {layerName: {eq: 'lr'}},
+                    order: [['key', 'ascending']],
+                }),
+                expectedResult: {
+                    body: {
+                        data: {
+                            dataSource: [
+                                {
+                                    key: '44e47b74-fb6c-434a-a678-340fb2c6236a',
+                                    data: {
+                                        nameInternal: 'raster type',
+                                        attribution: 'attr',
+                                        type: 'raster',
+                                        layerName: 'lr',
+                                        tableName: 'tr',
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: true,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                        limit: 100,
+                        offset: 0,
+                        changes: {},
+                    },
+                },
+            },
         ];
 
         tests.forEach((test) => {
