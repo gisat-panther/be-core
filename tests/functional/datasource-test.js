@@ -3,6 +3,9 @@ const fetch = require('node-fetch');
 const jwt = require('jsonwebtoken');
 const config = require('../../config');
 const _ = require('lodash/fp');
+const db = require('../../src/db');
+
+db.init();
 
 function url(path) {
     return 'http://localhost:' + config.clusterPorts[0] + path;
@@ -634,6 +637,91 @@ describe('/rest/dataSources', function () {
                 );
                 assert.deepStrictEqual(sortedData, test.expectedResult.body);
             });
+        });
+    });
+
+    describe('DELETE /rest/dataSources', async function () {
+        it('without related type', async function () {
+            const getSourceKey = () =>
+                db
+                    .query(
+                        `SELECT "sourceKey" FROM "dataSources"."dataSource" WHERE "key" = $1`,
+                        ['db60a6f7-6a35-4bcb-af9a-24b8149f7bc5']
+                    )
+                    .then((res) =>
+                        _.getOr(null, ['rows', 0, 'sourceKey'], res)
+                    );
+
+            // guard
+            const sourceKey = await getSourceKey();
+            assert.isNull(sourceKey);
+
+            const response = await fetch(url('/rest/dataSources'), {
+                method: 'DELETE',
+                headers: new fetch.Headers({
+                    Authorization: createAdminToken(),
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    data: {
+                        dataSource: [
+                            {
+                                key: 'db60a6f7-6a35-4bcb-af9a-24b8149f7bc5',
+                            },
+                        ],
+                    },
+                }),
+            });
+
+            assert.strictEqual(response.status, 200);
+        });
+
+        it('with related type', async function () {
+            const getSourceKey = () =>
+                db
+                    .query(
+                        `SELECT "sourceKey" FROM "dataSources"."dataSource" WHERE "key" = $1`,
+                        ['44e47b74-fb6c-434a-a678-340fb2c6236a']
+                    )
+                    .then((res) =>
+                        _.getOr(null, ['rows', 0, 'sourceKey'], res)
+                    );
+
+            const relation = (sourceKey) =>
+                db
+                    .query(
+                        `SELECT "key" FROM "dataSources"."raster" WHERE "key" = $1`,
+                        [sourceKey]
+                    )
+                    .then((res) =>
+                        _.getOr(null, ['rows', 0, 'key'], res, null)
+                    );
+
+            // guard
+            const sourceKey = await getSourceKey();
+            assert.isNotNull(sourceKey);
+            assert.isNotNull(await relation(sourceKey));
+
+            const response = await fetch(url('/rest/dataSources'), {
+                method: 'DELETE',
+                headers: new fetch.Headers({
+                    Authorization: createAdminToken(),
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    data: {
+                        dataSource: [
+                            {
+                                key: '44e47b74-fb6c-434a-a678-340fb2c6236a',
+                            },
+                        ],
+                    },
+                }),
+            });
+
+            assert.strictEqual(response.status, 200);
+            assert.isNull(await getSourceKey());
+            assert.isNull(await relation(sourceKey));
         });
     });
 });

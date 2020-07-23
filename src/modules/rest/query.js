@@ -794,14 +794,41 @@ async function update({plan, group, type, client}, records) {
 }
 
 async function deleteRecords({plan, group, type, client}, records) {
-    const table = _.get(plan[group][type], 'table', type);
+    const typeSchema = plan[group][type];
+    const table = _.get(typeSchema, 'table', type);
     const keys = records.map((r) => r.key);
     if (keys.length === 0) {
         return;
     }
 
+    if (typeSchema.type != null) {
+        const typeInfo = await typeColumns({plan, group, type}, records);
+        const dispatchColumn = typeSchema.type.dispatchColumn;
+        const relationKey = typeSchema.type.key;
+
+        const byDispatch = _fp.groupBy(
+            (r) => _fp.get(dispatchColumn, r),
+            typeInfo
+        );
+        delete byDispatch[null];
+
+        await Promise.all(
+            _.map(byDispatch, (info, table) => {
+                const keys = info.map((r) => r[relationKey]);
+                if (keys.length === 0) {
+                    return;
+                }
+
+                return client.query(
+                    `DELETE FROM "${group}"."${table}" WHERE "key" = ANY($1)`,
+                    [keys]
+                );
+            })
+        );
+    }
+
     await client.query(
-        `DELETE FROM "${group}"."${table}" WHERE key = ANY($1)`,
+        `DELETE FROM "${group}"."${table}" WHERE "key" = ANY($1)`,
         [keys]
     );
 }
