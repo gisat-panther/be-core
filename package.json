@@ -1,7 +1,7 @@
 {
   "name": "panther-backend",
   "description": "",
-  "version": "4.0.0-pre-alpha",
+  "version": "0.0.1",
   "private": true,
   "repository": {
     "type": "git",
