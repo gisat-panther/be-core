@@ -1,14 +1,14 @@
 {
-  "name": "panther",
+  "name": "panther-backend",
   "description": "",
   "version": "4.0.0-pre-alpha",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gisat/puma.git"
+    "url": "https://github.com/gisat-panther/be-core"
   },
   "bugs": {
-    "url": "https://github.com/gisat/puma/issues"
+    "url": "https://github.com/gisat-panther/be-core/issues"
   },
   "dependencies": {
     "@hapi/joi": "^17.1.1",
