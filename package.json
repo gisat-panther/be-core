@@ -1,14 +1,14 @@
 {
-  "name": "panther",
+  "name": "panther-backend",
   "description": "",
-  "version": "4.0.0-pre-alpha",
+  "version": "0.0.1",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gisat/puma.git"
+    "url": "https://github.com/gisat-panther/be-core"
   },
   "bugs": {
-    "url": "https://github.com/gisat/puma/issues"
+    "url": "https://github.com/gisat-panther/be-core/issues"
   },
   "dependencies": {
     "@hapi/joi": "^17.1.1",
@@ -31,6 +31,8 @@
     "uuid": "^7.0.3"
   },
   "devDependencies": {
+    "@auto-it/git-tag": "^9.47.2",
+    "auto": "^9.47.2",
     "chai": "^4.2.0",
     "mocha": "^7.1.2",
     "node-fetch": "^2.6.0",
