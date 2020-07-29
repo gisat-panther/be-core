@@ -4,6 +4,7 @@ const _ = require('lodash');
 const _fp = require('lodash/fp');
 const {SQL} = require('sql-template-strings');
 const {Client} = require('pg');
+const _getPlan = require('../../applications/plan').get;
 
 /**
  * @typedef {Object} Filter
@@ -60,6 +61,17 @@ const filterOperatorToSqlExpr = {
  */
 function getDb(client) {
     return client || db;
+}
+
+/**
+ * Returns passed plan if given, default one otherwise.
+ *
+ * @param {import('./compiler').Plan=} plan
+ *
+ * @returns {import('./compiler').Plan}
+ */
+function getPlan(plan) {
+    return plan || _getPlan();
 }
 
 /**
@@ -499,6 +511,7 @@ function cleanDependentTypeCols({plan, group, type}, rows) {
  * @returns {Promise<{rows: object[], count: number}>}
  */
 function list({plan, group, type, client, user}, {sort, filter, page}) {
+    plan = getPlan(plan);
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
     const table = _.get(typeSchema, 'table', type);
@@ -706,6 +719,7 @@ function deleteDependentType({plan, group, type, client}, record) {
  * @returns {string[]} Created ids
  */
 async function create({plan, group, type, client}, records) {
+    plan = getPlan(plan);
     const typeSchema = plan[group][type];
     const typeKey = _fp.get(['type', 'key'], typeSchema);
 
@@ -1017,6 +1031,7 @@ function updateType({plan, group, type, client}, record) {
  * @param {object[]} records
  */
 async function update({plan, group, type, client}, records) {
+    plan = getPlan(plan);
     return client.transactional(async (client) => {
         const dependentTypes = await Promise.all(
             records.map((r) => updateType({plan, group, type, client}, r))
@@ -1043,6 +1058,7 @@ async function update({plan, group, type, client}, records) {
  * @param {object[]} records
  */
 async function deleteRecords({plan, group, type, client}, records) {
+    plan = getPlan(plan);
     const typeSchema = plan[group][type];
     const table = _.get(typeSchema, 'table', type);
     const keys = records.map((r) => r.key);
@@ -1091,6 +1107,7 @@ async function deleteRecords({plan, group, type, client}, records) {
  * @returns {Promise<object[]>}
  */
 function typeColumns({plan, group, type}, records) {
+    plan = getPlan(plan);
     const typeSchema = plan[group][type];
     const table = _.get(typeSchema, 'table', type);
     const keys = _.map(records, (r) => r.key);
