@@ -9,6 +9,7 @@ const {errorMiddleware} = require('../modules/error/index');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const _ = require('lodash/fp');
+const p = require('./plan');
 
 function appendApplication(result, application) {
     return _.reduce(
@@ -39,6 +40,7 @@ function apiRouter() {
     const router = express.Router();
 
     const plan = planCompiler.compile(config.plan);
+    p.init(plan);
     const api = [
         ...createLoginApi(plan),
         ...restRouter.createAll(plan),
