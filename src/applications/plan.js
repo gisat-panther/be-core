@@ -3,6 +3,9 @@
  */
 let _plan;
 
+/**
+ * Initializes this module with final compiled plan.
+ */
 function init(plan) {
     if (_plan != null) {
         throw new Error('Plan is already initialized');

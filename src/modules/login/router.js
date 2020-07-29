@@ -13,6 +13,12 @@ const UserType = {
     GUEST: 'guest',
 };
 
+/**
+ * @param {{resourceType: string, permission: string}[]} permissions
+ * @param {object} plan
+ *
+ * @returns {Object<string, Object<string, Object<string, true>>>}
+ */
 function formatPermissions(permissions, plan) {
     const permissionsByResourceType = _.groupBy(
         permissions,

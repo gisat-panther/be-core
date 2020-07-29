@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+/**
+ * This script loads fixtures.
+ *
+ * Useful in development.
+ */
+
 const {spawn} = require('child_process');
 const {pgConfig} = require('../config');
 

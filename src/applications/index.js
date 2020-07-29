@@ -11,6 +11,9 @@ const bodyParser = require('body-parser');
 const _ = require('lodash/fp');
 const p = require('./plan');
 
+/**
+ * Reducing function for application merging.
+ */
 function appendApplication(result, application) {
     return _.reduce(
         function (result, k) {
@@ -27,15 +30,24 @@ function appendApplication(result, application) {
     );
 }
 
+/**
+ * Merges given applications into one config.
+ */
 function mergeApplications(...applications) {
     return _.reduce(appendApplication, {}, applications);
 }
 
+/**
+ * Merged config of all applications
+ */
 const config = mergeApplications(
     require('./core/index'),
     require('./demo/index')
 );
 
+/**
+ * Creates api router with swagger documentation.
+ */
 function apiRouter() {
     const router = express.Router();
 

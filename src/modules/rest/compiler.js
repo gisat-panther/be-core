@@ -1,8 +1,47 @@
 const _ = require('lodash/fp');
 const qb = require('@imatic/pgqb');
 
+/**
+ * @typedef {Object} Context
+ * @property {{columns: string[]}} list
+ * @property {{columns: string[]}} create
+ * @property {{columns: string[]}} update
+ *
+ * @typedef {Object} Column
+ * @property defaultValue
+ * @property {object} schema
+ * @property {import('@imatic/pgqb').Value} selectExpr
+ * @property {import('@imatic/pgqb').Value} modifyExpr
+ *
+ * @typedef {Object} Relation
+ * @property {'manyToOne'|'manyToMany'} type
+ * @property {string} relationTable
+ * @property {string} ownKey
+ * @property {string} inverseKey
+ * @property {string} resourceGroup
+ * @property {string} resourceType
+ *
+ * @typedef {Object} TypeType
+ * @property {string} dispatchColumn
+ * @property {string} key
+ * @property {Object<string, {context: Object<string, Context>, columns: Object<string, Column>}>} types
+ *
+ * @typedef {Object} Type
+ * @property {string} table
+ * @property {Context} context
+ * @property {Object<string, Column>} columns
+ * @property {Object<string, Relation>} relations
+ *
+ * @typedef {Object<string, Type>} Group
+ *
+ * @typedef {Object<string, Group>} Plan
+ */
+
 const mapValuesWithKeys = _.mapValues.convert({cap: false});
 
+/**
+ * @returns {Column}
+ */
 function compileColumn(column, name) {
     return _.flow(
         _.update('modifyExpr', function (expr) {
@@ -22,14 +61,23 @@ function compileColumn(column, name) {
     )(column);
 }
 
+/**
+ * @returns {Object<string, Column>}
+ */
 function compileColumns(columns) {
     return mapValuesWithKeys(compileColumn, columns);
 }
 
+/**
+ * @returns {Object<string, TypeType>}
+ */
 function compileTypes(types) {
     return _.mapValues(compileType, types);
 }
 
+/**
+ * @returns {Type}
+ */
 function compileType(type) {
     const withColumns = _.update('columns', compileColumns, type);
     if (type.type == null) {
@@ -39,6 +87,9 @@ function compileType(type) {
     return _.update(['type', 'types'], compileTypes, withColumns);
 }
 
+/**
+ * @returns {Group}
+ */
 function compileGroup(group) {
     return _.mapValues(compileType, group);
 }
@@ -89,6 +140,8 @@ function compileGroup(group) {
  * ### columns (required)
  *
  * Allowed columns during this operation.
+ *
+ * @returns {Plan}
  */
 function compile(plan) {
     return _.mapValues(compileGroup, plan);

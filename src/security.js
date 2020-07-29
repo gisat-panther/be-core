@@ -4,6 +4,11 @@ const {SQL} = require('sql-template-strings');
 
 db.init();
 
+/**
+ * @param {string} password
+ *
+ * @returns {Promise<string>}
+ */
 function hashPassword(password) {
     return db
         .query(

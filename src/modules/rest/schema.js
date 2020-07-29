@@ -2,6 +2,11 @@ const Joi = require('../../joi');
 const _ = require('lodash');
 const _fp = require('lodash/fp');
 
+/**
+ * @param {import('./compiler').Column} col
+ *
+ * @returns {object|null}
+ */
 function colFilterSchema(col) {
     const type = col.schema.type;
     const schema = col.schema;
@@ -51,6 +56,12 @@ function colFilterSchema(col) {
     throw new Error(`Type "${type}" is not supported in filter.`);
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ *
+ * @returns {object}
+ */
 function listPath(plan, group) {
     const types = Object.keys(plan[group]);
 
@@ -86,6 +97,12 @@ function mergeColumns(columns) {
     return merged;
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ *
+ * @returns {object}
+ */
 function listBody(plan, group) {
     const columns = mergeColumns(
         _.flatMap(plan[group], (s) => {
@@ -123,6 +140,11 @@ function listBody(plan, group) {
         });
 }
 
+/**
+ * @param {import('./compiler').Column} col
+ *
+ * @returns {object}
+ */
 function dataColCreateSchema(col) {
     if (col.hasOwnProperty('defaultValue')) {
         return col.schema.default(col.defaultValue);
@@ -131,6 +153,13 @@ function dataColCreateSchema(col) {
     return col.schema.required();
 }
 
+/**
+ * @param {Plan} plan
+ * @param {string} group
+ * @param {string} type
+ *
+ * @returns {object}
+ */
 function relationSchemas(plan, group, type) {
     const relations = plan[group][type].relations;
     const relationSchemas = {};
@@ -154,6 +183,12 @@ function relationSchemas(plan, group, type) {
     return relationSchemas;
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ *
+ * @returns {object}
+ */
 function createBody(plan, group) {
     const dataKeys = _.mapValues(plan[group], function (typeSchema, type) {
         if (typeSchema.type != null) {
@@ -272,10 +307,21 @@ function createBody(plan, group) {
         });
 }
 
+/**
+ * @param {import('./compiler').Column} col
+ *
+ * @returns {object}
+ */
 function dataColUpdateSchema(col) {
     return col.schema;
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ *
+ * @returns {object}
+ */
 function updateBody(plan, group) {
     const dataKeys = _.mapValues(plan[group], function (typeSchema, type) {
         if (typeSchema.type != null) {
@@ -394,6 +440,12 @@ function updateBody(plan, group) {
         });
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ *
+ * @returns {object}
+ */
 function deleteBody(plan, group) {
     const dataKeys = _.mapValues(plan[group], function (typeSchema) {
         const columns = typeSchema.columns;

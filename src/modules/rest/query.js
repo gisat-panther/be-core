@@ -3,9 +3,20 @@ const qb = require('@imatic/pgqb');
 const _ = require('lodash');
 const _fp = require('lodash/fp');
 const {SQL} = require('sql-template-strings');
+const {Client} = require('pg');
+
+/**
+ * @typedef {Object} Filter
+ * @property {string} column
+ * @property {any} value
+ * @property {string} operato
+ */
 
 const GUEST_KEY = 'cad8ea0d-f95e-43c1-b162-0704bfc1d3f6';
 
+/**
+ * @type {Object<string, import('@imatic/pgqb').Expr>}
+ */
 const filterOperatorToSqlExpr = {
     timefrom: function (filter) {
         return qb.expr.gte(filter.column, qb.val.inlineParam(filter.value));
@@ -40,17 +51,24 @@ const filterOperatorToSqlExpr = {
     },
 };
 
+/**
+ * Returns passed client if given, default one otherwise.
+ *
+ * @param {import('../../db').Client=} client
+ *
+ * @returns {import('../../db').Client}
+ */
 function getDb(client) {
     return client || db;
 }
 
 /**
- * Converts filters to the structure:
- * {
- *   column: <string>
- *   value: <any>
- *   operator: <string>
- * }
+ * Converts request filters to internal structure that is easier to work with.
+ *
+ * @param requestFilter {Object<string, any>}
+ * @param columnToAliases {Object<string, string[]>}
+ *
+ * @returns {Filter[]}
  */
 function createFilters(requestFilter, columnToAliases) {
     const filters = [];
@@ -81,6 +99,11 @@ function createFilters(requestFilter, columnToAliases) {
     return filters;
 }
 
+/**
+ * @param {Filter[]} filters
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function filtersToSqlExpr(filters) {
     const exprs = filters
         .map((filter) => {
@@ -108,6 +131,12 @@ function filtersToSqlExpr(filters) {
     return qb.where(qb.expr.and(...exprs));
 }
 
+/**
+ * @param {[string, 'ascending'|'descending'][]} requestSort
+ * @param {string} alias
+ *
+ * @return {import('@imatic/pgqb').Sql}
+ */
 function sortToSqlExpr(requestSort, alias) {
     if (requestSort == null) {
         return {};
@@ -127,6 +156,11 @@ function sortToSqlExpr(requestSort, alias) {
     return qb.append(...exprs);
 }
 
+/**
+ * @param {{limit: number, offset: number}=} page
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function pageToQuery(page) {
     if (page == null) {
         return {};
@@ -135,6 +169,14 @@ function pageToQuery(page) {
     return qb.merge(qb.limit(page.limit), qb.offset(page.offset));
 }
 
+/**
+ * Creates part of query related to `type` relations.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
+ * @param {string} alias Type table alias
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function relationsQuery({plan, group, type}, alias) {
     const relations = plan[group][type].relations;
 
@@ -195,6 +237,14 @@ function relationsQuery({plan, group, type}, alias) {
     return qb.append(...queries);
 }
 
+/**
+ * Creates limiting query based on list permissions for `type` of `user`.
+ *
+ * @param {{user: {realKey: string}, type: string}} context
+ * @param {string} alias Type table alias
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function listPermissionQuery({user, type}, alias) {
     if (user == null) {
         return {};
@@ -222,6 +272,16 @@ function listPermissionQuery({user, type}, alias) {
     );
 }
 
+/**
+ * Selects user permissions for given type (these will be returned in http response).
+ *
+ * @param {string} userKey
+ * @param {string} type
+ * @param {string} alias Type table alias
+ * @param {string} permissionsAlias Alias under which to put result
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function specificUserPermissionsQuery(userKey, type, alias, permissionsAlias) {
     const joinAlias = 'rela_' + permissionsAlias;
 
@@ -258,6 +318,14 @@ function specificUserPermissionsQuery(userKey, type, alias, permissionsAlias) {
     );
 }
 
+/**
+ * Selects user and guest permissions for given type (these will be returned in http response).
+ *
+ * @param {{user: {realKey: string}, type: string}} context
+ * @param {string} alias Type table alias
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function listUserPermissionsQuery({user, type}, alias) {
     if (user == null) {
         return {};
@@ -274,6 +342,13 @@ function listUserPermissionsQuery({user, type}, alias) {
     );
 }
 
+/**
+ * Returns datetime of `type`'s last change.
+ *
+ * @param {{group: string, type: string}} context
+ *
+ * @returns {Promise<string>}
+ */
 async function lastChange({group, type}) {
     const sqlMap = qb.merge(
         qb.select([qb.expr.as('a.action_tstamp_stm', 'change')]),
@@ -293,10 +368,23 @@ async function lastChange({group, type}) {
     return _.first(_.map(res.rows, (row) => row.change));
 }
 
+/**
+ * @param {string} table
+ *
+ * @returns {string}
+ */
 function listDependentTypeAlias(table) {
     return '_t_' + table;
 }
 
+/**
+ * Creates part of query related to specific type of `type`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
+ * @param {string} alias Type table alias
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function listDependentTypeQuery({plan, group, type}, alias) {
     const typeSchema = plan[group][type];
     if (typeSchema.type == null) {
@@ -351,6 +439,14 @@ function listDependentTypeQuery({plan, group, type}, alias) {
     );
 }
 
+/**
+ * Cleans rows so that they don't contain properties from different types of `type`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
+ * @param {object[]} rows
+ *
+ * @return {object[]}
+ */
 function cleanDependentTypeCols({plan, group, type}, rows) {
     const typeSchema = plan[group][type];
     if (typeSchema.type == null) {
@@ -375,6 +471,14 @@ function cleanDependentTypeCols({plan, group, type}, rows) {
     }, rows);
 }
 
+/**
+ * Returns list data.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client?: import('../../db').Client, user: object}} context
+ * @param {{sort: [string, 'ascending'|'descending'][], filter: Object<string, any>, page?: {limit: number, offset: number}}} params
+ *
+ * @returns {Promise<{rows: object[], count: number}>}
+ */
 function list({plan, group, type, client, user}, {sort, filter, page}) {
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
@@ -450,12 +554,29 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
     }));
 }
 
+/**
+ * Converts `record` into set exprs intended to be passed into query builder.
+ *
+ * @param {object} record
+ * @param {string[]} columns
+ * @param {Object<string, import('./compiler').Column>} columnsConfig
+ *
+ * @returns {import('@imatic/pgqb').Expr[]}
+ */
 function recordValues(record, columns, columnsConfig) {
     const data = {...record.data, ...{key: record.key}};
 
     return columns.map((c) => columnsConfig[c].modifyExpr({value: data[c]}));
 }
 
+/**
+ * Inserts type dependent data of `record`
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client: import('../../db').Client}} context
+ * @param {object} record
+ *
+ * @returns {string} Id of created record
+ */
 function createDependentType({plan, group, type, client}, record) {
     const typeSchema = plan[group][type];
     if (typeSchema.type == null) {
@@ -484,6 +605,14 @@ function createDependentType({plan, group, type, client}, record) {
         .then((res) => res.rows.map((r) => r.key)[0]);
 }
 
+/**
+ * Updates type dependent data of `record`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client: import('../../db').Client}} context
+ * @param {object} record
+ *
+ * @returns {string} Id of updated record
+ */
 function updateDependentType({plan, group, type, client}, record) {
     const typeSchema = plan[group][type];
     if (typeSchema.type == null) {
@@ -519,6 +648,12 @@ function updateDependentType({plan, group, type, client}, record) {
         .then((res) => res.rows.map((r) => r.key)[0]);
 }
 
+/**
+ * Deletes type dependent data of `record`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client: import('../../db').Client}} context
+ * @param {object} record
+ */
 function deleteDependentType({plan, group, type, client}, record) {
     const typeSchema = plan[group][type];
     if (typeSchema.type == null) {
@@ -544,6 +679,13 @@ function deleteDependentType({plan, group, type, client}, record) {
     );
 }
 
+/**
+ * Creates `records`
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client: Client}} context
+ *
+ * @returns {string[]} Created ids
+ */
 async function create({plan, group, type, client}, records) {
     const typeSchema = plan[group][type];
     const typeKey = _fp.get(['type', 'key'], typeSchema);
@@ -654,12 +796,27 @@ async function create({plan, group, type, client}, records) {
     });
 }
 
+/**
+ ** Converts `recordData` into set exprs intended to be passed into query builder.
+
+ * @param {object} recordData
+ * @param {Object<string, import('./compiler').Column>} columnsConfig
+ *
+ * @returns {import('@imatic/pgqb').Expr[]}
+ */
 function updateExprs(recordData, columnsConfig) {
     return Object.entries(recordData).map(([col, value]) => {
         return qb.expr.eq(col, columnsConfig[col].modifyExpr({value}));
     });
 }
 
+/**
+ * Updates `record`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client: import('../../db').Client}} context
+ * @param {object} record
+ * @param {string} dependentType
+ */
 function updateRecord({plan, group, type, client}, record, dependentType) {
     const typeSchema = plan[group][type];
     const columnsConfig = typeSchema.columns;
@@ -691,6 +848,13 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
     return client.query(qb.toSql(sqlMap));
 }
 
+/**
+ * Quotes sql identifier.
+ *
+ * @param {string} name
+ *
+ * @returns {string}
+ */
 function quoteIdentifier(name) {
     return name
         .split('.')
@@ -698,6 +862,11 @@ function quoteIdentifier(name) {
         .join('.');
 }
 
+/**
+ * @param {*} v
+ *
+ * @returns {array}
+ */
 function ensureArray(v) {
     if (v == null || _.isArray(v)) {
         return v;
@@ -706,6 +875,12 @@ function ensureArray(v) {
     return [v];
 }
 
+/**
+ * Updates relationships with `record`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client: import('../../db').Client}} context
+ * @param {object} record
+ */
 async function updateRecordRelation({plan, group, type, client}, record) {
     const relationsByCol = _.mapKeys(plan[group][type].relations, function (
         rel,
@@ -790,6 +965,12 @@ async function updateRecordRelation({plan, group, type, client}, record) {
     await Promise.all(_.map(relationQueries, (sql) => client.query(sql)));
 }
 
+/**
+ * Updates type dependent data of `record`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client: import('../../db').Client}} context
+ * @param {object} record
+ */
 function updateType({plan, group, type, client}, record) {
     const typeSchema = plan[group][type];
     if (typeSchema.type == null) {
@@ -810,6 +991,12 @@ function updateType({plan, group, type, client}, record) {
     ]).then(([r1, r2]) => r2);
 }
 
+/**
+ * Updates `records`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client: import('../../db').Client}} context
+ * @param {object[]} records
+ */
 async function update({plan, group, type, client}, records) {
     return client.transactional(async (client) => {
         const dependentTypes = await Promise.all(
@@ -830,6 +1017,12 @@ async function update({plan, group, type, client}, records) {
     });
 }
 
+/**
+ * Deletes `records`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client: import('../../db').Client}} context
+ * @param {object[]} records
+ */
 async function deleteRecords({plan, group, type, client}, records) {
     const typeSchema = plan[group][type];
     const table = _.get(typeSchema, 'table', type);
@@ -870,6 +1063,14 @@ async function deleteRecords({plan, group, type, client}, records) {
     );
 }
 
+/**
+ * Retrieves type columns of `records`.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
+ * @param {object[]} records
+ *
+ * @returns {Promise<object[]>}
+ */
 function typeColumns({plan, group, type}, records) {
     const typeSchema = plan[group][type];
     const table = _.get(typeSchema, 'table', type);

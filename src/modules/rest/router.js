@@ -9,6 +9,19 @@ const schema = require('./schema');
 const q = require('./query');
 const db = require('../../db');
 
+/**
+ * @typedef {Object} Permissions
+ * @property {boolean} view
+ * @property {boolean} create
+ * @property {boolean} update
+ * @property {boolean} delete
+ *
+ * @typedef {Object} Row
+ * @property {string} key
+ * @property {object} data
+ * @property {{guest: Permissions, activeUser: Permissions}} permissions
+ */
+
 const defaultPermissions = {
     view: false,
     create: false,
@@ -16,6 +29,12 @@ const defaultPermissions = {
     delete: false,
 };
 
+/**
+ * @param {object} row
+ * @param {string} key
+ *
+ * @returns {Permissions}
+ */
 function formatPermissions(row, key) {
     return Object.assign(
         {},
@@ -27,6 +46,11 @@ function formatPermissions(row, key) {
     );
 }
 
+/**
+ * @param {object} row
+ *
+ * @returns {Row}
+ */
 function formatRow(row) {
     return {
         key: row.key,
@@ -38,6 +62,12 @@ function formatRow(row) {
     };
 }
 
+/**
+ * @param {Object<string, object>} recordsByType
+ * @param {{limit: number, offset: number}} page
+ *
+ * @returns {{data: Object<string, Row[]>, success: true, total: Object<string, number>, limit?: number, offset?: number}}
+ */
 function formatList(recordsByType, page) {
     const data = {
         data: _.mapValues(recordsByType, (r) => r.rows.map(formatRow)),
@@ -57,6 +87,14 @@ function formatList(recordsByType, page) {
     return data;
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ * @param {string} type
+ * @param {object} params
+ *
+ * @returns {object}
+ */
 function filterListParamsByType(plan, group, type, params) {
     const typeSchema = plan[group][type];
     const columnNames = _.concat(
@@ -80,6 +118,12 @@ function filterListParamsByType(plan, group, type, params) {
     });
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ *
+ * @returns {import('../routing').RouteData[]}
+ */
 function createGroup(plan, group) {
     return [
         {
@@ -310,6 +354,11 @@ function createGroup(plan, group) {
     ];
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ *
+ * @returns {import('../routing').RouteData[]}
+ */
 function createAll(plan) {
     const handlers = [];
 

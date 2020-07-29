@@ -1,15 +1,23 @@
 #!/usr/bin/env node
 
+/**
+ * This script creates all possible permissions. Every permission can then be assigned
+ * to some user via `assign-all-permissions` script.
+ *
+ * Useful in development.
+ */
+
 const _ = require('lodash/fp');
-const plan = require('../modules/rest/plan');
-const uuid = require('../uuid');
+require('../src/applications/index');
+const getPlan = require('../src/applications/plan').get;
+const uuid = require('../src/uuid');
 const qb = require('@imatic/pgqb');
-const db = require('../db');
+const db = require('../src/db');
 
 db.init();
 
 const permissions = ['view', 'create', 'update', 'delete'];
-const types = _.flatMap(_.keys, plan);
+const types = _.flatMap(_.keys, getPlan());
 
 const columns = ['key', 'resourceType', 'permission'];
 
