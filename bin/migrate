@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 
-const migrations = require('../migrations');
+/**
+ * This scrip sets db to given version and then runs migration scripts do/undo to get there.
+ * Without argument, it runs all migrations.
+ *
+ * In production, this script should be always run without arguments to prevent data loss.
+ */
+
+const migrations = require('../src/migrations');
 
 const targetVersion = process.argv[2] || 'max';
 migrations.migrate(targetVersion);

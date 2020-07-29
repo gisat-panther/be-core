@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+/**
+ * This script creates token for user.
+ *
+ * Useful in development.
+ */
+
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 

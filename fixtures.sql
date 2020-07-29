@@ -3,7 +3,16 @@ BEGIN;
 -- guest: 52ddabec-d01a-49a0-bb4d-5ff931bd346e
 -- user: e56f3545-57f5-44f9-9094-2750a69ef67e
 
-TRUNCATE "user"."users", "user"."groups", "user"."permissions" CASCADE;
+TRUNCATE
+  "user"."users",
+  "user"."groups",
+  "user"."permissions",
+  "dataSources"."dataSource",
+  "dataSources"."raster",
+  "dataSources"."vector",
+  "dataSources"."wms",
+  "dataSources"."wmts"
+  CASCADE;
 
 INSERT INTO "user"."users"
   ("key", "email", "password", "phone", "name")
@@ -42,20 +51,24 @@ VALUES
   ('3e3f4300-1336-4043-baa3-b65a025c2d83', '742b6f3f-a77e-4267-8e96-1e4cea96dec3');
 
 INSERT INTO "user"."permissions"
-  ("key", "resourceKey", "resourceType", "permission")
+  ("key", "resourceKey", "resourceGroup", "resourceType", "permission")
 VALUES
-  ('0da66083-77ad-4e66-9338-0c8344de9eba', null, 'case', 'create'),
-  ('42e8bdf8-19c8-4658-aded-b1c724539072', null, 'case', 'update'),
-  ('820c4a94-9588-4926-8ba0-2df7abe2eb7f', null, 'scope', 'delete'),
-  ('6a7df854-4dc0-4093-b8a0-15e2e0a91ed0', null, 'place', 'delete'),
-  ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'create'),
-  ('913e3bae-e5dd-4600-a854-ca7b65199bbf', null, 'user', 'update'),
-  ('9ac648e7-00d0-4196-be44-9ae2d7cfb598', null, 'user', 'delete'),
-  ('828af8c1-5438-475b-9f91-af432745e83f', null, 'user', 'view'),
-  ('f2ead234-6402-4a6e-9374-b243647edc44', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'view'),
-  ('4f2b3dc7-9b3f-4624-82c0-93d139e19baa', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'update'),
-  ('e84dfa30-f2fc-4a1f-988c-b7f4e2489f2f', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'delete'),
-  ('432348bc-6adf-4fd3-ac44-48a15f7d8ac6', '7c5acddd-3625-46ef-90b3-82f829afb258', 'user', 'view');
+  ('0da66083-77ad-4e66-9338-0c8344de9eba', null, 'metadata', 'case', 'create'),
+  ('42e8bdf8-19c8-4658-aded-b1c724539072', null, 'metadata', 'case', 'update'),
+  ('820c4a94-9588-4926-8ba0-2df7abe2eb7f', null, 'metadata', 'scope', 'delete'),
+  ('6a7df854-4dc0-4093-b8a0-15e2e0a91ed0', null, 'metadata', 'place', 'delete'),
+  ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'user', 'create'),
+  ('913e3bae-e5dd-4600-a854-ca7b65199bbf', null, 'user', 'user', 'update'),
+  ('9ac648e7-00d0-4196-be44-9ae2d7cfb598', null, 'user', 'user', 'delete'),
+  ('828af8c1-5438-475b-9f91-af432745e83f', null, 'user', 'user', 'view'),
+  ('9d2b52c0-ced8-4a3c-b5ae-ea97befd3305', null, 'dataSources', 'spatial', 'create'),
+  ('2f8f7e58-2c55-4c06-90c6-a5a164c3f1f1', null, 'dataSources', 'spatial', 'update'),
+  ('92901779-f29f-44a3-ab05-2a22b6a94848', null, 'dataSources', 'spatial', 'delete'),
+  ('d116a380-4cf2-4241-9b88-3c0488848a05', null, 'dataSources', 'spatial', 'view'),
+  ('f2ead234-6402-4a6e-9374-b243647edc44', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'view'),
+  ('4f2b3dc7-9b3f-4624-82c0-93d139e19baa', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'update'),
+  ('e84dfa30-f2fc-4a1f-988c-b7f4e2489f2f', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'delete'),
+  ('432348bc-6adf-4fd3-ac44-48a15f7d8ac6', '7c5acddd-3625-46ef-90b3-82f829afb258', 'user', 'user', 'view');
 
 INSERT INTO "user"."userPermissions"
   ("userKey", "permissionKey")
@@ -70,6 +83,14 @@ VALUES
   ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '913e3bae-e5dd-4600-a854-ca7b65199bbf'),
   -- user: admin@example.com             ,  users:delete
   ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '9ac648e7-00d0-4196-be44-9ae2d7cfb598'),
+  -- user: admin@example.com             , spatial:create
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '9d2b52c0-ced8-4a3c-b5ae-ea97befd3305'),
+  -- user: admin@example.com             , spatial:update
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '2f8f7e58-2c55-4c06-90c6-a5a164c3f1f1'),
+  -- user: admin@example.com             , spatial:delete
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '92901779-f29f-44a3-ab05-2a22b6a94848'),
+  -- user: admin@example.com             , spatial:view
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', 'd116a380-4cf2-4241-9b88-3c0488848a05'),
   -- user: specificPermsAdmin@example.com, users[key]:update
   ('39ed471f-8383-4283-bb8a-303cb05cadef', '4f2b3dc7-9b3f-4624-82c0-93d139e19baa'),
   -- user: specificPermsAdmin@example.com, users[key]:delete

@@ -4,6 +4,12 @@ const {SQL} = require('sql-template-strings');
 
 const schema = config.pgSchema.user;
 
+/**
+ * @param {string} email
+ * @param {string} password
+ *
+ * @returns {Promise<{key: string, password: string}>}
+ */
 function getUser(email, password) {
     return db
         .query(
@@ -18,6 +24,11 @@ function getUser(email, password) {
         });
 }
 
+/**
+ * @param {string} key
+ *
+ * @returns {Promise<{email: string, name: string, phone: string}>}
+ */
 function getUserInfoByKey(key) {
     if (key == null) {
         return;
@@ -32,6 +43,11 @@ function getUserInfoByKey(key) {
         .then((res) => res.rows[0]);
 }
 
+/**
+ * @param {string} key
+ *
+ * @returns {Promise<{resourceGroup: string, resourceType: string, permission: string}[]>}
+ */
 function userPermissionsByKey(key) {
     if (key == null) {
         return [];
@@ -41,7 +57,7 @@ function userPermissionsByKey(key) {
         .query(
             `
 SELECT
-  "p"."resourceType", "p"."permission"
+  "p"."resourceGroup", "p"."resourceType", "p"."permission"
 FROM
   "${schema}"."v_userPermissions" "p"
 WHERE

@@ -2,11 +2,25 @@ const parameters = require('../../middlewares/parameters');
 const userMiddleware = require('../../middlewares/user');
 const authMiddleware = require('../../middlewares/auth');
 const autoLoginMiddleware = require('../../middlewares/auto-login');
+const createDependentTypeMiddleware = require('./middlewares/dependentType');
 const permission = require('../../permission');
 const _ = require('lodash');
 const schema = require('./schema');
 const q = require('./query');
 const db = require('../../db');
+
+/**
+ * @typedef {Object} Permissions
+ * @property {boolean} view
+ * @property {boolean} create
+ * @property {boolean} update
+ * @property {boolean} delete
+ *
+ * @typedef {Object} Row
+ * @property {string} key
+ * @property {object} data
+ * @property {{guest: Permissions, activeUser: Permissions}} permissions
+ */
 
 const defaultPermissions = {
     view: false,
@@ -15,6 +29,12 @@ const defaultPermissions = {
     delete: false,
 };
 
+/**
+ * @param {object} row
+ * @param {string} key
+ *
+ * @returns {Permissions}
+ */
 function formatPermissions(row, key) {
     return Object.assign(
         {},
@@ -26,6 +46,11 @@ function formatPermissions(row, key) {
     );
 }
 
+/**
+ * @param {object} row
+ *
+ * @returns {Row}
+ */
 function formatRow(row) {
     return {
         key: row.key,
@@ -37,6 +62,12 @@ function formatRow(row) {
     };
 }
 
+/**
+ * @param {Object<string, object>} recordsByType
+ * @param {{limit: number, offset: number}} page
+ *
+ * @returns {{data: Object<string, Row[]>, success: true, total: Object<string, number>, limit?: number, offset?: number}}
+ */
 function formatList(recordsByType, page) {
     const data = {
         data: _.mapValues(recordsByType, (r) => r.rows.map(formatRow)),
@@ -56,8 +87,23 @@ function formatList(recordsByType, page) {
     return data;
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ * @param {string} type
+ * @param {object} params
+ *
+ * @returns {object}
+ */
 function filterListParamsByType(plan, group, type, params) {
-    const columnNames = Object.keys(plan[group][type].columns);
+    const typeSchema = plan[group][type];
+    const columnNames = _.concat(
+        _.keys(_.get(typeSchema, 'columns', {})),
+        _.flatMap(_.get(typeSchema, ['type', 'types'], {}), (type) =>
+            _.keys(_.get(type, 'columns', {}))
+        )
+    );
+
     const columnNamesSet = new Set(columnNames);
 
     return _.mapValues(params, function (v, name) {
@@ -72,6 +118,12 @@ function filterListParamsByType(plan, group, type, params) {
     });
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ *
+ * @returns {import('../routing').RouteData[]}
+ */
 function createGroup(plan, group) {
     return [
         {
@@ -154,6 +206,7 @@ function createGroup(plan, group) {
                 const data = request.parameters.body.data;
 
                 const requiredPermissions = Object.keys(data).map((k) => ({
+                    resourceGroup: group,
                     resourceType: k,
                     permission: 'create',
                 }));
@@ -206,11 +259,13 @@ function createGroup(plan, group) {
                 userMiddleware,
                 autoLoginMiddleware,
                 authMiddleware,
+                createDependentTypeMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
                 const requiredPermissions = Object.keys(data).map((k) => ({
+                    resourceGroup: group,
                     resourceType: k,
                     permission: 'update',
                     resourceKey: data[k].map((m) => m.key),
@@ -270,6 +325,7 @@ function createGroup(plan, group) {
                 const data = request.parameters.body.data;
 
                 const requiredPermissions = Object.keys(data).map((k) => ({
+                    resourceGroup: group,
                     resourceType: k,
                     permission: 'delete',
                     resourceKey: data[k].map((m) => m.key),
@@ -301,6 +357,11 @@ function createGroup(plan, group) {
     ];
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ *
+ * @returns {import('../routing').RouteData[]}
+ */
 function createAll(plan) {
     const handlers = [];
 

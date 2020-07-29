@@ -1,10 +1,13 @@
 const db = require('../../db');
 const {SQL} = require('sql-template-strings');
 
+/**
+ * This error can be passed to expressjs error handler to log some error data and show logId to the user.
+ */
 class HttpError extends Error {
     /**
-     * @param {number} status
-     * @param {object} data
+     * @param {number} status Http response status
+     * @param {object} data Error data
      */
     constructor(status, data) {
         super();
@@ -14,6 +17,8 @@ class HttpError extends Error {
 }
 
 /**
+ * Logs data into db and returns log id.
+ *
  * @param {object} data
  *
  * @returns {Promise<number>}
@@ -26,6 +31,9 @@ async function log(data) {
     return res.rows[0]['key'];
 }
 
+/**
+ * Extracts useful information from request that should be logged with error.
+ */
 function requestData(request) {
     return {
         url: request.url,
@@ -34,6 +42,9 @@ function requestData(request) {
     };
 }
 
+/**
+ * Formats given error.
+ */
 function formatError(err) {
     if (err instanceof HttpError) {
         return {status: err.status, data: err.data};
@@ -53,6 +64,9 @@ function formatError(err) {
     return {status: 500, data: err};
 }
 
+/**
+ * Middleware that logs given error into db and shows users it's id.
+ */
 async function errorMiddleware(err, request, response, next) {
     const formatted = formatError(err);
     const reqData = requestData(request);

@@ -69,6 +69,9 @@ async function transactional(cb) {
     }
 }
 
+/**
+ * @returns {import('pg').Client}
+ */
 function getSuperUserClient() {
     return new Client(config.pgConfig.superuser || config.pgConfig.normal);
 }

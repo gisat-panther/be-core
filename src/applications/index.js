@@ -9,7 +9,11 @@ const {errorMiddleware} = require('../modules/error/index');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const _ = require('lodash/fp');
+const p = require('./plan');
 
+/**
+ * Reducing function for application merging.
+ */
 function appendApplication(result, application) {
     return _.reduce(
         function (result, k) {
@@ -17,7 +21,7 @@ function appendApplication(result, application) {
                 return _.set(k, application[k], result);
             }
 
-            const appendHandler = _.isObject(result[k]) ? _.merge : _.concat;
+            const appendHandler = _.isArray(result[k]) ? _.concat : _.merge;
 
             return _.set(k, appendHandler(result[k], application[k]), result);
         },
@@ -26,19 +30,29 @@ function appendApplication(result, application) {
     );
 }
 
+/**
+ * Merges given applications into one config.
+ */
 function mergeApplications(...applications) {
     return _.reduce(appendApplication, {}, applications);
 }
 
+/**
+ * Merged config of all applications
+ */
 const config = mergeApplications(
     require('./core/index'),
     require('./demo/index')
 );
 
+/**
+ * Creates api router with swagger documentation.
+ */
 function apiRouter() {
     const router = express.Router();
 
     const plan = planCompiler.compile(config.plan);
+    p.init(plan);
     const api = [
         ...createLoginApi(plan),
         ...restRouter.createAll(plan),

@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+/**
+ * This script assigns all available permissions to user given as argument.
+ *
+ * Useful in development.
+ */
+
 const {SQL} = require('sql-template-strings');
 const db = require('../db');
 
