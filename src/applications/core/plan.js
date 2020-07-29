@@ -1176,7 +1176,8 @@ module.exports = {
         },
     },
     dataSources: {
-        attributeDataSource: {
+        attribute: {
+            table: 'attributeDataSource',
             context: {
                 list: {
                     columns: [
@@ -1229,7 +1230,8 @@ module.exports = {
                 },
             },
         },
-        dataSource: {
+        spatial: {
+            table: 'dataSource',
             type: {
                 dispatchColumn: 'type',
                 key: 'sourceKey',

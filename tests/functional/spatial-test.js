@@ -36,7 +36,7 @@ describe('/rest/dataSources', function () {
                 }),
                 body: JSON.stringify({
                     data: {
-                        dataSource: [
+                        spatial: [
                             {
                                 key: '1e1d2a18-9c2f-4e4a-8009-dd5cd05a52c8',
                                 data: {
@@ -92,7 +92,7 @@ describe('/rest/dataSources', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            dataSource: [
+                            spatial: [
                                 {
                                     key: '1e1d2a18-9c2f-4e4a-8009-dd5cd05a52c8',
                                     data: {
@@ -233,7 +233,7 @@ describe('/rest/dataSources', function () {
 
                 const data = await response.json();
                 const sortedData = _.update(
-                    ['data', 'dataSource'],
+                    ['data', 'spatial'],
                     (ds) => _.sortBy((r) => r.key, ds),
                     data
                 );
@@ -242,7 +242,7 @@ describe('/rest/dataSources', function () {
         });
     });
 
-    describe('POST ​/rest​/dataSources​/filtered​/dataSource', function () {
+    describe('POST ​/rest​/dataSources​/filtered​/spatial', function () {
         const tests = [
             {
                 name: 'all',
@@ -256,7 +256,7 @@ describe('/rest/dataSources', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            dataSource: [
+                            spatial: [
                                 {
                                     key: '1e1d2a18-9c2f-4e4a-8009-dd5cd05a52c8',
                                     data: {
@@ -399,7 +399,7 @@ describe('/rest/dataSources', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            dataSource: [
+                            spatial: [
                                 {
                                     key: '44e47b74-fb6c-434a-a678-340fb2c6236a',
                                     data: {
@@ -447,7 +447,7 @@ describe('/rest/dataSources', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            dataSource: [
+                            spatial: [
                                 {
                                     key: '44e47b74-fb6c-434a-a678-340fb2c6236a',
                                     data: {
@@ -487,7 +487,7 @@ describe('/rest/dataSources', function () {
         tests.forEach((test) => {
             it(test.name, async function () {
                 const response = await fetch(
-                    url('/rest/dataSources/filtered/dataSource'),
+                    url('/rest/dataSources/filtered/spatial'),
                     {
                         method: 'POST',
                         headers: test.headers,
@@ -513,7 +513,7 @@ describe('/rest/dataSources', function () {
                 }),
                 body: JSON.stringify({
                     data: {
-                        dataSource: [
+                        spatial: [
                             {
                                 key: '1e1d2a18-9c2f-4e4a-8009-dd5cd05a52c8',
                                 data: {
@@ -526,7 +526,7 @@ describe('/rest/dataSources', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            dataSource: [
+                            spatial: [
                                 {
                                     key: '1e1d2a18-9c2f-4e4a-8009-dd5cd05a52c8',
                                     data: {
@@ -564,7 +564,7 @@ describe('/rest/dataSources', function () {
                 }),
                 body: JSON.stringify({
                     data: {
-                        dataSource: [
+                        spatial: [
                             {
                                 key: '44e47b74-fb6c-434a-a678-340fb2c6236a',
                                 data: {
@@ -577,7 +577,7 @@ describe('/rest/dataSources', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            dataSource: [
+                            spatial: [
                                 {
                                     key: '44e47b74-fb6c-434a-a678-340fb2c6236a',
                                     data: {
@@ -617,7 +617,7 @@ describe('/rest/dataSources', function () {
                 }),
                 body: JSON.stringify({
                     data: {
-                        dataSource: [
+                        spatial: [
                             {
                                 key: 'db60a6f7-6a35-4bcb-af9a-24b8149f7bc5',
                                 data: {
@@ -631,7 +631,7 @@ describe('/rest/dataSources', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            dataSource: [
+                            spatial: [
                                 {
                                     key: 'db60a6f7-6a35-4bcb-af9a-24b8149f7bc5',
                                     data: {
@@ -670,7 +670,7 @@ describe('/rest/dataSources', function () {
                 }),
                 body: JSON.stringify({
                     data: {
-                        dataSource: [
+                        spatial: [
                             {
                                 key: 'db60a6f7-6a35-4bcb-af9a-24b8149f7bc5',
                                 data: {
@@ -683,7 +683,7 @@ describe('/rest/dataSources', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            dataSource: [
+                            spatial: [
                                 {
                                     key: 'db60a6f7-6a35-4bcb-af9a-24b8149f7bc5',
                                     data: {
@@ -727,7 +727,7 @@ describe('/rest/dataSources', function () {
 
                 const data = await response.json();
                 const sortedData = _.update(
-                    ['data', 'dataSource'],
+                    ['data', 'spatial'],
                     (ds) => _.sortBy((r) => r.key, ds),
                     data
                 );
@@ -760,7 +760,7 @@ describe('/rest/dataSources', function () {
                 }),
                 body: JSON.stringify({
                     data: {
-                        dataSource: [
+                        spatial: [
                             {
                                 key: 'db60a6f7-6a35-4bcb-af9a-24b8149f7bc5',
                             },
@@ -806,7 +806,7 @@ describe('/rest/dataSources', function () {
                 }),
                 body: JSON.stringify({
                     data: {
-                        dataSource: [
+                        spatial: [
                             {
                                 key: '44e47b74-fb6c-434a-a678-340fb2c6236a',
                             },
