@@ -46,7 +46,7 @@ function getUserInfoByKey(key) {
 /**
  * @param {string} key
  *
- * @returns {Promise<{resourceType: string, permission: string}[]>}
+ * @returns {Promise<{resourceGroup: string, resourceType: string, permission: string}[]>}
  */
 function userPermissionsByKey(key) {
     if (key == null) {
@@ -57,7 +57,7 @@ function userPermissionsByKey(key) {
         .query(
             `
 SELECT
-  "p"."resourceType", "p"."permission"
+  "p"."resourceGroup", "p"."resourceType", "p"."permission"
 FROM
   "${schema}"."v_userPermissions" "p"
 WHERE

@@ -14,20 +14,24 @@ const UserType = {
 };
 
 /**
- * @param {{resourceType: string, permission: string}[]} permissions
+ * @param {{resourceGroup: string, resourceType: string, permission: string}[]} permissions
  * @param {object} plan
  *
  * @returns {Object<string, Object<string, Object<string, true>>>}
  */
 function formatPermissions(permissions, plan) {
-    const permissionsByResourceType = _.groupBy(
+    const permissionsByResourceGroup = _.groupBy(
         permissions,
-        (p) => p.resourceType
+        (p) => p.resourceGroup
     );
 
     const formattedPermissions = {};
     _.each(plan, (dataType, group) => {
         formattedPermissions[group] = {};
+        const permissionsByResourceType = _.groupBy(
+            permissionsByResourceGroup[group],
+            (p) => p.resourceType
+        );
         _.each(_.keys(dataType), (resourceType) => {
             if (permissionsByResourceType[resourceType] == null) {
                 return;

@@ -240,12 +240,12 @@ function relationsQuery({plan, group, type}, alias) {
 /**
  * Creates limiting query based on list permissions for `type` of `user`.
  *
- * @param {{user: {realKey: string}, type: string}} context
+ * @param {{user: {realKey: string}, group: string, type: string}} context
  * @param {string} alias Type table alias
  *
  * @returns {import('@imatic/pgqb').Sql}
  */
-function listPermissionQuery({user, type}, alias) {
+function listPermissionQuery({user, group, type}, alias) {
     if (user == null) {
         return {};
     }
@@ -256,6 +256,7 @@ function listPermissionQuery({user, type}, alias) {
                 'user.v_userPermissions',
                 'tp',
                 qb.expr.and(
+                    qb.expr.eq('tp.resourceGroup', qb.val.inlineParam(group)),
                     qb.expr.eq('tp.resourceType', qb.val.inlineParam(type)),
                     qb.expr.eq('tp.permission', qb.val.inlineParam('view')),
                     qb.expr.or(
@@ -276,13 +277,20 @@ function listPermissionQuery({user, type}, alias) {
  * Selects user permissions for given type (these will be returned in http response).
  *
  * @param {string} userKey
+ * @param {string} group
  * @param {string} type
  * @param {string} alias Type table alias
  * @param {string} permissionsAlias Alias under which to put result
  *
  * @returns {import('@imatic/pgqb').Sql}
  */
-function specificUserPermissionsQuery(userKey, type, alias, permissionsAlias) {
+function specificUserPermissionsQuery(
+    userKey,
+    group,
+    type,
+    alias,
+    permissionsAlias
+) {
     const joinAlias = 'rela_' + permissionsAlias;
 
     return qb.merge(
@@ -297,6 +305,10 @@ function specificUserPermissionsQuery(userKey, type, alias, permissionsAlias) {
                 'user.v_userPermissions',
                 joinAlias,
                 qb.expr.and(
+                    qb.expr.eq(
+                        `${joinAlias}.resourceGroup`,
+                        qb.val.inlineParam(group)
+                    ),
                     qb.expr.eq(
                         `${joinAlias}.resourceType`,
                         qb.val.inlineParam(type)
@@ -321,12 +333,12 @@ function specificUserPermissionsQuery(userKey, type, alias, permissionsAlias) {
 /**
  * Selects user and guest permissions for given type (these will be returned in http response).
  *
- * @param {{user: {realKey: string}, type: string}} context
+ * @param {{user: {realKey: string}, group: string, type: string}} context
  * @param {string} alias Type table alias
  *
  * @returns {import('@imatic/pgqb').Sql}
  */
-function listUserPermissionsQuery({user, type}, alias) {
+function listUserPermissionsQuery({user, group, type}, alias) {
     if (user == null) {
         return {};
     }
@@ -334,11 +346,18 @@ function listUserPermissionsQuery({user, type}, alias) {
     return qb.append(
         specificUserPermissionsQuery(
             user.realKey,
+            group,
             type,
             alias,
             'active_user_p'
         ),
-        specificUserPermissionsQuery(GUEST_KEY, type, alias, 'guest_user_p')
+        specificUserPermissionsQuery(
+            GUEST_KEY,
+            group,
+            type,
+            alias,
+            'guest_user_p'
+        )
     );
 }
 
@@ -519,8 +538,8 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
             qb.from(`${group}.${table}`, 't'),
             qb.groupBy(['t.key'])
         ),
-        listPermissionQuery({user, type}, 't'),
-        listUserPermissionsQuery({user, type}, 't'),
+        listPermissionQuery({user, group, type}, 't'),
+        listUserPermissionsQuery({user, group, type}, 't'),
         listDependentTypeQuery({plan, group, type}, 't'),
         filtersToSqlExpr(createFilters(filter, columnToAliases)),
         relationsQuery({plan, group, type}, 't')

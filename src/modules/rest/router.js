@@ -206,6 +206,7 @@ function createGroup(plan, group) {
                 const data = request.parameters.body.data;
 
                 const requiredPermissions = Object.keys(data).map((k) => ({
+                    resourceGroup: group,
                     resourceType: k,
                     permission: 'create',
                 }));
@@ -264,6 +265,7 @@ function createGroup(plan, group) {
                 const data = request.parameters.body.data;
 
                 const requiredPermissions = Object.keys(data).map((k) => ({
+                    resourceGroup: group,
                     resourceType: k,
                     permission: 'update',
                     resourceKey: data[k].map((m) => m.key),
@@ -323,6 +325,7 @@ function createGroup(plan, group) {
                 const data = request.parameters.body.data;
 
                 const requiredPermissions = Object.keys(data).map((k) => ({
+                    resourceGroup: group,
                     resourceType: k,
                     permission: 'delete',
                     resourceKey: data[k].map((m) => m.key),

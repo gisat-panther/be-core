@@ -3,6 +3,7 @@ const db = require('./db');
 
 /**
  * @typedef {object} Permission
+ * @property {string} resourceGroup
  * @property {string} resourceType
  * @property {string} permission
  * @property {Array<string|undefined>=} resourceKey - All resource keys we need access to
@@ -20,6 +21,10 @@ function permissionExpr(permission) {
     );
 
     return qb.expr.and(
+        qb.expr.eq(
+            'p.resourceGroup',
+            qb.val.inlineParam(permission.resourceGroup)
+        ),
         qb.expr.eq(
             'p.resourceType',
             qb.val.inlineParam(permission.resourceType)
