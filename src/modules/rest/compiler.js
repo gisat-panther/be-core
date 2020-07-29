@@ -141,7 +141,9 @@ function compileGroup(group) {
  *
  * Allowed columns during this operation.
  *
- * @returns {Plan}
+ * @returns {Plan} Given plan with added default values where optional ones were omitted
+ *   so that code using the plan doesn't have to know what's optional, default and check
+ *   for attribute presence.
  */
 function compile(plan) {
     return _.mapValues(compileGroup, plan);
