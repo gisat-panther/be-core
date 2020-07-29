@@ -17,7 +17,7 @@ function appendApplication(result, application) {
                 return _.set(k, application[k], result);
             }
 
-            const appendHandler = _.isObject(result[k]) ? _.merge : _.concat;
+            const appendHandler = _.isArray(result[k]) ? _.concat : _.merge;
 
             return _.set(k, appendHandler(result[k], application[k]), result);
         },
