@@ -1,7 +1,8 @@
 on: [push]
 
 jobs:
-    build:
+    run_tests:
+        name: Run tests
         runs-on: ubuntu-latest
         services:
             postgres:

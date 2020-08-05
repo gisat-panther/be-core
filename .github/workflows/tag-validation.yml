@@ -5,7 +5,8 @@ on:
         types: [opened, labeled, unlabeled, synchronize]
 
 jobs:
-    test:
+    tag_validation:
+        name: Tag validation
         runs-on: ubuntu-latest
         steps:
             - name: Require Labels
@@ -13,4 +14,4 @@ jobs:
               with:
                   mode: exactly
                   count: 1
-                  labels: 'major, minor, patch'
+                  labels: 'major, minor, patch, skip-release'
