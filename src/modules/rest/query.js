@@ -16,7 +16,11 @@ const _getPlan = require('../../applications/plan').get;
 const GUEST_KEY = 'cad8ea0d-f95e-43c1-b162-0704bfc1d3f6';
 
 /**
- * @type {Object<string, import('@imatic/pgqb').Expr>}
+ * @callback FilterToExpr
+ * @param {Filter} filter
+ * @returns {import('@imatic/pgqb').Expr}
+ *
+ * @type {Object<string, FilterToExpr>}
  */
 const filterOperatorToSqlExpr = {
     timefrom: function (filter) {
@@ -112,6 +116,8 @@ function createFilters(requestFilter, columnToAliases) {
 }
 
 /**
+ * Converts `filters` into sql map.
+ *
  * @param {Filter[]} filters
  *
  * @returns {import('@imatic/pgqb').Sql}
@@ -144,6 +150,8 @@ function filtersToSqlExpr(filters) {
 }
 
 /**
+ * Converts `requestSort` into sql map.
+ *
  * @param {[string, 'ascending'|'descending'][]} requestSort
  * @param {string} alias
  *
@@ -169,6 +177,8 @@ function sortToSqlExpr(requestSort, alias) {
 }
 
 /**
+ * Converts `page` into sql map.
+ *
  * @param {{limit: number, offset: number}=} page
  *
  * @returns {import('@imatic/pgqb').Sql}
@@ -400,6 +410,8 @@ async function lastChange({group, type}) {
 }
 
 /**
+ * Returns deterministic dependent table alias.
+ *
  * @param {string} table
  *
  * @returns {string}

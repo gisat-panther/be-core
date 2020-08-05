@@ -40,7 +40,7 @@ function permissionExpr(permission) {
  * @param {Object} user
  * @param {Array<Permission>} permissions
  *
- * @returns {boolean}
+ * @returns {boolean} `true` if `user` has all `permissions`, `false` otherwise.
  */
 async function userHasAllPermissions(user, permissions) {
     if (user == null || permissions.length === 0) {

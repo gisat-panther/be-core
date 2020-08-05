@@ -57,6 +57,11 @@ function createPostgrator() {
     });
 }
 
+/**
+ * Runs migrations up or down so that db is at version `version`.
+ *
+ * @param {number|'max'} version
+ */
 async function migrate(version = 'max') {
     await ensureDb();
     const appliedMigrations = await createPostgrator().migrate(version);
