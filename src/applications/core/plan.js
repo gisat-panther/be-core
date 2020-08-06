@@ -1387,7 +1387,8 @@ module.exports = {
         },
     },
     relations: {
-        spatialDataSourceRelation: {
+        spatial: {
+            table: 'spatialDataSourceRelation',
             context: {
                 list: {
                     columns: [
@@ -1475,7 +1476,8 @@ module.exports = {
                 },
             },
         },
-        attributeDataSourceRelation: {
+        attribute: {
+            table: 'attributeDataSourceRelation',
             context: {
                 list: {
                     columns: [
