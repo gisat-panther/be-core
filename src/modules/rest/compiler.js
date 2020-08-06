@@ -7,11 +7,16 @@ const qb = require('@imatic/pgqb');
  * @property {{columns: string[]}} create
  * @property {{columns: string[]}} update
  *
+ * @typedef {Object} ColumnRelation
+ * @property {string} resourceGroup
+ * @property {string} resourceType
+ *
  * @typedef {Object} Column
  * @property defaultValue
  * @property {object} schema
  * @property {import('@imatic/pgqb').Value} selectExpr
  * @property {import('@imatic/pgqb').Value} modifyExpr
+ * @property {ColumnRelation=} relation
  *
  * @typedef {Object} Relation
  * @property {'manyToOne'|'manyToMany'} type
@@ -114,6 +119,14 @@ function compileGroup(group) {
  *
  * ### modifyExpr (optional)
  *   Returns query expression used as a value in create and update queries.
+ *
+ * ### relation (optional)
+ *
+ *   In case column references some resource, this provides some additional features like checking permissions.
+ *
+ * #### resourceGroup
+ *
+ * #### resourceType
  *
  * ## type (optional)
  *
