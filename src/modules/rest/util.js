@@ -9,7 +9,7 @@ function restrictedColumns(plan, group, type) {
     return _.pickBy((c) => c.hasOwnProperty('relation'), columns);
 }
 
-function requiredColumnPermissions(plan, group, data) {
+function requiredColumnPermissions(plan, group, data, permission) {
     const restrictedColumnsByType = mapValuesWithKey(function (v, type) {
         return restrictedColumns(plan, group, type);
     }, data);
@@ -50,7 +50,7 @@ function requiredColumnPermissions(plan, group, data) {
             return {
                 resourceGroup: group,
                 resourceType: type,
-                permission: 'create',
+                permission: permission,
                 resourceKey: _.uniq(keys),
             };
         }, _.entries(keysByType));

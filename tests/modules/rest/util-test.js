@@ -130,7 +130,8 @@ describe('modules/rest/util', function () {
                     util.requiredColumnPermissions(
                         test.plan,
                         test.group,
-                        test.data
+                        test.data,
+                        'create'
                     ),
                     test.expectedResult
                 );

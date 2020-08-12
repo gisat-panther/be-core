@@ -217,7 +217,8 @@ function createGroup(plan, group) {
                 const requiredColumnPermissions = util.requiredColumnPermissions(
                     plan,
                     group,
-                    data
+                    data,
+                    'create'
                 );
 
                 const requiredPermissions = _.concat(
@@ -279,12 +280,55 @@ function createGroup(plan, group) {
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
-                const requiredPermissions = Object.keys(data).map((k) => ({
-                    resourceGroup: group,
-                    resourceType: k,
-                    permission: 'update',
-                    resourceKey: data[k].map((m) => m.key),
-                }));
+                const requiredResourcePermissions = Object.keys(data).map(
+                    (k) => ({
+                        resourceGroup: group,
+                        resourceType: k,
+                        permission: 'update',
+                        resourceKey: data[k].map((m) => m.key),
+                    })
+                );
+
+                const oldData = formatList(
+                    _.zipObject(
+                        _.keys(data),
+                        await Promise.all(
+                            _.map(data, function (records, type) {
+                                return q.list(
+                                    {plan, group, type, user: request.user},
+                                    {
+                                        filter: {
+                                            key: {
+                                                in: records.map((u) => u.key),
+                                            },
+                                        },
+                                    }
+                                );
+                            })
+                        )
+                    )
+                ).data;
+
+                const requiredOldColumnPermissions = util.requiredColumnPermissions(
+                    plan,
+                    group,
+                    oldData,
+                    'update'
+                );
+
+                const requiredColumnPermissions = util.requiredColumnPermissions(
+                    plan,
+                    group,
+                    data,
+                    'update'
+                );
+
+                const requiredPermissions = _.concat(
+                    requiredResourcePermissions,
+                    requiredOldColumnPermissions,
+                    requiredColumnPermissions
+                );
+
                 if (
                     !(await permission.userHasAllPermissions(
                         request.user,
