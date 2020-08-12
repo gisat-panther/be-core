@@ -119,6 +119,28 @@ function filterListParamsByType(plan, group, type, params) {
     });
 }
 
+async function fetchOldData({plan, group, user}, data) {
+    return formatList(
+        _.zipObject(
+            _.keys(data),
+            await Promise.all(
+                _.map(data, function (records, type) {
+                    return q.list(
+                        {plan, group, type, user: user},
+                        {
+                            filter: {
+                                key: {
+                                    in: records.map((u) => u.key),
+                                },
+                            },
+                        }
+                    );
+                })
+            )
+        )
+    ).data;
+}
+
 /**
  * @param {import('./compiler').Plan} plan
  * @param {string} group
@@ -289,26 +311,10 @@ function createGroup(plan, group) {
                     })
                 );
 
-                const oldData = formatList(
-                    _.zipObject(
-                        _.keys(data),
-                        await Promise.all(
-                            _.map(data, function (records, type) {
-                                return q.list(
-                                    {plan, group, type, user: request.user},
-                                    {
-                                        filter: {
-                                            key: {
-                                                in: records.map((u) => u.key),
-                                            },
-                                        },
-                                    }
-                                );
-                            })
-                        )
-                    )
-                ).data;
-
+                const oldData = await fetchOldData(
+                    {plan, group, user: request.user},
+                    data
+                );
                 const requiredOldColumnPermissions = util.requiredColumnPermissions(
                     plan,
                     group,
@@ -383,12 +389,31 @@ function createGroup(plan, group) {
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
-                const requiredPermissions = Object.keys(data).map((k) => ({
-                    resourceGroup: group,
-                    resourceType: k,
-                    permission: 'delete',
-                    resourceKey: data[k].map((m) => m.key),
-                }));
+                const requiredResourcePermissions = Object.keys(data).map(
+                    (k) => ({
+                        resourceGroup: group,
+                        resourceType: k,
+                        permission: 'delete',
+                        resourceKey: data[k].map((m) => m.key),
+                    })
+                );
+
+                const oldData = await fetchOldData(
+                    {plan, group, user: request.user},
+                    data
+                );
+                const requiredOldColumnPermissions = util.requiredColumnPermissions(
+                    plan,
+                    group,
+                    oldData,
+                    'update'
+                );
+
+                const requiredPermissions = _.concat(
+                    requiredResourcePermissions,
+                    requiredOldColumnPermissions
+                );
+
                 if (
                     !(await permission.userHasAllPermissions(
                         request.user,
