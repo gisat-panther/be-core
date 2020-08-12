@@ -8,6 +8,7 @@ const _ = require('lodash');
 const schema = require('./schema');
 const q = require('./query');
 const db = require('../../db');
+const util = require('./util');
 
 /**
  * @typedef {Object} Permissions
@@ -205,11 +206,25 @@ function createGroup(plan, group) {
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
-                const requiredPermissions = Object.keys(data).map((k) => ({
-                    resourceGroup: group,
-                    resourceType: k,
-                    permission: 'create',
-                }));
+                const requiredResourcePermissions = Object.keys(data).map(
+                    (k) => ({
+                        resourceGroup: group,
+                        resourceType: k,
+                        permission: 'create',
+                    })
+                );
+
+                const requiredColumnPermissions = util.requiredColumnPermissions(
+                    plan,
+                    group,
+                    data
+                );
+
+                const requiredPermissions = _.concat(
+                    requiredResourcePermissions,
+                    requiredColumnPermissions
+                );
+
                 if (
                     !(await permission.userHasAllPermissions(
                         request.user,
