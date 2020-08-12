@@ -5,6 +5,7 @@ const _fp = require('lodash/fp');
 const {SQL} = require('sql-template-strings');
 const {Client} = require('pg');
 const _getPlan = require('../../applications/plan').get;
+const util = require('./util');
 
 /**
  * @typedef {Object} Filter
@@ -295,6 +296,61 @@ function listPermissionQuery({user, group, type}, alias) {
     );
 }
 
+function listPermissionRelationQuery({user, plan, group, type}, alias) {
+    const restrictedColumns = util.restrictedColumns(plan, group, type);
+    if (user == null || _.isEmpty(restrictedColumns)) {
+        return {};
+    }
+
+    return qb.append(
+        ..._.map(restrictedColumns, (col, name) => {
+            const joinAlias = 'tp_' + name;
+
+            return qb.merge(
+                qb.joins(
+                    qb.leftJoin(
+                        'user.v_userPermissions',
+                        joinAlias,
+                        qb.expr.and(
+                            qb.expr.eq(
+                                `${joinAlias}.resourceGroup`,
+                                qb.val.inlineParam(col.relation.resourceGroup)
+                            ),
+                            qb.expr.eq(
+                                `${joinAlias}.resourceType`,
+                                qb.val.inlineParam(col.relation.resourceType)
+                            ),
+                            qb.expr.eq(
+                                `${joinAlias}.permission`,
+                                qb.val.inlineParam('view')
+                            ),
+                            qb.expr.or(
+                                qb.expr.null(`${joinAlias}.resourceKey`),
+                                qb.expr.eq(
+                                    `${joinAlias}.resourceKey`,
+                                    qb.val.raw(`"${alias}"."${name}"::text`)
+                                )
+                            )
+                        )
+                    )
+                ),
+                qb.where(
+                    qb.expr.or(
+                        qb.expr.and(
+                            qb.expr.notNull(`${joinAlias}.userKey`),
+                            qb.expr.eq(
+                                `${joinAlias}.userKey`,
+                                qb.val.inlineParam(user.realKey)
+                            )
+                        ),
+                        qb.expr.null(`${alias}.${name}`)
+                    )
+                )
+            );
+        })
+    );
+}
+
 /**
  * Selects user permissions for given type (these will be returned in http response).
  *
@@ -564,6 +620,7 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
             qb.groupBy(['t.key'])
         ),
         listPermissionQuery({user, group, type}, 't'),
+        listPermissionRelationQuery({user, plan, group, type}, 't'),
         listUserPermissionsQuery({user, group, type}, 't'),
         listDependentTypeQuery({plan, group, type}, 't'),
         filtersToSqlExpr(createFilters(filter, columnToAliases)),

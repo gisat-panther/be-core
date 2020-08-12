@@ -58,8 +58,11 @@ INSERT INTO "user"."permissions"
 VALUES
   ('0da66083-77ad-4e66-9338-0c8344de9eba', null, 'metadata', 'case', 'create'),
   ('42e8bdf8-19c8-4658-aded-b1c724539072', null, 'metadata', 'case', 'update'),
+  ('a307e381-8c12-4d0e-9934-0d739cce7fa2', null, 'metadata', 'scope', 'view'),
   ('820c4a94-9588-4926-8ba0-2df7abe2eb7f', null, 'metadata', 'scope', 'delete'),
+  ('d221213b-a956-43b6-989e-32b73bee90f6', null, 'metadata', 'place', 'view'),
   ('6a7df854-4dc0-4093-b8a0-15e2e0a91ed0', null, 'metadata', 'place', 'delete'),
+  ('0cc99d81-8038-49a0-8f3a-b5bd55b94513', null, 'metadata', 'period', 'view'),
   ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'user', 'create'),
   ('913e3bae-e5dd-4600-a854-ca7b65199bbf', null, 'user', 'user', 'update'),
   ('9ac648e7-00d0-4196-be44-9ae2d7cfb598', null, 'user', 'user', 'delete'),
