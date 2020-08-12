@@ -149,8 +149,8 @@ describe('/rest/relations', function () {
                                     permissions: {
                                         activeUser: {
                                             create: true,
-                                            delete: true,
-                                            update: true,
+                                            delete: false,
+                                            update: false,
                                             view: true,
                                         },
                                         guest: {
@@ -302,8 +302,8 @@ describe('/rest/relations', function () {
                                     permissions: {
                                         activeUser: {
                                             create: true,
-                                            delete: true,
-                                            update: true,
+                                            delete: false,
+                                            update: false,
                                             view: true,
                                         },
                                         guest: {

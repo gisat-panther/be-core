@@ -6,6 +6,7 @@ const {SQL} = require('sql-template-strings');
 const {Client} = require('pg');
 const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
+const permission = require('../../permission');
 
 /**
  * @typedef {Object} Filter
@@ -364,12 +365,15 @@ function listPermissionRelationQuery({user, plan, group, type}, alias) {
  */
 function specificUserPermissionsQuery(
     userKey,
+    plan,
     group,
     type,
     alias,
     permissionsAlias
 ) {
     const joinAlias = 'rela_' + permissionsAlias;
+    const restrictedColumns = util.restrictedColumns(plan, group, type);
+    const restrictedColumnAlias = (name) => joinAlias + name;
 
     return qb.merge(
         qb.select([
@@ -377,6 +381,14 @@ function specificUserPermissionsQuery(
                 qb.val.raw(`array_agg(DISTINCT "${joinAlias}"."permission")`),
                 permissionsAlias
             ),
+            ..._.map(_.keys(restrictedColumns), (c) => {
+                const alias = restrictedColumnAlias(c);
+
+                return qb.expr.as(
+                    qb.val.raw(`ARRAY_AGG(DISTINCT "${alias}"."permission")`),
+                    permissionsAlias + '__' + c
+                );
+            }),
         ]),
         qb.joins(
             qb.leftJoin(
@@ -403,7 +415,32 @@ function specificUserPermissionsQuery(
                         qb.val.inlineParam(userKey)
                     )
                 )
-            )
+            ),
+            ..._.map(restrictedColumns, function (col, name) {
+                const joinAlias = restrictedColumnAlias(name);
+
+                return qb.leftJoin(
+                    'user.v_userPermissions',
+                    joinAlias,
+                    qb.expr.and(
+                        qb.expr.eq(
+                            `${joinAlias}.resourceGroup`,
+                            qb.val.inlineParam(col.relation.resourceGroup)
+                        ),
+                        qb.expr.eq(
+                            `${joinAlias}.resourceType`,
+                            qb.val.inlineParam(col.relation.resourceType)
+                        ),
+                        qb.expr.or(
+                            qb.expr.null(`${joinAlias}.resourceKey`),
+                            qb.expr.eq(
+                                `${joinAlias}.resourceKey`,
+                                qb.val.raw(`"${alias}"."${name}"::text`)
+                            )
+                        )
+                    )
+                );
+            })
         )
     );
 }
@@ -416,7 +453,7 @@ function specificUserPermissionsQuery(
  *
  * @returns {import('@imatic/pgqb').Sql}
  */
-function listUserPermissionsQuery({user, group, type}, alias) {
+function listUserPermissionsQuery({user, plan, group, type}, alias) {
     if (user == null) {
         return {};
     }
@@ -424,6 +461,7 @@ function listUserPermissionsQuery({user, group, type}, alias) {
     return qb.append(
         specificUserPermissionsQuery(
             user.realKey,
+            plan,
             group,
             type,
             alias,
@@ -431,6 +469,7 @@ function listUserPermissionsQuery({user, group, type}, alias) {
         ),
         specificUserPermissionsQuery(
             GUEST_KEY,
+            plan,
             group,
             type,
             alias,
@@ -621,7 +660,7 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
         ),
         listPermissionQuery({user, group, type}, 't'),
         listPermissionRelationQuery({user, plan, group, type}, 't'),
-        listUserPermissionsQuery({user, group, type}, 't'),
+        listUserPermissionsQuery({user, plan, group, type}, 't'),
         listDependentTypeQuery({plan, group, type}, 't'),
         filtersToSqlExpr(createFilters(filter, columnToAliases)),
         relationsQuery({plan, group, type}, 't')
