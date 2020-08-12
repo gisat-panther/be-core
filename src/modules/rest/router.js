@@ -47,6 +47,14 @@ function formatPermissions(row, key) {
     );
 }
 
+/**
+ * @param {Permissions} permissions
+ * @param {object} data
+ * @param {string} key
+ * @param {string[]} restrictedColumns
+ *
+ * @returns {Permissions}
+ */
 function updatePermissionWithRestrictedColumns(
     permissions,
     data,
@@ -82,6 +90,7 @@ function updatePermissionWithRestrictedColumns(
 
 /**
  * @param {object} row
+ * @param {string[]} restrictedColumns
  *
  * @returns {Row}
  */
@@ -115,6 +124,7 @@ function formatRow(row, restrictedColumns) {
 }
 
 /**
+ * @param {{plan: import('./compiler').Plan, group: string}}
  * @param {Object<string, object>} recordsByType
  * @param {{limit: number, offset: number}} page
  *
@@ -176,6 +186,13 @@ function filterListParamsByType(plan, group, type, params) {
     });
 }
 
+/**
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, user: {realKey: string}}}
+ * @param {object} data
+ *
+ * @return {object}
+ */
 async function fetchOldData({plan, group, user}, data) {
     return formatList(
         {plan, group},

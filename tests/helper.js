@@ -17,6 +17,10 @@ const PERMISSION_METADATA_PERIOD_VIEW = '0cc99d81-8038-49a0-8f3a-b5bd55b94513';
 
 let changes = [];
 
+/**
+ * @param {string} permissionKey
+ * @param {string} userKey
+ */
 function removePermission(permissionKey, userKey) {
     return db.query(
         `DELETE FROM "user"."userPermissions" WHERE "userKey" = $1 AND "permissionKey" = $2`,
@@ -24,6 +28,10 @@ function removePermission(permissionKey, userKey) {
     );
 }
 
+/**
+ * @param {string} permissionKey
+ * @param {string} userKey
+ */
 async function grantPermission(permissionKey, userKey) {
     changes.push([removePermission, permissionKey, userKey]);
 
@@ -37,6 +45,10 @@ VALUES
     );
 }
 
+/**
+ * @param {string[]} permissionKeys
+ * @param {string} userKey
+ */
 async function grantPermissions(permissionKeys, userKey) {
     permissionKeys.forEach((p) => {
         changes.push([removePermission, p, userKey]);
@@ -45,10 +57,18 @@ async function grantPermissions(permissionKeys, userKey) {
     await Promise.all(permissionKeys.map((p) => grantPermission(p, userKey)));
 }
 
+/**
+ * @param {string} table
+ * @param {string} key
+ */
 async function removeRecord(table, key) {
     return db.query(`DELETE FROM ${table} WHERE "key" = $1`, [key]);
 }
 
+/**
+ * @param {string} table
+ * @param {object} columns
+ */
 async function createRecord(table, columns) {
     changes.push([removeRecord, table, columns.key]);
 
@@ -62,6 +82,9 @@ async function createRecord(table, columns) {
     );
 }
 
+/**
+ * Reverts all changes made by functions in this module.
+ */
 async function revertChanges() {
     for (const change of changes.reverse()) {
         await change[0].apply(null, change.splice(1));

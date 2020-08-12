@@ -35,6 +35,11 @@ function permissionExpr(permission) {
     );
 }
 
+/**
+ * @param {Permission[]} rows
+ *
+ * @returns {{Object<string, Object<string, Object<string, Set<string>>>>}}
+ */
 function convertRows(rows) {
     const res = {};
     rows.forEach((row) => {
@@ -60,6 +65,11 @@ function convertRows(rows) {
     return res;
 }
 
+/**
+ * @param {Permission} permission
+ *
+ * @returns {(string|null)[]}
+ */
 function requiredKeys(permission) {
     if (!permission.hasOwnProperty('resourceKey')) {
         return [null];

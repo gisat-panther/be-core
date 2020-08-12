@@ -297,6 +297,14 @@ function listPermissionQuery({user, group, type}, alias) {
     );
 }
 
+/**
+ * Creates limiting query based on list permissions for relations of `type` of `user`.
+ *
+ * @param {{user: {realKey: string}, group: string, type: string, plan: import('./compiler').Plan}} context
+ * @param {string} alias Type table alias
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function listPermissionRelationQuery({user, plan, group, type}, alias) {
     const restrictedColumns = util.restrictedColumns(plan, group, type);
     if (user == null || _.isEmpty(restrictedColumns)) {
@@ -356,6 +364,7 @@ function listPermissionRelationQuery({user, plan, group, type}, alias) {
  * Selects user permissions for given type (these will be returned in http response).
  *
  * @param {string} userKey
+ * @param {import('./compiler').Plan} plan
  * @param {string} group
  * @param {string} type
  * @param {string} alias Type table alias

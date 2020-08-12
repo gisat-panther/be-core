@@ -3,12 +3,27 @@ const _ = require('lodash/fp');
 const mapValuesWithKey = _.mapValues.convert({cap: false});
 const eachWithKey = _.each.convert({cap: false});
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ * @param {string} type
+ *
+ * @returns {Object<string, import('./compiler').Column>}
+ */
 function restrictedColumns(plan, group, type) {
     const columns = plan[group][type].columns;
 
     return _.pickBy((c) => c.hasOwnProperty('relation'), columns);
 }
 
+/**
+ * @param {import('./compiler').Plan} plan
+ * @param {string} group
+ * @param {object} data
+ * @param {string} permission
+ *
+ * @returns {import('../../permission').Permission[]}
+ */
 function requiredColumnPermissions(plan, group, data, permission) {
     const restrictedColumnsByType = mapValuesWithKey(function (v, type) {
         return restrictedColumns(plan, group, type);
