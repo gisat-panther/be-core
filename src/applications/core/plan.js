@@ -1441,14 +1441,26 @@ module.exports = {
                 scopeKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid(),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                    },
                 },
                 periodKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid(),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'period',
+                    },
                 },
                 placeKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid(),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'place',
+                    },
                 },
                 spatialDataSourceKey: {
                     defaultValue: null,
@@ -1461,6 +1473,10 @@ module.exports = {
                 scenarioKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid(),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'scenario',
+                    },
                 },
                 caseKey: {
                     defaultValue: null,
