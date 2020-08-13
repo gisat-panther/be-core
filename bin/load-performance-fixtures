@@ -1,0 +1,75 @@
+#!/usr/bin/env node
+
+const uuid = require('../src/uuid');
+const qb = require('@imatic/pgqb');
+const db = require('../src/db');
+db.init();
+
+async function insert(client, table, columns) {
+    const entries = Object.entries(columns);
+
+    const sqlMap = qb.merge(
+        qb.insertInto(table),
+        qb.columns(entries.map(([col]) => col)),
+        qb.values([
+            entries.map(([, v]) => {
+                if (typeof v === 'object') {
+                    return v;
+                }
+
+                return qb.val.inlineParam(v);
+            }),
+        ])
+    );
+
+    return client.query(qb.toSql(sqlMap));
+}
+
+function generateCase() {
+    return {
+        key: uuid.generate(),
+        nameDisplay: 'text',
+        nameInternal: 'text',
+        description: 'text',
+    };
+}
+
+function generateLpisChangeCase() {
+    return {
+        key: uuid.generate(),
+        submitDate: '2020-01-01',
+        codeDpb: 'text',
+        codeJi: 'text',
+        changeDescription: 'text',
+        changeDescriptionPlace: 'text',
+        changeDescriptionOther: 'text',
+        evaluationResult: 'text',
+        evaluationDescription: 'text',
+        evaluationDescriptionOther: 'text',
+        evaluationUsedSources: 'text',
+        geometryBefore: qb.val.raw(
+            `ST_GeomFromGeoJSON('{"type":"Point","coordinates":[-48.23456,20.12345]}')`
+        ),
+        geometryAfter: qb.val.raw(
+            `ST_GeomFromGeoJSON('{"type":"Point","coordinates":[-48.23456,20.12345]}')`
+        ),
+        status: 'text',
+    };
+}
+
+async function generateInserts(n) {
+    await db.transactional(async (client) => {
+        for (let i = 0; i < n; i++) {
+            const casee = generateCase();
+            const lpisChangeCase = generateLpisChangeCase();
+            lpisChangeCase.caseKey = casee.key;
+
+            await insert(client, 'metadata.case', casee);
+            await insert(client, 'specific.lpisChangeCase', lpisChangeCase);
+        }
+    });
+}
+
+generateInserts(50_000).then(() => {
+    process.exit(0);
+});

@@ -14,24 +14,28 @@ const uuid = require('../src/uuid');
 const qb = require('@imatic/pgqb');
 const db = require('../src/db');
 
+const flatMapWithKey = _.flatMap.convert({cap: false});
+
 db.init();
 
 const permissions = ['view', 'create', 'update', 'delete'];
-const types = _.flatMap(_.keys, getPlan());
+const typesByGroup = _.mapValues(_.keys, getPlan());
 
-const columns = ['key', 'resourceType', 'permission'];
+const columns = ['key', 'resourceGroup', 'resourceType', 'permission'];
 
-function typeToValues(type) {
-    return _.map(
-        (p) => _.map(qb.val.inlineParam, [uuid.generate(), type, p]),
-        permissions
-    );
+function typeToValues(types, group) {
+    return _.flatMap((type) => {
+        return _.map(
+            (p) => _.map(qb.val.inlineParam, [uuid.generate(), group, type, p]),
+            permissions
+        );
+    }, types);
 }
 
 const sqlMap = qb.merge(
     qb.insertInto('user.permissions'),
     qb.columns(columns),
-    qb.values(_.flatMap(typeToValues, types))
+    qb.values(flatMapWithKey(typeToValues, typesByGroup))
 );
 
-db.query(qb.toSql(sqlMap));
+db.query(qb.toSql(sqlMap)).then(() => process.exit());
