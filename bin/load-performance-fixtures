@@ -3,6 +3,7 @@
 const uuid = require('../src/uuid');
 const qb = require('@imatic/pgqb');
 const db = require('../src/db');
+const faker = require('faker');
 db.init();
 
 async function insert(client, table, columns) {
@@ -25,35 +26,35 @@ async function insert(client, table, columns) {
     return client.query(qb.toSql(sqlMap));
 }
 
+function geometry() {
+    return `ST_GeomFromGeoJSON('{"type":"Point","coordinates":[${faker.address.longitude()},${faker.address.latitude()}]}')`;
+}
+
 function generateCase() {
     return {
         key: uuid.generate(),
-        nameDisplay: 'text',
-        nameInternal: 'text',
-        description: 'text',
+        nameDisplay: faker.lorem.word(),
+        nameInternal: faker.lorem.word(),
+        description: faker.lorem.sentences(),
     };
 }
 
 function generateLpisChangeCase() {
     return {
         key: uuid.generate(),
-        submitDate: '2020-01-01',
-        codeDpb: 'text',
-        codeJi: 'text',
-        changeDescription: 'text',
-        changeDescriptionPlace: 'text',
-        changeDescriptionOther: 'text',
-        evaluationResult: 'text',
-        evaluationDescription: 'text',
-        evaluationDescriptionOther: 'text',
-        evaluationUsedSources: 'text',
-        geometryBefore: qb.val.raw(
-            `ST_GeomFromGeoJSON('{"type":"Point","coordinates":[-48.23456,20.12345]}')`
-        ),
-        geometryAfter: qb.val.raw(
-            `ST_GeomFromGeoJSON('{"type":"Point","coordinates":[-48.23456,20.12345]}')`
-        ),
-        status: 'text',
+        submitDate: faker.date.past().toISOString(),
+        codeDpb: faker.lorem.word(),
+        codeJi: faker.lorem.word(),
+        changeDescription: faker.lorem.sentences(),
+        changeDescriptionPlace: faker.lorem.sentences(),
+        changeDescriptionOther: faker.lorem.sentences(),
+        evaluationResult: faker.lorem.sentences(),
+        evaluationDescription: faker.lorem.sentences(),
+        evaluationDescriptionOther: faker.lorem.sentences(),
+        evaluationUsedSources: faker.lorem.sentences(),
+        geometryBefore: qb.val.raw(geometry()),
+        geometryAfter: qb.val.raw(geometry()),
+        status: faker.lorem.word(),
     };
 }
 
