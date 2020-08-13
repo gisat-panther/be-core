@@ -47,7 +47,7 @@ function reportOperation(operation, durationMs) {
     return `${operation}: ${durationS}s`;
 }
 
-async function run() {
+async function runLpisChangeCaseWithoutBody() {
     const opStart = performance.now();
     const response = await fetch(
         url('/rest/specific/filtered/lpisChangeCase'),
@@ -70,13 +70,21 @@ async function run() {
         throw new Error(`Invalid total: ${data.total}`);
     }
 
+    return reportOperation(
+        `POST /rest/specific/filtered/lpisChangeCase (${data.total} in db)`,
+        opDuration
+    );
+}
+
+async function run() {
+    const reports = [await runLpisChangeCaseWithoutBody()];
+
+    const reportsStr = reports.map((report) => '  ' + report).join('\n');
+
     console.log(
         `Results:
 
-  ${reportOperation(
-      `POST /rest/specific/filtered/lpisChangeCase (${data.total} in db)`,
-      opDuration
-  )}`
+${reportsStr}`
     );
 }
 
