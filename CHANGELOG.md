@@ -1,3 +1,15 @@
+# v0.0.3 (Thu Aug 13 2020)
+
+#### 🐾 Patch
+
+- Add missing foreign keys [#9](https://github.com/gisat-panther/be-core/pull/9) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.2 (Thu Aug 13 2020)
 
 #### 🐾 Patch
