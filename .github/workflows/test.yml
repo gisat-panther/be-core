@@ -17,7 +17,7 @@ jobs:
             - uses: actions/setup-node@v1
               with:
                   node-version: '12.x'
-            - run: 'npm install'
+            - run: 'npm ci'
             - run: 'npm run start &'
             - run: './node_modules/.bin/wait-port -t 5000 localhost:9850'
             - run: 'npm test'

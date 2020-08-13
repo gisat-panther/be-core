@@ -8,6 +8,7 @@ const _ = require('lodash');
 const schema = require('./schema');
 const q = require('./query');
 const db = require('../../db');
+const util = require('./util');
 
 /**
  * @typedef {Object} Permissions
@@ -47,30 +48,97 @@ function formatPermissions(row, key) {
 }
 
 /**
+ * @param {Permissions} permissions
+ * @param {object} data
+ * @param {string} key
+ * @param {string[]} restrictedColumns
+ *
+ * @returns {Permissions}
+ */
+function updatePermissionWithRestrictedColumns(
+    permissions,
+    data,
+    key,
+    restrictedColumns
+) {
+    const interestingColumns = _.filter(
+        restrictedColumns,
+        (c) => data[c] != null
+    );
+    const props = _.map(interestingColumns, (c) => key + '__' + c);
+
+    return _.mapValues(permissions, (permission, name) => {
+        if (permission === false) {
+            return permission;
+        }
+
+        switch (name) {
+            case 'view':
+                return _.every(props, (p) => {
+                    return new Set(data[p]).has('view');
+                });
+            case 'update':
+            case 'delete':
+                return _.every(props, (p) => {
+                    return new Set(data[p]).has('update');
+                });
+        }
+
+        return permission;
+    });
+}
+
+/**
  * @param {object} row
+ * @param {string[]} restrictedColumns
  *
  * @returns {Row}
  */
-function formatRow(row) {
+function formatRow(row, restrictedColumns) {
     return {
         key: row.key,
-        data: _.omit(row, ['key', 'guest_user_p', 'active_user_p']),
+        data: _.omit(row, [
+            'key',
+            'guest_user_p',
+            'active_user_p',
+            ..._.flatMap(restrictedColumns, (name) => [
+                'guest_user_p__' + name,
+                'active_user_p__' + name,
+            ]),
+        ]),
         permissions: {
-            guest: formatPermissions(row, 'guest_user_p'),
-            activeUser: formatPermissions(row, 'active_user_p'),
+            guest: updatePermissionWithRestrictedColumns(
+                formatPermissions(row, 'guest_user_p'),
+                row,
+                'guest_user_p',
+                restrictedColumns
+            ),
+            activeUser: updatePermissionWithRestrictedColumns(
+                formatPermissions(row, 'active_user_p'),
+                row,
+                'active_user_p',
+                restrictedColumns
+            ),
         },
     };
 }
 
 /**
+ * @param {{plan: import('./compiler').Plan, group: string}}
  * @param {Object<string, object>} recordsByType
  * @param {{limit: number, offset: number}} page
  *
  * @returns {{data: Object<string, Row[]>, success: true, total: Object<string, number>, limit?: number, offset?: number}}
  */
-function formatList(recordsByType, page) {
+function formatList({plan, group}, recordsByType, page) {
     const data = {
-        data: _.mapValues(recordsByType, (r) => r.rows.map(formatRow)),
+        data: _.mapValues(recordsByType, (r, type) => {
+            const restrictedColumns = _.keys(
+                util.restrictedColumns(plan, group, type)
+            );
+
+            return r.rows.map((row) => formatRow(row, restrictedColumns));
+        }),
         success: true,
         total: _.reduce(
             recordsByType,
@@ -116,6 +184,36 @@ function filterListParamsByType(plan, group, type, params) {
 
         return v;
     });
+}
+
+/**
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, user: {realKey: string}}}
+ * @param {object} data
+ *
+ * @return {object}
+ */
+async function fetchOldData({plan, group, user}, data) {
+    return formatList(
+        {plan, group},
+        _.zipObject(
+            _.keys(data),
+            await Promise.all(
+                _.map(data, function (records, type) {
+                    return q.list(
+                        {plan, group, type, user: user},
+                        {
+                            filter: {
+                                key: {
+                                    in: records.map((u) => u.key),
+                                },
+                            },
+                        }
+                    );
+                })
+            )
+        )
+    ).data;
 }
 
 /**
@@ -181,7 +279,7 @@ function createGroup(plan, group) {
                         Object.assign(
                             {},
                             {changes: changeByType},
-                            formatList(recordsByType, page)
+                            formatList({plan, group}, recordsByType, page)
                         )
                     );
             },
@@ -205,11 +303,26 @@ function createGroup(plan, group) {
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
-                const requiredPermissions = Object.keys(data).map((k) => ({
-                    resourceGroup: group,
-                    resourceType: k,
-                    permission: 'create',
-                }));
+                const requiredResourcePermissions = Object.keys(data).map(
+                    (k) => ({
+                        resourceGroup: group,
+                        resourceType: k,
+                        permission: 'create',
+                    })
+                );
+
+                const requiredColumnPermissions = util.requiredColumnPermissions(
+                    plan,
+                    group,
+                    data,
+                    'create'
+                );
+
+                const requiredPermissions = _.concat(
+                    requiredResourcePermissions,
+                    requiredColumnPermissions
+                );
+
                 if (
                     !(await permission.userHasAllPermissions(
                         request.user,
@@ -241,7 +354,9 @@ function createGroup(plan, group) {
                 });
                 const recordsByType = _.zipObject(_.keys(data), records);
 
-                response.status(201).json(formatList(recordsByType));
+                response
+                    .status(201)
+                    .json(formatList({plan, group}, recordsByType));
             },
         },
         {
@@ -264,12 +379,39 @@ function createGroup(plan, group) {
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
-                const requiredPermissions = Object.keys(data).map((k) => ({
-                    resourceGroup: group,
-                    resourceType: k,
-                    permission: 'update',
-                    resourceKey: data[k].map((m) => m.key),
-                }));
+                const requiredResourcePermissions = Object.keys(data).map(
+                    (k) => ({
+                        resourceGroup: group,
+                        resourceType: k,
+                        permission: 'update',
+                        resourceKey: data[k].map((m) => m.key),
+                    })
+                );
+
+                const oldData = await fetchOldData(
+                    {plan, group, user: request.user},
+                    data
+                );
+                const requiredOldColumnPermissions = util.requiredColumnPermissions(
+                    plan,
+                    group,
+                    oldData,
+                    'update'
+                );
+
+                const requiredColumnPermissions = util.requiredColumnPermissions(
+                    plan,
+                    group,
+                    data,
+                    'update'
+                );
+
+                const requiredPermissions = _.concat(
+                    requiredResourcePermissions,
+                    requiredOldColumnPermissions,
+                    requiredColumnPermissions
+                );
+
                 if (
                     !(await permission.userHasAllPermissions(
                         request.user,
@@ -304,7 +446,9 @@ function createGroup(plan, group) {
                 });
                 const recordsByType = _.zipObject(_.keys(data), records);
 
-                response.status(200).json(formatList(recordsByType));
+                response
+                    .status(200)
+                    .json(formatList({plan, group}, recordsByType));
             },
         },
         {
@@ -324,12 +468,31 @@ function createGroup(plan, group) {
             handler: async function (request, response) {
                 const data = request.parameters.body.data;
 
-                const requiredPermissions = Object.keys(data).map((k) => ({
-                    resourceGroup: group,
-                    resourceType: k,
-                    permission: 'delete',
-                    resourceKey: data[k].map((m) => m.key),
-                }));
+                const requiredResourcePermissions = Object.keys(data).map(
+                    (k) => ({
+                        resourceGroup: group,
+                        resourceType: k,
+                        permission: 'delete',
+                        resourceKey: data[k].map((m) => m.key),
+                    })
+                );
+
+                const oldData = await fetchOldData(
+                    {plan, group, user: request.user},
+                    data
+                );
+                const requiredOldColumnPermissions = util.requiredColumnPermissions(
+                    plan,
+                    group,
+                    oldData,
+                    'update'
+                );
+
+                const requiredPermissions = _.concat(
+                    requiredResourcePermissions,
+                    requiredOldColumnPermissions
+                );
+
                 if (
                     !(await permission.userHasAllPermissions(
                         request.user,

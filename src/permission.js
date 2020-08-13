@@ -1,3 +1,4 @@
+const _ = require('lodash/fp');
 const qb = require('@imatic/pgqb');
 const db = require('./db');
 
@@ -30,10 +31,55 @@ function permissionExpr(permission) {
             qb.val.inlineParam(permission.resourceType)
         ),
         qb.expr.eq('p.permission', qb.val.inlineParam(permission.permission)),
-        keys.length > 0
-            ? qb.expr.or(qb.expr.null('p.resourceKey'), qb.expr.and(...keys))
-            : qb.expr.null('p.resourceKey')
+        qb.expr.or(qb.expr.null('p.resourceKey'), ...keys)
     );
+}
+
+/**
+ * @param {Permission[]} rows
+ *
+ * @returns {{Object<string, Object<string, Object<string, Set<string>>>>}}
+ */
+function convertRows(rows) {
+    const res = {};
+    rows.forEach((row) => {
+        if (res[row.resourceGroup] == null) {
+            res[row.resourceGroup] = {};
+        }
+
+        if (res[row.resourceGroup][row.resourceType] == null) {
+            res[row.resourceGroup][row.resourceType] = {};
+        }
+
+        if (res[row.resourceGroup][row.resourceType][row.permission] == null) {
+            res[row.resourceGroup][row.resourceType][
+                row.permission
+            ] = new Set();
+        }
+
+        res[row.resourceGroup][row.resourceType][row.permission].add(
+            row.resourceKey
+        );
+    });
+
+    return res;
+}
+
+/**
+ * @param {Permission} permission
+ *
+ * @returns {(string|null)[]}
+ */
+function requiredKeys(permission) {
+    if (!permission.hasOwnProperty('resourceKey')) {
+        return [null];
+    }
+
+    if (!_.isArray(permission.resourceKey)) {
+        return [permission.resourceKey];
+    }
+
+    return permission.resourceKey;
 }
 
 /**
@@ -48,20 +94,40 @@ async function userHasAllPermissions(user, permissions) {
     }
 
     const sqlMap = qb.merge(
-        qb.select([qb.val.raw('1')]),
+        qb.select([
+            'p.resourceGroup',
+            'p.resourceType',
+            'p.permission',
+            'p.resourceKey',
+        ]),
         qb.from('user.v_userPermissions', 'p'),
         qb.where(
             qb.expr.and(
-                ...permissions.map(permissionExpr),
-                qb.expr.eq('p.userKey', qb.val.inlineParam(user.key))
+                qb.expr.or(...permissions.map(permissionExpr)),
+                qb.expr.eq('p.userKey', qb.val.inlineParam(user.realKey))
             )
-        ),
-        qb.limit(1)
+        )
     );
 
     const res = await db.query(qb.toSql(sqlMap));
+    const comparisonRes = convertRows(res.rows);
 
-    return res.rows.length > 0;
+    return permissions.every((permission) => {
+        const grantedKeys = _.getOr(
+            new Set(),
+            [
+                permission.resourceGroup,
+                permission.resourceType,
+                permission.permission,
+            ],
+            comparisonRes
+        );
+
+        return (
+            grantedKeys.has(null) ||
+            requiredKeys(permission).every((k) => grantedKeys.has(k))
+        );
+    });
 }
 
 module.exports = {
