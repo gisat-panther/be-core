@@ -15,7 +15,33 @@ const PERMISSION_METADATA_PLACE_VIEW = 'd221213b-a956-43b6-989e-32b73bee90f6';
 
 const PERMISSION_METADATA_PERIOD_VIEW = '0cc99d81-8038-49a0-8f3a-b5bd55b94513';
 
-let changes = [];
+let changes = {0: []};
+let changesIndex = 0;
+
+/**
+ * Switch to new scope (revert won't affect previous changes, until `prevScope` is called).
+ */
+function newScope() {
+    changesIndex++;
+    changes[changesIndex] = [];
+}
+
+/**
+ * Switch to previous scope.
+ */
+function prevScope() {
+    delete changes[changesIndex];
+    changesIndex--;
+}
+
+/**
+ * Push change to current scope.
+ *
+ * @param {array} change
+ */
+function pushChange(change) {
+    changes[changesIndex].push(change);
+}
 
 /**
  * @param {string} permissionKey
@@ -33,7 +59,7 @@ function removePermission(permissionKey, userKey) {
  * @param {string} userKey
  */
 async function grantPermission(permissionKey, userKey) {
-    changes.push([removePermission, permissionKey, userKey]);
+    pushChange([removePermission, permissionKey, userKey]);
 
     return db.query(
         `
@@ -51,7 +77,7 @@ VALUES
  */
 async function grantPermissions(permissionKeys, userKey) {
     permissionKeys.forEach((p) => {
-        changes.push([removePermission, p, userKey]);
+        pushChange([removePermission, p, userKey]);
     });
 
     await Promise.all(permissionKeys.map((p) => grantPermission(p, userKey)));
@@ -70,7 +96,7 @@ async function removeRecord(table, key) {
  * @param {object} columns
  */
 async function createRecord(table, columns) {
-    changes.push([removeRecord, table, columns.key]);
+    pushChange([removeRecord, table, columns.key]);
 
     const entries = Object.entries(columns);
     const colNames = entries.map(([col]) => `"${col}"`).join(', ');
@@ -86,14 +112,16 @@ async function createRecord(table, columns) {
  * Reverts all changes made by functions in this module.
  */
 async function revertChanges() {
-    for (const change of changes.reverse()) {
+    for (const change of changes[changesIndex].reverse()) {
         await change[0].apply(null, change.splice(1));
     }
 
-    changes = [];
+    changes[changesIndex] = [];
 }
 
 module.exports = {
+    newScope,
+    prevScope,
     createRecord,
     grantPermission,
     grantPermissions,
