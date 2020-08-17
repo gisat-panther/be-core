@@ -42,7 +42,8 @@ function mergeApplications(...applications) {
  */
 const config = mergeApplications(
     require('./core/index'),
-    require('./demo/index')
+    require('./data/index'),
+    require('./demo/index'),
 );
 
 /**
