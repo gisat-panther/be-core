@@ -488,20 +488,32 @@ function listUserPermissionsQuery({user, plan, group, type}, alias) {
 }
 
 /**
- * Returns datetime of `type`'s last change.
+ * Returns datetime of `type`'s last change for `ids` (does not take into account truncates).
  *
- * @param {{group: string, type: string}} context
+ * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
+ * @param {string[]} ids
  *
- * @returns {Promise<string>}
+ * @returns {Promise<string|null>}
  */
-async function lastChange({group, type}) {
+async function lastChange({plan, group, type}, ids) {
+    if (ids.length === 0) {
+        return Promise.resolve(null);
+    }
+
     const sqlMap = qb.merge(
         qb.select([qb.expr.as('a.action_tstamp_stm', 'change')]),
         qb.from('audit.logged_actions', 'a'),
         qb.where(
             qb.expr.and(
                 qb.expr.eq('a.schema_name', qb.val.inlineParam(group)),
-                qb.expr.eq('a.table_name', qb.val.inlineParam(type))
+                qb.expr.eq(
+                    'a.table_name',
+                    qb.val.inlineParam(plan[group][type].table)
+                ),
+                qb.expr.in(
+                    qb.val.raw(`"a"."row_data" OPERATOR("public".->) 'key'`),
+                    ids.map(qb.val.inlineParam)
+                )
             )
         ),
         qb.orderBy('a.action_tstamp_stm', 'DESC'),
