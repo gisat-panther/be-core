@@ -488,6 +488,51 @@ function listUserPermissionsQuery({user, plan, group, type}, alias) {
 }
 
 /**
+ * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
+ *
+ * @returns {{schema: string, table: string, ownKey: string}[]}
+ */
+function relationData({plan, group, type}) {
+    const typeSchema = plan[group][type];
+
+    return _fp.flow(
+        _fp.map((rel) => {
+            const [schema, table] = rel.relationTable.split('.');
+
+            return {
+                schema,
+                table,
+                ownKey: rel.ownKey,
+            };
+        }),
+        _fp.uniqBy((m) => m.schema + m.table + m.ownKey)
+    )(typeSchema.relations);
+}
+
+/**
+ * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
+ * @param {string[]} ids
+ *
+ * @returns {import('@imatic/pgqb').Expr[]}
+ */
+function lastChangeRelationsExprs({plan, group, type}, ids) {
+    return _fp.map(
+        (rd) =>
+            qb.expr.and(
+                qb.expr.eq('a.schema_name', qb.val.inlineParam(rd.schema)),
+                qb.expr.eq('a.table_name', qb.val.inlineParam(rd.table)),
+                qb.expr.in(
+                    qb.val.raw(
+                        `"a"."row_data" OPERATOR("public".->) '${rd.ownKey}'`
+                    ),
+                    ids.map(qb.val.inlineParam)
+                )
+            ),
+        relationData({plan, group, type})
+    );
+}
+
+/**
  * Returns datetime of `type`'s last change for `ids` (does not take into account truncates).
  *
  * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
@@ -504,16 +549,21 @@ async function lastChange({plan, group, type}, ids) {
         qb.select([qb.expr.as('a.action_tstamp_stm', 'change')]),
         qb.from('audit.logged_actions', 'a'),
         qb.where(
-            qb.expr.and(
-                qb.expr.eq('a.schema_name', qb.val.inlineParam(group)),
-                qb.expr.eq(
-                    'a.table_name',
-                    qb.val.inlineParam(plan[group][type].table)
+            qb.expr.or(
+                qb.expr.and(
+                    qb.expr.eq('a.schema_name', qb.val.inlineParam(group)),
+                    qb.expr.eq(
+                        'a.table_name',
+                        qb.val.inlineParam(plan[group][type].table)
+                    ),
+                    qb.expr.in(
+                        qb.val.raw(
+                            `"a"."row_data" OPERATOR("public".->) 'key'`
+                        ),
+                        ids.map(qb.val.inlineParam)
+                    )
                 ),
-                qb.expr.in(
-                    qb.val.raw(`"a"."row_data" OPERATOR("public".->) 'key'`),
-                    ids.map(qb.val.inlineParam)
-                )
+                ...lastChangeRelationsExprs({plan, group, type}, ids)
             )
         ),
         qb.orderBy('a.action_tstamp_stm', 'DESC'),
