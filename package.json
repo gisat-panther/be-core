@@ -53,7 +53,7 @@
   "scripts": {
     "start": "node src/server.js",
     "start:watch": "nodemon src/server.js",
-    "test": "./bin/load-fixtures && mocha",
+    "test": "./bin/load-fixtures && mocha && ./bin/check-indexes",
     "test:wait": "wait-port localhost:9850 && npm run test",
     "test:watch": "npm-watch test:wait",
     "db:migrations:create": "version=$(date +%Y%m%d%H%M) && touch \"migrations/${version}.do.sql\" && touch \"migrations/${version}.undo.sql\"",
