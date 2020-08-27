@@ -6,7 +6,8 @@ const {SQL} = require('sql-template-strings');
 const {Client} = require('pg');
 const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
-const permission = require('../../permission');
+
+const mapWithKey = _fp.map.convert({cap: false});
 
 /**
  * @typedef {Object} Filter
@@ -533,6 +534,36 @@ function lastChangeRelationsExprs({plan, group, type}, ids) {
 }
 
 /**
+ * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
+ * @param {string[]} ids
+ *
+ * @returns {import('@imatic/pgqb').Expr[]}
+ */
+function lastChangeDependentTypesExprs({plan, group, type}, ids) {
+    const typeSchema = plan[group][type];
+    const typeKey = _fp.get(['type', 'key'], typeSchema);
+
+    return mapWithKey(
+        (type, typeTable) =>
+            qb.expr.and(
+                qb.expr.eq('a.schema_name', qb.val.inlineParam(group)),
+                qb.expr.eq('a.table_name', qb.val.inlineParam(typeTable)),
+                qb.expr.in(
+                    qb.val.raw(`"a"."row_data" OPERATOR("public".->) 'key'`),
+                    qb.merge(
+                        qb.select([qb.val.raw(`"_t"."${typeKey}"::text`)]),
+                        qb.from(`${group}.${typeSchema.table}`, '_t'),
+                        qb.where(
+                            qb.expr.in('_t.key', ids.map(qb.val.inlineParam))
+                        )
+                    )
+                )
+            ),
+        _fp.get(['type', 'types'], typeSchema)
+    );
+}
+
+/**
  * Returns datetime of `type`'s last change for `ids` (does not take into account truncates).
  *
  * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
@@ -563,7 +594,8 @@ async function lastChange({plan, group, type}, ids) {
                         ids.map(qb.val.inlineParam)
                     )
                 ),
-                ...lastChangeRelationsExprs({plan, group, type}, ids)
+                ...lastChangeRelationsExprs({plan, group, type}, ids),
+                ...lastChangeDependentTypesExprs({plan, group, type}, ids)
             )
         ),
         qb.orderBy('a.action_tstamp_stm', 'DESC'),
