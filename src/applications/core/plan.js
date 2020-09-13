@@ -1186,6 +1186,7 @@ module.exports = {
                         'attribution',
                         'tableName',
                         'columnName',
+                        'fidColumnName'
                     ],
                 },
                 create: {
@@ -1195,6 +1196,7 @@ module.exports = {
                         'attribution',
                         'tableName',
                         'columnName',
+                        'fidColumnName'
                     ],
                 },
                 update: {
@@ -1204,6 +1206,7 @@ module.exports = {
                         'attribution',
                         'tableName',
                         'columnName',
+                        'fidColumnName'
                     ],
                 },
             },
@@ -1228,6 +1231,10 @@ module.exports = {
                     defaultValue: null,
                     schema: Joi.string(),
                 },
+                fidColumnName: {
+                    defaultValue: null,
+                    schema: Joi.string(),
+                },
             },
         },
         spatial: {
@@ -1239,13 +1246,13 @@ module.exports = {
                     vector: {
                         context: {
                             list: {
-                                columns: ['layerName', 'tableName'],
+                                columns: ['layerName', 'tableName', 'fidColumnName', 'geometryColumnName'],
                             },
                             create: {
-                                columns: ['layerName', 'tableName'],
+                                columns: ['layerName', 'tableName', 'fidColumnName', 'geometryColumnName'],
                             },
                             update: {
-                                columns: ['layerName', 'tableName'],
+                                columns: ['layerName', 'tableName', 'fidColumnName', 'geometryColumnName'],
                             },
                         },
                         columns: {
@@ -1254,6 +1261,14 @@ module.exports = {
                                 schema: Joi.string(),
                             },
                             tableName: {
+                                defaultValue: null,
+                                schema: Joi.string(),
+                            },
+                            fidColumnName: {
+                                defaultValue: null,
+                                schema: Joi.string(),
+                            },
+                            geometryColumnName: {
                                 defaultValue: null,
                                 schema: Joi.string(),
                             },
@@ -1400,7 +1415,6 @@ module.exports = {
                         'layerTemplateKey',
                         'scenarioKey',
                         'caseKey',
-                        'fidColumnName',
                         'applicationKey',
                     ],
                 },
@@ -1414,7 +1428,6 @@ module.exports = {
                         'layerTemplateKey',
                         'scenarioKey',
                         'caseKey',
-                        'fidColumnName',
                         'applicationKey',
                     ],
                 },
@@ -1428,7 +1441,6 @@ module.exports = {
                         'layerTemplateKey',
                         'scenarioKey',
                         'caseKey',
-                        'fidColumnName',
                         'applicationKey',
                     ],
                 },
@@ -1482,10 +1494,6 @@ module.exports = {
                     defaultValue: null,
                     schema: Joi.string().uuid(),
                 },
-                fidColumnName: {
-                    defaultValue: null,
-                    schema: Joi.string(),
-                },
                 applicationKey: {
                     defaultValue: null,
                     schema: Joi.string(),
@@ -1508,7 +1516,6 @@ module.exports = {
                         'attributeSetKey',
                         'attributeKey',
                         'areaTreeLevelKey',
-                        'fidColumnName',
                         'applicationKey',
                     ],
                 },
@@ -1525,7 +1532,6 @@ module.exports = {
                         'attributeSetKey',
                         'attributeKey',
                         'areaTreeLevelKey',
-                        'fidColumnName',
                         'applicationKey',
                     ],
                 },
@@ -1542,7 +1548,6 @@ module.exports = {
                         'attributeSetKey',
                         'attributeKey',
                         'areaTreeLevelKey',
-                        'fidColumnName',
                         'applicationKey',
                     ],
                 },
@@ -1607,10 +1612,6 @@ module.exports = {
                 areaTreeLevelKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid(),
-                },
-                fidColumnName: {
-                    defaultValue: null,
-                    schema: Joi.string(),
                 },
                 applicationKey: {
                     defaultValue: null,
