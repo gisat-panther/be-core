@@ -17,6 +17,8 @@ TRUNCATE
     "metadata"."scope",
     "metadata"."attribute",
     "metadata"."period",
+    "metadata"."style",
+    "metadata"."layerTemplate",
     "relations"."spatialDataSourceRelation",
     "relations"."attributeDataSourceRelation"
     CASCADE;
@@ -89,6 +91,7 @@ VALUES ('0da66083-77ad-4e66-9338-0c8344de9eba', null, 'metadata', 'case', 'creat
        ('432348bc-6adf-4fd3-ac44-48a15f7d8ac6', '7c5acddd-3625-46ef-90b3-82f829afb258', 'user', 'user', 'view'),
        ('4349dfe6-07e2-45bb-a9c5-1cdd40c4bb25', null, 'metadata', 'scope', 'view'),
        ('341c53ee-849b-4370-9076-d70021ab90f6', null, 'metadata', 'period', 'view'),
+       ('33d976c6-43b2-46f7-9a8d-41a2535860a8', null, 'metadata', 'style', 'view'),
        ('4f12d173-48ec-45b6-b134-57a1928156c3', null, 'dataSources', 'attribute', 'view');
 
 INSERT INTO "user"."userPermissions"
@@ -133,6 +136,8 @@ VALUES
     ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '4349dfe6-07e2-45bb-a9c5-1cdd40c4bb25'),
     -- user: admin@example.com             , metadata:period:view
     ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '341c53ee-849b-4370-9076-d70021ab90f6'),
+    -- user: admin@example.com             , metadata:style:view
+    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '33d976c6-43b2-46f7-9a8d-41a2535860a8'),
     -- user: admin@example.com             , dataSources:attribute:view
     ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '4f12d173-48ec-45b6-b134-57a1928156c3');
 
@@ -179,28 +184,36 @@ VALUES ('f9f6dc0d-4b6a-4794-9243-5948d920239c', 'attribute1'),
        ('3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc', 'attribute2');
 
 INSERT INTO "dataSources".vector
-    ("key", "tableName")
-VALUES ('75d88ed5-6ad0-4ddd-a9f6-b03b60ea7dcb', 'exampleSpatialAttributeData');
+    ("key", "tableName", "fidColumnName", "geometryColumnName")
+VALUES ('75d88ed5-6ad0-4ddd-a9f6-b03b60ea7dcb', 'exampleSpatialAttributeData', 'key', 'geometry');
 
 INSERT INTO "dataSources"."dataSource"
     ("key", "type", "sourceKey")
 VALUES ('cf55212e-2893-46d0-8a02-cbf10cb4471d', 'vector', '75d88ed5-6ad0-4ddd-a9f6-b03b60ea7dcb');
 
 INSERT INTO "dataSources"."attributeDataSource"
-    ("key", "tableName", "columnName")
-VALUES ('7c11916a-20f4-4c6b-99a8-8b95bd1ec041', 'exampleSpatialAttributeData', 'attribute1'),
-       ('d0329b4c-5214-4aea-8291-bc7443b643e7', 'exampleSpatialAttributeData', 'attribute2');
+    ("key", "tableName", "columnName", "fidColumnName")
+VALUES ('7c11916a-20f4-4c6b-99a8-8b95bd1ec041', 'exampleSpatialAttributeData', 'attribute1', 'key'),
+       ('d0329b4c-5214-4aea-8291-bc7443b643e7', 'exampleSpatialAttributeData', 'attribute2', 'key');
+
+INSERT INTO "metadata"."layerTemplate"
+("key", "nameDisplay")
+VALUES ('b8cb9263-d656-4606-a326-a02e851ea0bb', 'exampleLayer');
 
 INSERT INTO "relations"."spatialDataSourceRelation"
-    ("scopeKey", "periodKey", "spatialDataSourceKey", "fidColumnName")
+    ("scopeKey", "periodKey", "spatialDataSourceKey", "layerTemplateKey")
 VALUES ('c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
-        'cf55212e-2893-46d0-8a02-cbf10cb4471d', 'key');
+        'cf55212e-2893-46d0-8a02-cbf10cb4471d', 'b8cb9263-d656-4606-a326-a02e851ea0bb');
 
 INSERT INTO "relations"."attributeDataSourceRelation"
-("scopeKey", "periodKey", "attributeDataSourceKey", "attributeKey", "fidColumnName")
+("scopeKey", "periodKey", "attributeDataSourceKey", "attributeKey", "layerTemplateKey")
 VALUES ('c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
-        '7c11916a-20f4-4c6b-99a8-8b95bd1ec041', 'f9f6dc0d-4b6a-4794-9243-5948d920239c', 'key'),
+        '7c11916a-20f4-4c6b-99a8-8b95bd1ec041', 'f9f6dc0d-4b6a-4794-9243-5948d920239c', 'b8cb9263-d656-4606-a326-a02e851ea0bb'),
        ('c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
-        'd0329b4c-5214-4aea-8291-bc7443b643e7', '3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc', 'key');
+        'd0329b4c-5214-4aea-8291-bc7443b643e7', '3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc', 'b8cb9263-d656-4606-a326-a02e851ea0bb');
+
+INSERT INTO "metadata"."style"
+("key", "definition")
+VALUES ('492339a4-9a27-43ac-abf4-34f53b626a76', '{"rules":[{"styles":[{"attributeKey":"f9f6dc0d-4b6a-4794-9243-5948d920239c"},{"attributeKey":"3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc"}]},{"styles":[{},{}]}]}');
 
 COMMIT;
