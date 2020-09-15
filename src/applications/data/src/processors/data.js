@@ -23,41 +23,99 @@ async function getData(group, type, user, filter) {
 
 function formatData(rawData, filter) {
 	let formattedResponse = {
-		spatialRelations: [],
-		attributeRelations: [],
-		spatialDataSources: [],
-		attributeDataSources: [],
-		spatialData: {},
-		attributeData: {}
+		data: {
+			spatialRelations: [],
+			attributeRelations: [],
+			spatialDataSources: [],
+			attributeDataSources: [],
+			spatialData: {},
+			attributeData: {}
+		},
+		total: {
+			spatialRelations: rawData.spatial.length,
+			attributeRelations: rawData.attribute.length
+		},
+		limit: filter.relations.limit,
+		offset: filter.relations.offset
 	};
 
 	rawData.spatial.forEach((spatialRelation) => {
 		if (filter.data.geometry) {
-			formattedResponse.spatialData[spatialRelation.spatialDataSourceKey] = spatialRelation.data;
+			formattedResponse.data.spatialData[spatialRelation.spatialDataSourceKey] =
+				{
+					data: spatialRelation.data,
+					spatialIndex: spatialRelation.spatialIndex
+				};
 		}
 
-		formattedResponse.spatialDataSources.push(spatialRelation.spatialDataSource);
+		formattedResponse.data.spatialDataSources.push({
+			key: spatialRelation.spatialDataSource.key,
+			data: {
+				..._.pick(spatialRelation.spatialDataSource, _.without(_.keys(spatialRelation.spatialDataSource), 'key'))
+			}
+		});
 
-		delete spatialRelation.spatialDataSourceKey;
-		delete spatialRelation.spatialDataSource;
-		delete spatialRelation.data;
-
-		formattedResponse.spatialRelations.push(spatialRelation);
+		formattedResponse.data.spatialRelations.push(spatialRelation);
 	})
 
 	rawData.attribute.forEach((attributeRelation) => {
-		formattedResponse.attributeData[attributeRelation.attributeDataSourceKey] = {};
+		formattedResponse.data.attributeData[attributeRelation.attributeDataSourceKey] = {};
 
-		formattedResponse.attributeData[attributeRelation.attributeDataSourceKey] = attributeRelation.data;
+		formattedResponse.data.attributeData[attributeRelation.attributeDataSourceKey] = attributeRelation.data;
 
-		formattedResponse.attributeDataSources.push(attributeRelation.attributeDataSource);
+		formattedResponse.data.attributeDataSources.push({
+			key: attributeRelation.attributeDataSource.key,
+			data: {
+				..._.pick(attributeRelation.attributeDataSource, _.without(_.keys(attributeRelation.attributeDataSource), 'key'))
+			}
+		});
 
-		delete attributeRelation.attributeDataSourceKey;
-		delete attributeRelation.attributeDataSource;
-		delete attributeRelation.data;
-
-		formattedResponse.attributeRelations.push(attributeRelation);
+		formattedResponse.data.attributeRelations.push(attributeRelation);
 	})
+
+	formattedResponse.data.spatialRelations = _.slice(formattedResponse.data.spatialRelations, filter.relations.offset, filter.relations.offset + filter.relations.limit);
+	formattedResponse.data.attributeRelations = _.slice(formattedResponse.data.attributeRelations, filter.relations.offset, filter.relations.offset + filter.relations.limit);
+
+	formattedResponse.data.spatialDataSources = _.filter(formattedResponse.data.spatialDataSources, (spatialDataSource) => {
+		return _.map(formattedResponse.data.spatialRelations, 'spatialDataSourceKey').includes(spatialDataSource.key);
+	});
+
+	formattedResponse.data.attributeDataSources = _.filter(formattedResponse.data.attributeDataSources, (attributeDataSource) => {
+		return _.map(formattedResponse.data.attributeRelations, 'attributeDataSourceKey').includes(attributeDataSource.key);
+	});
+
+	formattedResponse.data.spatialRelations = _.map(formattedResponse.data.spatialRelations, (spatialRelation) => {
+		let clearSpatialRelation = {
+			key: spatialRelation.key,
+			data: {
+				...spatialRelation
+			}
+		};
+
+		delete clearSpatialRelation.data.key;
+		delete clearSpatialRelation.data.data;
+		delete clearSpatialRelation.data.spatialDataSource;
+		delete clearSpatialRelation.data.spatialDataSourceKey;
+		delete clearSpatialRelation.data.spatialIndex;
+
+		return clearSpatialRelation;
+	});
+
+	formattedResponse.data.attributeRelations = _.map(formattedResponse.data.attributeRelations, (attributeRelation) => {
+		let clearAttributeRelation = {
+			key: attributeRelation.key,
+			data: {
+				...attributeRelation
+			}
+		}
+
+		delete clearAttributeRelation.data.key;
+		delete clearAttributeRelation.data.data;
+		delete clearAttributeRelation.data.attributeDataSource;
+		delete clearAttributeRelation.data.attributeDataSourceKey;
+
+		return clearAttributeRelation;
+	});
 
 	return formattedResponse;
 }
