@@ -19,6 +19,7 @@ TRUNCATE
     "metadata"."period",
     "metadata"."style",
     "metadata"."layerTemplate",
+    "metadata"."case",
     "relations"."spatialDataSourceRelation",
     "relations"."attributeDataSourceRelation"
     CASCADE;
