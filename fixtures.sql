@@ -40,6 +40,9 @@ VALUES ('cad8ea0d-f95e-43c1-b162-0704bfc1d3f6', null, null, null, 'guest'),
         '$2a$04$iDjo0YV1HpIVGFqN1xFrUeuduvBdRs.o8HR5RVsRIz8OOLi/uOezS', null, null),
        -- this user should not have permissions with NULL resourceKey
        ('39ed471f-8383-4283-bb8a-303cb05cadef', 'specificPermsAdmin@example.com',
+        '$2a$04$iDjo0YV1HpIVGFqN1xFrUeuduvBdRs.o8HR5RVsRIz8OOLi/uOezS', null, null),
+       -- this user should not have permissions with NULL resourceKey (for data endpoint testing purposes)
+       ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'data@example.com',
         '$2a$04$iDjo0YV1HpIVGFqN1xFrUeuduvBdRs.o8HR5RVsRIz8OOLi/uOezS', null, null);
 
 INSERT INTO "user"."groups"
@@ -65,34 +68,70 @@ VALUES
 
 INSERT INTO "user"."permissions"
     ("key", "resourceKey", "resourceGroup", "resourceType", "permission")
-VALUES ('0da66083-77ad-4e66-9338-0c8344de9eba', null, 'metadata', 'case', 'create'),
-       ('42e8bdf8-19c8-4658-aded-b1c724539072', null, 'metadata', 'case', 'update'),
-       ('a307e381-8c12-4d0e-9934-0d739cce7fa2', null, 'metadata', 'scope', 'view'),
+VALUES ('4e62ed9c-1e14-4321-a28c-a4b23bef5c8d', null, 'metadata', 'scope', 'create'),
+       ('5f863a7a-def2-4674-b519-6de4888da6cb', null, 'metadata', 'scope', 'update'),
        ('820c4a94-9588-4926-8ba0-2df7abe2eb7f', null, 'metadata', 'scope', 'delete'),
-       ('d221213b-a956-43b6-989e-32b73bee90f6', null, 'metadata', 'place', 'view'),
+       ('a307e381-8c12-4d0e-9934-0d739cce7fa2', null, 'metadata', 'scope', 'view'),
+
+       ('c07dec24-781a-4033-9232-b69c26a8f01c', null, 'metadata', 'place', 'create'),
+       ('b3a7299c-166a-42f9-809a-ef25266135cb', null, 'metadata', 'place', 'update'),
        ('6a7df854-4dc0-4093-b8a0-15e2e0a91ed0', null, 'metadata', 'place', 'delete'),
+       ('d221213b-a956-43b6-989e-32b73bee90f6', null, 'metadata', 'place', 'view'),
+
+       ('0da66083-77ad-4e66-9338-0c8344de9eba', null, 'metadata', 'case', 'create'),
+       ('42e8bdf8-19c8-4658-aded-b1c724539072', null, 'metadata', 'case', 'update'),
+       ('a739d64e-fb9e-44dc-8d2c-a2a287d302ee', null, 'metadata', 'case', 'delete'),
+       ('7d80f451-4ef9-4d09-beaa-576bc85375d2', null, 'metadata', 'case', 'view'),
+
+       ('f011a16a-63d7-4e43-acd3-547b0ecbe86c', null, 'metadata', 'period', 'view'),
+       ('b2c85f7f-f39d-47de-8156-e7a45c103a56', null, 'metadata', 'period', 'view'),
+       ('50e85aa0-b1c8-41ab-ad70-f56813ac06e9', null, 'metadata', 'period', 'view'),
        ('0cc99d81-8038-49a0-8f3a-b5bd55b94513', null, 'metadata', 'period', 'view'),
+
+       ('38500369-7da1-4fcc-a934-348ebb3ffc60', null, 'metadata', 'attribute', 'create'),
+       ('41e9ab01-9bd3-4071-b710-c0e83748d7b9', null, 'metadata', 'attribute', 'update'),
+       ('80ecec9c-3597-436d-a0f7-53ac19e4e788', null, 'metadata', 'attribute', 'delete'),
+       ('402dd14a-db75-4aa6-b173-3dc360f1158e', null, 'metadata', 'attribute', 'view'),
+
+       ('7d27260c-a8d6-45ec-b7f6-3995b9e19524', null, 'metadata', 'layerTemplate', 'create'),
+       ('6c6e577b-0236-42c8-a379-05b9799fd79e', null, 'metadata', 'layerTemplate', 'update'),
+       ('e1e52402-cb0f-4bdf-ac4a-831d684438c4', null, 'metadata', 'layerTemplate', 'delete'),
+       ('6f4c6d5c-04f4-4dda-a831-30837e773f01', null, 'metadata', 'layerTemplate', 'view'),
+
+       ('7b30f7be-98fa-40a0-b7aa-a7d0469864e6', null, 'metadata', 'style', 'create'),
+       ('e2c90e19-705e-4d02-a618-92a7ed2d51cd', null, 'metadata', 'style', 'update'),
+       ('26dcdc6a-bb92-4ec1-bbe9-dc507f064e1d', null, 'metadata', 'style', 'delete'),
+       ('33d976c6-43b2-46f7-9a8d-41a2535860a8', null, 'metadata', 'style', 'view'),
+
        ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'user', 'create'),
        ('913e3bae-e5dd-4600-a854-ca7b65199bbf', null, 'user', 'user', 'update'),
        ('9ac648e7-00d0-4196-be44-9ae2d7cfb598', null, 'user', 'user', 'delete'),
        ('828af8c1-5438-475b-9f91-af432745e83f', null, 'user', 'user', 'view'),
+
        ('9d2b52c0-ced8-4a3c-b5ae-ea97befd3305', null, 'dataSources', 'spatial', 'create'),
        ('2f8f7e58-2c55-4c06-90c6-a5a164c3f1f1', null, 'dataSources', 'spatial', 'update'),
        ('92901779-f29f-44a3-ab05-2a22b6a94848', null, 'dataSources', 'spatial', 'delete'),
        ('d116a380-4cf2-4241-9b88-3c0488848a05', null, 'dataSources', 'spatial', 'view'),
+
+       ('af856c50-fe8d-49ef-9896-629d10105a10', null, 'dataSources', 'attribute', 'create'),
+       ('332a65ce-1ba8-4e87-82c2-af26851c007c', null, 'dataSources', 'attribute', 'update'),
+       ('17faa1b0-7097-49bd-92c3-176c6cff8b40', null, 'dataSources', 'attribute', 'delete'),
+       ('4f12d173-48ec-45b6-b134-57a1928156c3', null, 'dataSources', 'attribute', 'view'),
+
        ('5609b0da-6fac-4b47-ab88-b12f97114bdf', null, 'relations', 'attribute', 'create'),
        ('10061997-2e64-4dd9-b645-28eb5f937f65', null, 'relations', 'attribute', 'update'),
        ('4f617ffb-86ff-4f38-84b6-ea016afcbaa3', null, 'relations', 'attribute', 'view'),
        ('0585eda7-de9e-4aab-8f47-1c1085804054', null, 'relations', 'attribute', 'delete'),
+
+       ('c93dade9-2b6a-4657-8456-a32479c934d8', null, 'relations', 'spatial', 'view'),
+       ('7ac8b606-c69d-4fd2-807a-f0c21f3b798b', null, 'relations', 'spatial', 'view'),
+       ('196be2a8-70fb-47ec-a22d-743b2437877e', null, 'relations', 'spatial', 'view'),
        ('413a1a4c-ef1a-43aa-b93f-f5309dbab2e2', null, 'relations', 'spatial', 'view'),
+
        ('f2ead234-6402-4a6e-9374-b243647edc44', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'view'),
        ('4f2b3dc7-9b3f-4624-82c0-93d139e19baa', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'update'),
        ('e84dfa30-f2fc-4a1f-988c-b7f4e2489f2f', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'delete'),
-       ('432348bc-6adf-4fd3-ac44-48a15f7d8ac6', '7c5acddd-3625-46ef-90b3-82f829afb258', 'user', 'user', 'view'),
-       ('4349dfe6-07e2-45bb-a9c5-1cdd40c4bb25', null, 'metadata', 'scope', 'view'),
-       ('341c53ee-849b-4370-9076-d70021ab90f6', null, 'metadata', 'period', 'view'),
-       ('33d976c6-43b2-46f7-9a8d-41a2535860a8', null, 'metadata', 'style', 'view'),
-       ('4f12d173-48ec-45b6-b134-57a1928156c3', null, 'dataSources', 'attribute', 'view');
+       ('432348bc-6adf-4fd3-ac44-48a15f7d8ac6', '7c5acddd-3625-46ef-90b3-82f829afb258', 'user', 'user', 'view');
 
 INSERT INTO "user"."userPermissions"
     ("userKey", "permissionKey")
@@ -133,13 +172,62 @@ VALUES
     ('39ed471f-8383-4283-bb8a-303cb05cadef', '432348bc-6adf-4fd3-ac44-48a15f7d8ac6'),
     ('39ed471f-8383-4283-bb8a-303cb05cadef', 'f2ead234-6402-4a6e-9374-b243647edc44'),
     -- user: admin@example.com             , metadata:scope:view
-    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '4349dfe6-07e2-45bb-a9c5-1cdd40c4bb25'),
+    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', 'a307e381-8c12-4d0e-9934-0d739cce7fa2'),
     -- user: admin@example.com             , metadata:period:view
-    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '341c53ee-849b-4370-9076-d70021ab90f6'),
+    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '0cc99d81-8038-49a0-8f3a-b5bd55b94513'),
     -- user: admin@example.com             , metadata:style:view
     ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '33d976c6-43b2-46f7-9a8d-41a2535860a8'),
     -- user: admin@example.com             , dataSources:attribute:view
-    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '4f12d173-48ec-45b6-b134-57a1928156c3');
+    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '4f12d173-48ec-45b6-b134-57a1928156c3'),
+    -- user: data@example.com
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '4e62ed9c-1e14-4321-a28c-a4b23bef5c8d'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '5f863a7a-def2-4674-b519-6de4888da6cb'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '820c4a94-9588-4926-8ba0-2df7abe2eb7f'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'a307e381-8c12-4d0e-9934-0d739cce7fa2'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'c07dec24-781a-4033-9232-b69c26a8f01c'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'b3a7299c-166a-42f9-809a-ef25266135cb'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '6a7df854-4dc0-4093-b8a0-15e2e0a91ed0'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'd221213b-a956-43b6-989e-32b73bee90f6'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '0da66083-77ad-4e66-9338-0c8344de9eba'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '42e8bdf8-19c8-4658-aded-b1c724539072'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'a739d64e-fb9e-44dc-8d2c-a2a287d302ee'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '7d80f451-4ef9-4d09-beaa-576bc85375d2'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'f011a16a-63d7-4e43-acd3-547b0ecbe86c'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'b2c85f7f-f39d-47de-8156-e7a45c103a56'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '50e85aa0-b1c8-41ab-ad70-f56813ac06e9'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '0cc99d81-8038-49a0-8f3a-b5bd55b94513'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '38500369-7da1-4fcc-a934-348ebb3ffc60'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '41e9ab01-9bd3-4071-b710-c0e83748d7b9'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '80ecec9c-3597-436d-a0f7-53ac19e4e788'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '402dd14a-db75-4aa6-b173-3dc360f1158e'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '7d27260c-a8d6-45ec-b7f6-3995b9e19524'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '6c6e577b-0236-42c8-a379-05b9799fd79e'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'e1e52402-cb0f-4bdf-ac4a-831d684438c4'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '6f4c6d5c-04f4-4dda-a831-30837e773f01'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '7b30f7be-98fa-40a0-b7aa-a7d0469864e6'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'e2c90e19-705e-4d02-a618-92a7ed2d51cd'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '26dcdc6a-bb92-4ec1-bbe9-dc507f064e1d'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '33d976c6-43b2-46f7-9a8d-41a2535860a8'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '6897b1fc-a3e3-4195-a41a-f492d4a9df2a'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '913e3bae-e5dd-4600-a854-ca7b65199bbf'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '9ac648e7-00d0-4196-be44-9ae2d7cfb598'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '828af8c1-5438-475b-9f91-af432745e83f'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '9d2b52c0-ced8-4a3c-b5ae-ea97befd3305'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '2f8f7e58-2c55-4c06-90c6-a5a164c3f1f1'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '92901779-f29f-44a3-ab05-2a22b6a94848'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'd116a380-4cf2-4241-9b88-3c0488848a05'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'af856c50-fe8d-49ef-9896-629d10105a10'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '332a65ce-1ba8-4e87-82c2-af26851c007c'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '17faa1b0-7097-49bd-92c3-176c6cff8b40'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '4f12d173-48ec-45b6-b134-57a1928156c3'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '5609b0da-6fac-4b47-ab88-b12f97114bdf'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '10061997-2e64-4dd9-b645-28eb5f937f65'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '4f617ffb-86ff-4f38-84b6-ea016afcbaa3'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '0585eda7-de9e-4aab-8f47-1c1085804054'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', 'c93dade9-2b6a-4657-8456-a32479c934d8'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '7ac8b606-c69d-4fd2-807a-f0c21f3b798b'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '196be2a8-70fb-47ec-a22d-743b2437877e'),
+    ('80a01a05-0f23-4dc6-82c6-c811d37413aa', '413a1a4c-ef1a-43aa-b93f-f5309dbab2e2');
 
 INSERT INTO "user"."groupPermissions"
     ("groupKey", "permissionKey")
