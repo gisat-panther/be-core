@@ -121,12 +121,12 @@ VALUES ('4e62ed9c-1e14-4321-a28c-a4b23bef5c8d', null, 'metadata', 'scope', 'crea
 
        ('5609b0da-6fac-4b47-ab88-b12f97114bdf', null, 'relations', 'attribute', 'create'),
        ('10061997-2e64-4dd9-b645-28eb5f937f65', null, 'relations', 'attribute', 'update'),
-       ('4f617ffb-86ff-4f38-84b6-ea016afcbaa3', null, 'relations', 'attribute', 'view'),
        ('0585eda7-de9e-4aab-8f47-1c1085804054', null, 'relations', 'attribute', 'delete'),
+       ('4f617ffb-86ff-4f38-84b6-ea016afcbaa3', null, 'relations', 'attribute', 'view'),
 
-       ('c93dade9-2b6a-4657-8456-a32479c934d8', null, 'relations', 'spatial', 'view'),
-       ('7ac8b606-c69d-4fd2-807a-f0c21f3b798b', null, 'relations', 'spatial', 'view'),
-       ('196be2a8-70fb-47ec-a22d-743b2437877e', null, 'relations', 'spatial', 'view'),
+       ('c93dade9-2b6a-4657-8456-a32479c934d8', null, 'relations', 'spatial', 'create'),
+       ('7ac8b606-c69d-4fd2-807a-f0c21f3b798b', null, 'relations', 'spatial', 'update'),
+       ('196be2a8-70fb-47ec-a22d-743b2437877e', null, 'relations', 'spatial', 'delete'),
        ('413a1a4c-ef1a-43aa-b93f-f5309dbab2e2', null, 'relations', 'spatial', 'view'),
 
        ('f2ead234-6402-4a6e-9374-b243647edc44', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'view'),
