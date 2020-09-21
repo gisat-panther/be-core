@@ -84,9 +84,9 @@ VALUES ('4e62ed9c-1e14-4321-a28c-a4b23bef5c8d', null, 'metadata', 'scope', 'crea
        ('a739d64e-fb9e-44dc-8d2c-a2a287d302ee', null, 'metadata', 'case', 'delete'),
        ('7d80f451-4ef9-4d09-beaa-576bc85375d2', null, 'metadata', 'case', 'view'),
 
-       ('f011a16a-63d7-4e43-acd3-547b0ecbe86c', null, 'metadata', 'period', 'view'),
-       ('b2c85f7f-f39d-47de-8156-e7a45c103a56', null, 'metadata', 'period', 'view'),
-       ('50e85aa0-b1c8-41ab-ad70-f56813ac06e9', null, 'metadata', 'period', 'view'),
+       ('f011a16a-63d7-4e43-acd3-547b0ecbe86c', null, 'metadata', 'period', 'create'),
+       ('b2c85f7f-f39d-47de-8156-e7a45c103a56', null, 'metadata', 'period', 'update'),
+       ('50e85aa0-b1c8-41ab-ad70-f56813ac06e9', null, 'metadata', 'period', 'delete'),
        ('0cc99d81-8038-49a0-8f3a-b5bd55b94513', null, 'metadata', 'period', 'view'),
 
        ('38500369-7da1-4fcc-a934-348ebb3ffc60', null, 'metadata', 'attribute', 'create'),
