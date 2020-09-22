@@ -7,6 +7,8 @@ TRUNCATE
     "user"."users",
     "user"."groups",
     "user"."permissions",
+    "user"."userPermissions",
+    "user"."groupPermissions",
     "dataSources"."dataSource",
     "dataSources"."attributeDataSource",
     "dataSources"."raster",
