@@ -6,8 +6,7 @@ const {SQL} = require('sql-template-strings');
 
 module.exports = {
     user: {
-        user: {
-            table: 'users',
+        users: {
             context: {
                 list: {
                     columns: ['key', 'email', 'name', 'phone'],
@@ -139,7 +138,8 @@ module.exports = {
         },
     },
     metadata: {
-        scope: {
+        scopes: {
+            table: 'scope',
             context: {
                 list: {
                     columns: [
@@ -198,7 +198,7 @@ module.exports = {
                     ownKey: 'parentScopeKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -206,11 +206,12 @@ module.exports = {
                     ownKey: 'parentScopeKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        place: {
+        places: {
+            table: 'place',
             context: {
                 list: {
                     columns: [
@@ -290,7 +291,7 @@ module.exports = {
                     ownKey: 'parentPlaceKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -298,11 +299,12 @@ module.exports = {
                     ownKey: 'parentPlaceKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        period: {
+        periods: {
+            table: 'period',
             context: {
                 list: {
                     columns: [
@@ -375,7 +377,7 @@ module.exports = {
                     ownKey: 'parentPeriodKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 scope: {
                     type: 'manyToOne',
@@ -383,7 +385,7 @@ module.exports = {
                     ownKey: 'parentPeriodKey',
                     inverseKey: 'scopeKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'scope',
+                    resourceType: 'scopes',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -391,11 +393,12 @@ module.exports = {
                     ownKey: 'parentPeriodKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        attributeSet: {
+        attributeSets: {
+            table: 'attributeSet',
             context: {
                 list: {
                     columns: [
@@ -447,7 +450,7 @@ module.exports = {
                     ownKey: 'parentAttributeSetKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -455,11 +458,12 @@ module.exports = {
                     ownKey: 'parentAttributeSetKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        attribute: {
+        attributes: {
+            table: 'attribute',
             context: {
                 list: {
                     columns: [
@@ -539,7 +543,7 @@ module.exports = {
                     ownKey: 'parentAttributeKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -547,11 +551,12 @@ module.exports = {
                     ownKey: 'parentAttributeKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        layerTemplate: {
+        layerTemplates: {
+            table: 'layerTemplate',
             context: {
                 list: {
                     columns: [
@@ -603,7 +608,7 @@ module.exports = {
                     ownKey: 'parentLayerTemplateKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 scope: {
                     type: 'manyToOne',
@@ -611,7 +616,7 @@ module.exports = {
                     ownKey: 'parentLayerTemplateKey',
                     inverseKey: 'scopeKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'scope',
+                    resourceType: 'scopes',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -619,11 +624,12 @@ module.exports = {
                     ownKey: 'parentLayerTemplateKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        scenario: {
+        scenarios: {
+            table: 'scenario',
             context: {
                 list: {
                     columns: [
@@ -675,7 +681,7 @@ module.exports = {
                     ownKey: 'parentScenarioKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -683,11 +689,12 @@ module.exports = {
                     ownKey: 'parentScenarioKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        case: {
+        cases: {
+            table: 'case',
             context: {
                 list: {
                     columns: [
@@ -739,7 +746,7 @@ module.exports = {
                     ownKey: 'parentCaseKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -747,11 +754,12 @@ module.exports = {
                     ownKey: 'parentCaseKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        areaTree: {
+        areaTrees: {
+            table: 'areaTree',
             context: {
                 list: {
                     columns: [
@@ -803,7 +811,7 @@ module.exports = {
                     ownKey: 'parentAreaTreeKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 scope: {
                     type: 'manyToOne',
@@ -811,7 +819,7 @@ module.exports = {
                     ownKey: 'parentAreaTreeKey',
                     inverseKey: 'scopeKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'scope',
+                    resourceType: 'scopes',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -819,11 +827,12 @@ module.exports = {
                     ownKey: 'parentAreaTreeKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        areaTreeLevel: {
+        areaTreeLevels: {
+            table: 'areaTreeLevel',
             context: {
                 list: {
                     columns: [
@@ -879,7 +888,7 @@ module.exports = {
                     ownKey: 'parentAreaTreeLevelKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 areaTree: {
                     type: 'manyToOne',
@@ -887,7 +896,7 @@ module.exports = {
                     ownKey: 'parentAreaTreeLevelKey',
                     inverseKey: 'areaTreeKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'areaTree',
+                    resourceType: 'areaTrees',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -895,11 +904,12 @@ module.exports = {
                     ownKey: 'parentAreaTreeLevelKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        tag: {
+        tags: {
+            table: 'tag',
             context: {
                 list: {
                     columns: [
@@ -935,7 +945,7 @@ module.exports = {
                         ownKey: 'parentTagKey',
                         inverseKey: 'applicationKey',
                         resourceGroup: 'application',
-                        resourceType: 'application',
+                        resourceType: 'applications',
                     },
                     scope: {
                         type: 'manyToOne',
@@ -943,7 +953,7 @@ module.exports = {
                         ownKey: 'parentTagKey',
                         inverseKey: 'scopeKey',
                         resourceGroup: 'metadata',
-                        resourceType: 'scope',
+                        resourceType: 'scopes',
                     },
                     tag: {
                         type: 'manyToMany',
@@ -951,7 +961,7 @@ module.exports = {
                         ownKey: 'parentTagKey',
                         inverseKey: 'tagKey',
                         resourceGroup: 'metadata',
-                        resourceType: 'tag',
+                        resourceType: 'tags',
                     },
                 },
             },
@@ -978,7 +988,8 @@ module.exports = {
                 },
             },
         },
-        style: {
+        styles: {
+            table: 'style',
             context: {
                 list: {
                     columns: [
@@ -1051,7 +1062,7 @@ module.exports = {
                     ownKey: 'parentStyleKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -1059,13 +1070,14 @@ module.exports = {
                     ownKey: 'parentStyleKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
     },
     application: {
-        application: {
+        applications: {
+            table: 'application',
             context: {
                 list: {
                     columns: ['key', 'name', 'description', 'color'],
@@ -1096,7 +1108,8 @@ module.exports = {
                 },
             },
         },
-        configuration: {
+        configurations: {
+            table: 'configuration',
             context: {
                 list: {
                     columns: ['key', 'data'],
@@ -1125,11 +1138,12 @@ module.exports = {
                     ownKey: 'parentConfigurationKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
             },
         },
-        layerTree: {
+        layerTrees: {
+            table: 'layerTree',
             context: {
                 list: {
                     columns: ['key', 'nameInternal', 'structure'],
@@ -1162,7 +1176,7 @@ module.exports = {
                     ownKey: 'parentLayerTreeKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
                 scope: {
                     type: 'manyToOne',
@@ -1170,7 +1184,7 @@ module.exports = {
                     ownKey: 'parentLayerTreeKey',
                     inverseKey: 'scopeKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'scope',
+                    resourceType: 'scopes',
                 },
             },
         },
@@ -1455,7 +1469,7 @@ module.exports = {
                     schema: Joi.string().uuid(),
                     relation: {
                         resourceGroup: 'metadata',
-                        resourceType: 'scope',
+                        resourceType: 'scopes',
                     },
                 },
                 periodKey: {
@@ -1463,7 +1477,7 @@ module.exports = {
                     schema: Joi.string().uuid(),
                     relation: {
                         resourceGroup: 'metadata',
-                        resourceType: 'period',
+                        resourceType: 'periods',
                     },
                 },
                 placeKey: {
@@ -1471,7 +1485,7 @@ module.exports = {
                     schema: Joi.string().uuid(),
                     relation: {
                         resourceGroup: 'metadata',
-                        resourceType: 'place',
+                        resourceType: 'places',
                     },
                 },
                 spatialDataSourceKey: {
@@ -1487,7 +1501,7 @@ module.exports = {
                     schema: Joi.string().uuid(),
                     relation: {
                         resourceGroup: 'metadata',
-                        resourceType: 'scenario',
+                        resourceType: 'scenarios',
                     },
                 },
                 caseKey: {
@@ -1562,7 +1576,7 @@ module.exports = {
                     schema: Joi.string().uuid(),
                     relation: {
                         resourceGroup: 'metadata',
-                        resourceType: 'scope',
+                        resourceType: 'scopes',
                     },
                 },
                 periodKey: {
@@ -1570,7 +1584,7 @@ module.exports = {
                     schema: Joi.string().uuid(),
                     relation: {
                         resourceGroup: 'metadata',
-                        resourceType: 'period',
+                        resourceType: 'periods',
                     },
                 },
                 placeKey: {
@@ -1578,7 +1592,7 @@ module.exports = {
                     schema: Joi.string().uuid(),
                     relation: {
                         resourceGroup: 'metadata',
-                        resourceType: 'place',
+                        resourceType: 'places',
                     },
                 },
                 attributeDataSourceKey: {
@@ -1594,7 +1608,7 @@ module.exports = {
                     schema: Joi.string().uuid(),
                     relation: {
                         resourceGroup: 'metadata',
-                        resourceType: 'scenario',
+                        resourceType: 'scenarios',
                     },
                 },
                 caseKey: {
@@ -1619,7 +1633,8 @@ module.exports = {
                 },
             },
         },
-        areaRelation: {
+        area: {
+            table: 'areaRelation',
             context: {
                 list: {
                     columns: [
@@ -1723,7 +1738,8 @@ module.exports = {
         },
     },
     views: {
-        view: {
+        views: {
+            table: 'view',
             context: {
                 list: {
                     columns: [
@@ -1782,13 +1798,14 @@ module.exports = {
                     ownKey: 'parentViewKey',
                     inverseKey: 'applicationKey',
                     resourceGroup: 'application',
-                    resourceType: 'application',
+                    resourceType: 'applications',
                 },
             },
         },
     },
     specific: {
-        esponFuoreIndicator: {
+        esponFuoreIndicators: {
+            table: 'esponFuoreIndicator',
             context: {
                 list: {
                     columns: [
@@ -1847,7 +1864,7 @@ module.exports = {
                     ownKey: 'parentEsponFuoreIndicatorKey',
                     inverseKey: 'attributeKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'attribute',
+                    resourceType: 'attributes',
                 },
                 view: {
                     type: 'manyToOne',
@@ -1855,7 +1872,7 @@ module.exports = {
                     ownKey: 'parentEsponFuoreIndicatorKey',
                     inverseKey: 'viewKey',
                     resourceGroup: 'views',
-                    resourceType: 'view',
+                    resourceType: 'views',
                 },
                 scope: {
                     type: 'manyToOne',
@@ -1863,7 +1880,7 @@ module.exports = {
                     ownKey: 'parentEsponFuoreIndicatorKey',
                     inverseKey: 'scopeKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'scope',
+                    resourceType: 'scopes',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -1871,11 +1888,12 @@ module.exports = {
                     ownKey: 'parentEsponFuoreIndicatorKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
-        lpisChangeCase: {
+        lpisChangeCases: {
+            table: 'lpisChangeCase',
             context: {
                 list: {
                     columns: [
@@ -2018,7 +2036,7 @@ module.exports = {
                     ownKey: 'parentLpisChangeCaseKey',
                     inverseKey: 'viewKey',
                     resourceGroup: 'views',
-                    resourceType: 'view',
+                    resourceType: 'views',
                 },
                 tag: {
                     type: 'manyToMany',
@@ -2026,7 +2044,7 @@ module.exports = {
                     ownKey: 'parentLpisChangeCaseKey',
                     inverseKey: 'tagKey',
                     resourceGroup: 'metadata',
-                    resourceType: 'tag',
+                    resourceType: 'tags',
                 },
             },
         },
