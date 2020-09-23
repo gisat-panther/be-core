@@ -384,74 +384,85 @@ function specificUserPermissionsQuery(
     const restrictedColumns = util.restrictedColumns(plan, group, type);
     const restrictedColumnAlias = (name) => joinAlias + name;
 
-    return qb.merge(
-        qb.select([
+    const restrictedColumnSqlMaps = _.map(restrictedColumns, function (
+        col,
+        name
+    ) {
+        const restrictedAlias = restrictedColumnAlias(name);
+        const joinAlias = restrictedColumnAlias(name);
+
+        return qb.select([
             qb.expr.as(
-                qb.val.raw(`array_agg(DISTINCT "${joinAlias}"."permission")`),
-                permissionsAlias
-            ),
-            ..._.map(_.keys(restrictedColumns), (c) => {
-                const alias = restrictedColumnAlias(c);
-
-                return qb.expr.as(
-                    qb.val.raw(`ARRAY_AGG(DISTINCT "${alias}"."permission")`),
-                    permissionsAlias + '__' + c
-                );
-            }),
-        ]),
-        qb.joins(
-            qb.leftJoin(
-                'user.v_userPermissions',
-                joinAlias,
-                qb.expr.and(
-                    qb.expr.eq(
-                        `${joinAlias}.resourceGroup`,
-                        qb.val.inlineParam(group)
-                    ),
-                    qb.expr.eq(
-                        `${joinAlias}.resourceType`,
-                        qb.val.inlineParam(type)
-                    ),
-                    qb.expr.or(
-                        qb.expr.null(`${joinAlias}.resourceKey`),
-                        qb.expr.eq(
-                            `${joinAlias}.resourceKey`,
-                            qb.val.raw(`"${alias}"."key"::text`)
+                qb.merge(
+                    qb.select([
+                        qb.val.raw(
+                            `ARRAY_AGG(DISTINCT "${restrictedAlias}"."permission")`
+                        ),
+                    ]),
+                    qb.from('user.v_userPermissions', joinAlias),
+                    qb.where(
+                        qb.expr.and(
+                            qb.expr.eq(
+                                `${joinAlias}.resourceGroup`,
+                                qb.val.inlineParam(col.relation.resourceGroup)
+                            ),
+                            qb.expr.eq(
+                                `${joinAlias}.resourceType`,
+                                qb.val.inlineParam(col.relation.resourceType)
+                            ),
+                            qb.expr.or(
+                                qb.expr.null(`${joinAlias}.resourceKey`),
+                                qb.expr.eq(
+                                    `${joinAlias}.resourceKey`,
+                                    qb.val.raw(`"${alias}"."${name}"::text`)
+                                )
+                            )
                         )
-                    ),
-                    qb.expr.eq(
-                        `${joinAlias}.userKey`,
-                        qb.val.inlineParam(userKey)
                     )
-                )
+                ),
+                permissionsAlias + '__' + name
             ),
-            ..._.map(restrictedColumns, function (col, name) {
-                const joinAlias = restrictedColumnAlias(name);
+        ]);
+    });
 
-                return qb.leftJoin(
-                    'user.v_userPermissions',
-                    joinAlias,
+    const sqlMap = qb.select([
+        qb.expr.as(
+            qb.merge(
+                qb.select([
+                    qb.val.raw(
+                        `ARRAY_AGG(DISTINCT "${joinAlias}"."permission")`
+                    ),
+                ]),
+                qb.from('user.v_userPermissions', joinAlias),
+                qb.where(
                     qb.expr.and(
                         qb.expr.eq(
                             `${joinAlias}.resourceGroup`,
-                            qb.val.inlineParam(col.relation.resourceGroup)
+                            qb.val.inlineParam(group)
                         ),
                         qb.expr.eq(
                             `${joinAlias}.resourceType`,
-                            qb.val.inlineParam(col.relation.resourceType)
+                            qb.val.inlineParam(type)
                         ),
                         qb.expr.or(
                             qb.expr.null(`${joinAlias}.resourceKey`),
                             qb.expr.eq(
                                 `${joinAlias}.resourceKey`,
-                                qb.val.raw(`"${alias}"."${name}"::text`)
+                                qb.val.raw(`"${alias}"."key"::text`)
                             )
+                        ),
+                        qb.expr.eq(
+                            `${joinAlias}.userKey`,
+                            qb.val.inlineParam(userKey)
                         )
                     )
-                );
-            })
-        )
-    );
+                )
+            ),
+            permissionsAlias
+        ),
+    ]);
+
+    return qb.append(sqlMap, ...restrictedColumnSqlMaps);
 }
 
 /**
