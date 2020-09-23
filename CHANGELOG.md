@@ -1,3 +1,15 @@
+# v0.0.6 (Wed Sep 23 2020)
+
+#### 🐾 Patch
+
+- Update list validation [#13](https://github.com/gisat-panther/be-core/pull/13) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.5 (Wed Sep 23 2020)
 
 #### 🐾 Patch
