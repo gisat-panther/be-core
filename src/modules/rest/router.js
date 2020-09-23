@@ -249,7 +249,7 @@ function createGroup(plan, group) {
                     offset: parameters.offset,
                 };
 
-                const recordsP = Promise.all(
+                const records = await Promise.all(
                     _.map(types, async function (type) {
                         return await q.list(
                             {plan, group, type, user: request.user},
@@ -261,16 +261,16 @@ function createGroup(plan, group) {
                         );
                     })
                 );
-                const changesP = Promise.all(
-                    _.map(types, async function (type) {
-                        return await q.lastChange({group, type});
+                const recordsByType = _.zipObject(types, records);
+
+                const changes = await Promise.all(
+                    _.map(recordsByType, async function (res, type) {
+                        return await q.lastChange(
+                            {plan, group, type},
+                            _.map(res.rows, (record) => record.key)
+                        );
                     })
                 );
-
-                const records = await recordsP;
-                const changes = await changesP;
-
-                const recordsByType = _.zipObject(types, records);
                 const changeByType = _.zipObject(types, changes);
 
                 response

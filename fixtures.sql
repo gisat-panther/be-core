@@ -14,7 +14,8 @@ TRUNCATE
   "dataSources"."wmts",
   "metadata"."place",
   "metadata"."scope",
-  "relations"."attributeDataSourceRelation"
+  "relations"."attributeDataSourceRelation",
+  "specific"."lpisChangeCase"
   CASCADE;
 
 INSERT INTO "user"."users"

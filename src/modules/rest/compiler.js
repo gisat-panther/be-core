@@ -83,20 +83,23 @@ function compileTypes(types) {
 /**
  * @returns {Type}
  */
-function compileType(type) {
-    const withColumns = _.update('columns', compileColumns, type);
-    if (type.type == null) {
-        return withColumns;
-    }
-
-    return _.update(['type', 'types'], compileTypes, withColumns);
+function compileType(type, name) {
+    return _.flow(
+        _.update('columns', compileColumns),
+        name == null
+            ? _.identity
+            : _.update('table', (table) => (table == null ? name : table)),
+        type.type == null
+            ? _.identity
+            : _.update(['type', 'types'], compileTypes)
+    )(type);
 }
 
 /**
  * @returns {Group}
  */
 function compileGroup(group) {
-    return _.mapValues(compileType, group);
+    return mapValuesWithKeys(compileType, group);
 }
 
 /**
