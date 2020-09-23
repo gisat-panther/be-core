@@ -1,3 +1,16 @@
+# v0.0.5 (Wed Sep 23 2020)
+
+#### 🐾 Patch
+
+- Audit [#11](https://github.com/gisat-panther/be-core/pull/11) ([@nenadalm](https://github.com/nenadalm))
+- Update deps [#10](https://github.com/gisat-panther/be-core/pull/10) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.4 (Wed Sep 23 2020)
 
 #### 🐾 Patch
