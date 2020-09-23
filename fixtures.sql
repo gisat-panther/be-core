@@ -337,7 +337,7 @@ VALUES ('7c11916a-20f4-4c6b-99a8-8b95bd1ec041', 'exampleSpatialAttributeData', '
        ('d0329b4c-5214-4aea-8291-bc7443b643e7', 'exampleSpatialAttributeData', 'attribute2', 'key');
 
 INSERT INTO "metadata"."layerTemplate"
-("key", "nameDisplay")
+    ("key", "nameDisplay")
 VALUES ('b8cb9263-d656-4606-a326-a02e851ea0bb', 'exampleLayer');
 
 INSERT INTO "relations"."spatialDataSourceRelation"
@@ -348,12 +348,33 @@ VALUES ('c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcaf
 INSERT INTO "relations"."attributeDataSourceRelation"
 ("scopeKey", "periodKey", "attributeDataSourceKey", "attributeKey", "layerTemplateKey")
 VALUES ('c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
-        '7c11916a-20f4-4c6b-99a8-8b95bd1ec041', 'f9f6dc0d-4b6a-4794-9243-5948d920239c', 'b8cb9263-d656-4606-a326-a02e851ea0bb'),
+        '7c11916a-20f4-4c6b-99a8-8b95bd1ec041', 'f9f6dc0d-4b6a-4794-9243-5948d920239c',
+        'b8cb9263-d656-4606-a326-a02e851ea0bb'),
        ('c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
-        'd0329b4c-5214-4aea-8291-bc7443b643e7', '3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc', 'b8cb9263-d656-4606-a326-a02e851ea0bb');
+        'd0329b4c-5214-4aea-8291-bc7443b643e7', '3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc',
+        'b8cb9263-d656-4606-a326-a02e851ea0bb');
 
 INSERT INTO "metadata"."style"
-("key", "definition")
-VALUES ('492339a4-9a27-43ac-abf4-34f53b626a76', '{"rules":[{"styles":[{"attributeKey":"f9f6dc0d-4b6a-4794-9243-5948d920239c"},{"attributeKey":"3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc"}]},{"styles":[{},{}]}]}');
+    ("key", "definition")
+VALUES ('492339a4-9a27-43ac-abf4-34f53b626a76', '{
+    "rules": [
+        {
+            "styles": [
+                {
+                    "attributeKey": "f9f6dc0d-4b6a-4794-9243-5948d920239c"
+                },
+                {
+                    "attributeKey": "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc"
+                }
+            ]
+        },
+        {
+            "styles": [
+                {},
+                {}
+            ]
+        }
+    ]
+}');
 
 COMMIT;
