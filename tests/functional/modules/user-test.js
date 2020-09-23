@@ -386,8 +386,8 @@ describe('modules/user', function () {
                             activeUser: {
                                 view: true,
                                 create: false,
-                                update: true,
-                                delete: true,
+                                update: false,
+                                delete: false,
                             },
                             guest: {
                                 view: false,

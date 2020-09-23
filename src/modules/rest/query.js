@@ -413,9 +413,9 @@ function specificUserPermissionsQuery(
                         qb.val.inlineParam(type)
                     ),
                     qb.expr.or(
-                        qb.expr.null('tp.resourceKey'),
+                        qb.expr.null(`${joinAlias}.resourceKey`),
                         qb.expr.eq(
-                            'tp.resourceKey',
+                            `${joinAlias}.resourceKey`,
                             qb.val.raw(`"${alias}"."key"::text`)
                         )
                     ),
