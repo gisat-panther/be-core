@@ -1,3 +1,15 @@
+# v0.0.4 (Wed Sep 23 2020)
+
+#### 🐾 Patch
+
+- Fix permission query + it's performance [#12](https://github.com/gisat-panther/be-core/pull/12) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.3 (Thu Aug 13 2020)
 
 #### 🐾 Patch
