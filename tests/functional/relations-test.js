@@ -29,14 +29,27 @@ function createUserToken() {
 }
 
 describe('/rest/relations', function () {
-    describe('POST /rest/relations', async function () {
-        const scopeKey = 'a789c87a-d222-4550-bd29-0750353ae496';
-        const placeKey = '208d7232-a50c-4e90-abf6-2593e35a2384';
+    const scopeKey = 'a789c87a-d222-4550-bd29-0750353ae496';
+    const placeKey = '208d7232-a50c-4e90-abf6-2593e35a2384';
+    const periodKey = 'fbd64b2b-fe71-4f18-9759-9971b45048b2';
 
+    before(async function () {
+        await Promise.all([
+            h.createRecord('"metadata"."scope"', {key: scopeKey}),
+            h.createRecord('"metadata"."place"', {key: placeKey}),
+            h.createRecord('"metadata"."period"', {key: periodKey}),
+        ]);
+        helper.newScope();
+    });
+
+    after(async function () {
+        helper.prevScope();
+        await h.revertChanges();
+    });
+
+    describe('POST /rest/relations', async function () {
         before(async function () {
             await Promise.all([
-                h.createRecord('"metadata"."scope"', {key: scopeKey}),
-                h.createRecord('"metadata"."place"', {key: placeKey}),
                 h.grantPermissions(
                     [
                         h.PERMISSION_RELATIONS_ATTRIBUTE_CREATE,
@@ -189,13 +202,8 @@ describe('/rest/relations', function () {
     });
 
     describe('POST /rest/relations/filtered/attribute', async function () {
-        const scopeKey = 'a789c87a-d222-4550-bd29-0750353ae496';
-        const placeKey = '208d7232-a50c-4e90-abf6-2593e35a2384';
-
         beforeEach(async function () {
             await Promise.all([
-                h.createRecord('"metadata"."scope"', {key: scopeKey}),
-                h.createRecord('"metadata"."place"', {key: placeKey}),
                 h.grantPermissions(
                     [
                         h.PERMISSION_RELATIONS_ATTRIBUTE_CREATE,
@@ -348,14 +356,8 @@ describe('/rest/relations', function () {
     });
 
     describe('PUT /rest/relations', async function () {
-        const scopeKey = 'a789c87a-d222-4550-bd29-0750353ae496';
-        const placeKey = '208d7232-a50c-4e90-abf6-2593e35a2384';
-        const periodKey = 'fbd64b2b-fe71-4f18-9759-9971b45048b2';
-
         beforeEach(async function () {
             await Promise.all([
-                h.createRecord('"metadata"."scope"', {key: scopeKey}),
-                h.createRecord('"metadata"."place"', {key: placeKey}),
                 h.grantPermissions(
                     [
                         h.PERMISSION_RELATIONS_ATTRIBUTE_CREATE,
@@ -591,8 +593,6 @@ describe('/rest/relations', function () {
 
         beforeEach(async function () {
             await Promise.all([
-                h.createRecord('"metadata"."scope"', {key: scopeKey}),
-                h.createRecord('"metadata"."place"', {key: placeKey}),
                 h.grantPermissions(
                     [
                         h.PERMISSION_RELATIONS_ATTRIBUTE_CREATE,
