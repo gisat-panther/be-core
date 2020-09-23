@@ -120,7 +120,9 @@ function listBody(plan, group) {
     return Joi.object()
         .meta({className: `${group}List`})
         .keys({
-            filter: _.omitBy(_.mapValues(columns, colFilterSchema), _.isNil),
+            filter: Joi.object()
+                .keys(_.omitBy(_.mapValues(columns, colFilterSchema), _.isNil))
+                .allow(null),
             order: Joi.array()
                 .items(
                     Joi.array()
@@ -134,6 +136,7 @@ function listBody(plan, group) {
                                 .valid('ascending', 'descending')
                         )
                 )
+                .allow(null)
                 .default([]),
             limit: Joi.number().integer().default(100),
             offset: Joi.number().integer().default(0),
