@@ -216,6 +216,151 @@ async function fetchOldData({plan, group, user}, data) {
     ).data;
 }
 
+const RESULT_FORBIDDEN = 'forbidden';
+const RESULT_CREATED = 'created';
+const RESULT_UPDATED = 'updated';
+const RESULT_NOT_FOUND = 'not_found';
+
+async function createData({plan, group}, request) {
+    const data = request.parameters.body.data;
+
+    const requiredResourcePermissions = Object.keys(data).map((k) => ({
+        resourceGroup: group,
+        resourceType: k,
+        permission: 'create',
+    }));
+
+    const requiredColumnPermissions = util.requiredColumnPermissions(
+        plan,
+        group,
+        data,
+        'create'
+    );
+
+    const requiredPermissions = _.concat(
+        requiredResourcePermissions,
+        requiredColumnPermissions
+    );
+
+    if (
+        !(await permission.userHasAllPermissions(
+            request.user,
+            requiredPermissions
+        ))
+    ) {
+        return {type: RESULT_FORBIDDEN};
+    }
+
+    const records = await db.transactional(async function (client) {
+        await client.setUser(request.user.realKey);
+
+        return await Promise.all(
+            _.map(data, async function (records, type) {
+                const createdKeys = await q.create(
+                    {plan, group, type, client},
+                    records
+                );
+                const createdRecords = await q.list(
+                    {plan, group, type, client, user: request.user},
+                    {
+                        filter: {key: {in: createdKeys}},
+                    }
+                );
+
+                return createdRecords;
+            })
+        );
+    });
+    const recordsByType = _.zipObject(_.keys(data), records);
+
+    return {
+        type: RESULT_CREATED,
+        data: formatList({plan, group}, recordsByType),
+    };
+}
+
+async function updateData({plan, group}, request) {
+    const data = request.parameters.body.data;
+
+    const requiredResourcePermissions = Object.keys(data).map((k) => ({
+        resourceGroup: group,
+        resourceType: k,
+        permission: 'update',
+        resourceKey: data[k].map((m) => m.key),
+    }));
+
+    const oldData = await fetchOldData({plan, group, user: request.user}, data);
+    const requiredOldColumnPermissions = util.requiredColumnPermissions(
+        plan,
+        group,
+        oldData,
+        'update'
+    );
+
+    const requiredColumnPermissions = util.requiredColumnPermissions(
+        plan,
+        group,
+        data,
+        'update'
+    );
+
+    const requiredPermissions = _.concat(
+        requiredResourcePermissions,
+        requiredOldColumnPermissions,
+        requiredColumnPermissions
+    );
+
+    if (
+        !(await permission.userHasAllPermissions(
+            request.user,
+            requiredPermissions
+        ))
+    ) {
+        return {type: RESULT_FORBIDDEN};
+    }
+
+    const records = await db.transactional(async function (client) {
+        await client.setUser(request.user.realKey);
+
+        return await Promise.all(
+            _.map(data, async function (records, type) {
+                await q.update({plan, group, type, client}, records);
+
+                const updatedRecords = await q.list(
+                    {plan, group, type, client, user: request.user},
+                    {
+                        filter: {
+                            key: {in: records.map((u) => u.key)},
+                        },
+                    }
+                );
+
+                return updatedRecords;
+            })
+        );
+    });
+    const recordsByType = _.zipObject(_.keys(data), records);
+
+    return {
+        type: RESULT_UPDATED,
+        data: formatList({plan, group}, recordsByType),
+    };
+}
+
+function sendResponseFromResult(result, response) {
+    switch (result.type) {
+        case RESULT_CREATED:
+            return response.status(201).json(result.data);
+        case RESULT_UPDATED:
+            return response.status(200).json(result.data);
+        case RESULT_FORBIDDEN:
+            return response.status(403).json({success: false});
+    }
+
+    response.status(500).json({});
+    throw new Error(`unknown status: ${result.type}`);
+}
+
 /**
  * @param {import('./compiler').Plan} plan
  * @param {string} group
@@ -301,62 +446,10 @@ function createGroup(plan, group) {
                 authMiddleware,
             ],
             handler: async function (request, response) {
-                const data = request.parameters.body.data;
-
-                const requiredResourcePermissions = Object.keys(data).map(
-                    (k) => ({
-                        resourceGroup: group,
-                        resourceType: k,
-                        permission: 'create',
-                    })
+                sendResponseFromResult(
+                    await createData({plan, group}, request),
+                    response
                 );
-
-                const requiredColumnPermissions = util.requiredColumnPermissions(
-                    plan,
-                    group,
-                    data,
-                    'create'
-                );
-
-                const requiredPermissions = _.concat(
-                    requiredResourcePermissions,
-                    requiredColumnPermissions
-                );
-
-                if (
-                    !(await permission.userHasAllPermissions(
-                        request.user,
-                        requiredPermissions
-                    ))
-                ) {
-                    return response.status(403).json({success: false});
-                }
-
-                const records = await db.transactional(async function (client) {
-                    await client.setUser(request.user.realKey);
-
-                    return await Promise.all(
-                        _.map(data, async function (records, type) {
-                            const createdKeys = await q.create(
-                                {plan, group, type, client},
-                                records
-                            );
-                            const createdRecords = await q.list(
-                                {plan, group, type, client, user: request.user},
-                                {
-                                    filter: {key: {in: createdKeys}},
-                                }
-                            );
-
-                            return createdRecords;
-                        })
-                    );
-                });
-                const recordsByType = _.zipObject(_.keys(data), records);
-
-                response
-                    .status(201)
-                    .json(formatList({plan, group}, recordsByType));
             },
         },
         {
@@ -377,78 +470,10 @@ function createGroup(plan, group) {
                 createDependentTypeMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
-                const data = request.parameters.body.data;
-
-                const requiredResourcePermissions = Object.keys(data).map(
-                    (k) => ({
-                        resourceGroup: group,
-                        resourceType: k,
-                        permission: 'update',
-                        resourceKey: data[k].map((m) => m.key),
-                    })
+                sendResponseFromResult(
+                    await updateData({plan, group}, request),
+                    response
                 );
-
-                const oldData = await fetchOldData(
-                    {plan, group, user: request.user},
-                    data
-                );
-                const requiredOldColumnPermissions = util.requiredColumnPermissions(
-                    plan,
-                    group,
-                    oldData,
-                    'update'
-                );
-
-                const requiredColumnPermissions = util.requiredColumnPermissions(
-                    plan,
-                    group,
-                    data,
-                    'update'
-                );
-
-                const requiredPermissions = _.concat(
-                    requiredResourcePermissions,
-                    requiredOldColumnPermissions,
-                    requiredColumnPermissions
-                );
-
-                if (
-                    !(await permission.userHasAllPermissions(
-                        request.user,
-                        requiredPermissions
-                    ))
-                ) {
-                    return response.status(403).json({success: false});
-                }
-
-                const records = await db.transactional(async function (client) {
-                    await client.setUser(request.user.realKey);
-
-                    return await Promise.all(
-                        _.map(data, async function (records, type) {
-                            await q.update(
-                                {plan, group, type, client},
-                                records
-                            );
-
-                            const updatedRecords = await q.list(
-                                {plan, group, type, client, user: request.user},
-                                {
-                                    filter: {
-                                        key: {in: records.map((u) => u.key)},
-                                    },
-                                }
-                            );
-
-                            return updatedRecords;
-                        })
-                    );
-                });
-                const recordsByType = _.zipObject(_.keys(data), records);
-
-                response
-                    .status(200)
-                    .json(formatList({plan, group}, recordsByType));
             },
         },
         {
