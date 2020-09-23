@@ -1,0 +1,129 @@
+#!/usr/bin/env node
+
+/**
+ * Exits with 0 if there are no missing indexes that can be automatically checked and easilly forgotten
+ * to add, otherwise 1.
+ */
+
+require('../src/applications/index');
+const getPlan = require('../src/applications/plan').get;
+const db = require('../src/db');
+const _ = require('lodash/fp');
+
+db.init();
+
+/**
+ * @returns {Promise<string[]>}
+ */
+function indexDefs() {
+    return db
+        .query(
+            `
+SELECT
+  "indexdef"
+FROM
+  "pg_indexes"
+WHERE
+  "schemaname" = 'audit'
+AND "tablename" = 'logged_actions'
+AND "indexdef" LIKE '%row_data ->%'`
+        )
+        .then((res) => res.rows.map((r) => r.indexdef));
+}
+
+/**
+ * @param key {string}
+ * @param indexDef {string}
+ *
+ * @returns {boolean}
+ */
+function keyMatchesIndex(key, indexDef) {
+    return indexDef.indexOf(`'${key}'`) !== -1;
+}
+
+/**
+ * @param keys string[]
+ * @param indexDefs string[]
+ *
+ * @returns string[]
+ */
+function missingIndexesForKeys(keys, indexDefs) {
+    return keys.filter(
+        (k) => !indexDefs.some((def) => keyMatchesIndex(k, def))
+    );
+}
+
+/**
+ * @param key {string}
+ *
+ * @returns {string}
+ */
+function keyToIndexName(key) {
+    return `logged_actions_rd_${key}_idx`;
+}
+
+/**
+ * @param key {string}
+ *
+ * @returns {string}
+ */
+function keyToIndex(key) {
+    return `CREATE INDEX "${keyToIndexName(
+        key
+    )}" ON "audit"."logged_actions"( ("row_data"->'${key}') );`;
+}
+
+/**
+ * @param key {string}
+ *
+ * @returns {string}
+ */
+function keyToIndexDrop(key) {
+    return `DROP INDEX "audit"."${keyToIndexName(key)}";`;
+}
+
+/**
+ * @returns {Promise<{create: string[], drop: string[]}?>}
+ */
+async function main() {
+    const relationKeys = _.flatMap((group) => {
+        return _.flatMap((type) => {
+            return _.map((rel) => rel.ownKey, type.relations);
+        }, group);
+    }, getPlan());
+
+    const interestingKeys = _.uniq(_.concat(['key'], relationKeys));
+
+    const missingKeys = missingIndexesForKeys(
+        interestingKeys,
+        await indexDefs()
+    );
+
+    if (missingKeys.length === 0) {
+        return null;
+    }
+
+    return {
+        create: missingKeys.map(keyToIndex),
+        drop: missingKeys.map(keyToIndexDrop),
+    };
+}
+
+main().then((missingIndexes) => {
+    if (missingIndexes == null) {
+        return process.exit(0);
+    }
+
+    console.error(`Some indexes are missing. Create migration with following contents:
+====================================================================
+
+do.sql
+------
+${missingIndexes.create.join('\n')}
+
+undo.sql:
+---------
+${missingIndexes.drop.join('\n')}`);
+
+    process.exit(1);
+});

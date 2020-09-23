@@ -1,0 +1,76 @@
+#!/usr/bin/env node
+
+const uuid = require('../src/uuid');
+const qb = require('@imatic/pgqb');
+const db = require('../src/db');
+const faker = require('faker');
+db.init();
+
+async function insert(client, table, columns) {
+    const entries = Object.entries(columns);
+
+    const sqlMap = qb.merge(
+        qb.insertInto(table),
+        qb.columns(entries.map(([col]) => col)),
+        qb.values([
+            entries.map(([, v]) => {
+                if (typeof v === 'object') {
+                    return v;
+                }
+
+                return qb.val.inlineParam(v);
+            }),
+        ])
+    );
+
+    return client.query(qb.toSql(sqlMap));
+}
+
+function geometry() {
+    return `ST_GeomFromGeoJSON('{"type":"Point","coordinates":[${faker.address.longitude()},${faker.address.latitude()}]}')`;
+}
+
+function generateCase() {
+    return {
+        key: uuid.generate(),
+        nameDisplay: faker.lorem.word(),
+        nameInternal: faker.lorem.word(),
+        description: faker.lorem.sentences(),
+    };
+}
+
+function generateLpisChangeCase() {
+    return {
+        key: uuid.generate(),
+        submitDate: faker.date.past().toISOString(),
+        codeDpb: faker.lorem.word(),
+        codeJi: faker.lorem.word(),
+        changeDescription: faker.lorem.sentences(),
+        changeDescriptionPlace: faker.lorem.sentences(),
+        changeDescriptionOther: faker.lorem.sentences(),
+        evaluationResult: faker.lorem.sentences(),
+        evaluationDescription: faker.lorem.sentences(),
+        evaluationDescriptionOther: faker.lorem.sentences(),
+        evaluationUsedSources: faker.lorem.sentences(),
+        geometryBefore: qb.val.raw(geometry()),
+        geometryAfter: qb.val.raw(geometry()),
+        status: faker.lorem.word(),
+    };
+}
+
+async function generateInserts(n) {
+    await db.transactional(async (client) => {
+        for (let i = 0; i < n; i++) {
+            const casee = generateCase();
+            const lpisChangeCase = generateLpisChangeCase();
+            lpisChangeCase.caseKey = casee.key;
+
+            await insert(client, 'metadata.case', casee);
+            await insert(client, 'specific.lpisChangeCase', lpisChangeCase);
+        }
+    });
+}
+
+generateInserts(50_000).then(() => {
+    process.exit(0);
+});

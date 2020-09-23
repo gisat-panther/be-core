@@ -382,7 +382,6 @@ describe('/rest/dataSources', function () {
                         total: 5,
                         limit: 100,
                         offset: 0,
-                        changes: {},
                     },
                 },
             },
@@ -430,7 +429,6 @@ describe('/rest/dataSources', function () {
                         total: 1,
                         limit: 100,
                         offset: 0,
-                        changes: {},
                     },
                 },
             },
@@ -478,7 +476,6 @@ describe('/rest/dataSources', function () {
                         total: 1,
                         limit: 100,
                         offset: 0,
-                        changes: {},
                     },
                 },
             },
@@ -498,7 +495,10 @@ describe('/rest/dataSources', function () {
                 assert.strictEqual(response.status, 200);
 
                 const data = await response.json();
-                assert.deepStrictEqual(data, test.expectedResult.body);
+                assert.deepStrictEqual(
+                    _.omit(['changes'], data),
+                    test.expectedResult.body
+                );
             });
         });
     });

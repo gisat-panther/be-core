@@ -7,7 +7,7 @@
  */
 
 const {SQL} = require('sql-template-strings');
-const db = require('../db');
+const db = require('../src/db');
 
 db.init();
 
@@ -17,7 +17,8 @@ if (process.argv.length !== 3) {
 
 const userKey = process.argv[2];
 
-db.query(SQL`
+db.query(
+    SQL`
 INSERT INTO "user"."userPermissions"
   ("userKey", "permissionKey")
 SELECT
@@ -25,4 +26,5 @@ SELECT
 FROM
   "user"."permissions" "p"
 ON CONFLICT DO NOTHING
-`);
+`
+).then(() => process.exit());
