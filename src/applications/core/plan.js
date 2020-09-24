@@ -1472,7 +1472,7 @@ module.exports = {
                 },
                 scopeKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                     relation: {
                         resourceGroup: 'metadata',
                         resourceType: 'scopes',
@@ -1480,7 +1480,7 @@ module.exports = {
                 },
                 periodKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                     relation: {
                         resourceGroup: 'metadata',
                         resourceType: 'periods',
@@ -1488,7 +1488,7 @@ module.exports = {
                 },
                 placeKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                     relation: {
                         resourceGroup: 'metadata',
                         resourceType: 'places',
@@ -1496,15 +1496,15 @@ module.exports = {
                 },
                 spatialDataSourceKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 layerTemplateKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 scenarioKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                     relation: {
                         resourceGroup: 'metadata',
                         resourceType: 'scenarios',
@@ -1512,11 +1512,11 @@ module.exports = {
                 },
                 caseKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 applicationKey: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
             },
         },
@@ -1579,7 +1579,7 @@ module.exports = {
                 },
                 scopeKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                     relation: {
                         resourceGroup: 'metadata',
                         resourceType: 'scopes',
@@ -1587,7 +1587,7 @@ module.exports = {
                 },
                 periodKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                     relation: {
                         resourceGroup: 'metadata',
                         resourceType: 'periods',
@@ -1595,7 +1595,7 @@ module.exports = {
                 },
                 placeKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                     relation: {
                         resourceGroup: 'metadata',
                         resourceType: 'places',
@@ -1603,15 +1603,15 @@ module.exports = {
                 },
                 attributeDataSourceKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 layerTemplateKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 scenarioKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                     relation: {
                         resourceGroup: 'metadata',
                         resourceType: 'scenarios',
@@ -1619,23 +1619,23 @@ module.exports = {
                 },
                 caseKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 attributeSetKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 attributeKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 areaTreeLevelKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 applicationKey: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
             },
         },
@@ -1698,47 +1698,47 @@ module.exports = {
                 },
                 areaTreeKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 areaTreeLevelKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 fidColumnName: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 parentFidColumnName: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 spatialDataSourceKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 scopeKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 placeKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 periodKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 caseKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 scenarioKey: {
                     defaultValue: null,
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string().uuid().allow(null),
                 },
                 applicationKey: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
             },
         },
