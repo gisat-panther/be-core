@@ -1,3 +1,15 @@
+# v0.0.7 (Thu Sep 24 2020)
+
+#### 🐾 Patch
+
+- Creating non existing resources with PUT [#14](https://github.com/gisat-panther/be-core/pull/14) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.6 (Wed Sep 23 2020)
 
 #### 🐾 Patch
