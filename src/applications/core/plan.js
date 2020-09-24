@@ -263,6 +263,9 @@ module.exports = {
                 geometry: {
                     defaultValue: null,
                     schema: Joi.object(),
+                    selectExpr: function ({alias}) {
+                        return qb.expr.fn('ST_AsGeoJSON', alias);
+                    },
                     modifyExpr: function ({value}) {
                         if (value == null) {
                             return qb.val.inlineParam(null);
@@ -274,6 +277,9 @@ module.exports = {
                 bbox: {
                     defaultValue: null,
                     schema: Joi.object(),
+                    selectExpr: function ({alias}) {
+                        return qb.expr.fn('ST_AsGeoJSON', alias);
+                    },
                     modifyExpr: function ({value}) {
                         if (value == null) {
                             return qb.val.inlineParam(null);
@@ -1986,6 +1992,9 @@ module.exports = {
                 geometryBefore: {
                     defaultValue: null,
                     schema: Joi.object(),
+                    selectExpr: function ({alias}) {
+                        return qb.expr.fn('ST_AsGeoJSON', alias);
+                    },
                     modifyExpr: function ({value}) {
                         if (value == null) {
                             return qb.val.inlineParam(null);
@@ -1997,6 +2006,9 @@ module.exports = {
                 geometryAfter: {
                     defaultValue: null,
                     schema: Joi.object(),
+                    selectExpr: function ({alias}) {
+                        return qb.expr.fn('ST_AsGeoJSON', alias);
+                    },
                     modifyExpr: function ({value}) {
                         if (value == null) {
                             return qb.val.inlineParam(null);

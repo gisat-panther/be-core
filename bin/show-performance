@@ -1,0 +1,106 @@
+#!/usr/bin/env node
+
+/*
+ * Standard and performance fixtures should first be loaded using:
+ *
+ * `$ npm run load-performance-fixtures`
+ */
+
+const fetch = require('node-fetch');
+const config = require('../config');
+const jwt = require('jsonwebtoken');
+const performance = require('perf_hooks').performance;
+
+function url(path) {
+    return 'http://localhost:' + config.clusterPorts[0] + path;
+}
+
+function createAdminToken() {
+    return (
+        'Bearer ' +
+        jwt.sign(
+            {
+                key: '2d069e3a-f77f-4a1f-aeda-50fd06c8c35d',
+                realKey: '2d069e3a-f77f-4a1f-aeda-50fd06c8c35d',
+                type: 'user',
+            },
+            config.jwt.secret
+        )
+    );
+}
+
+/**
+ * Round `x` to `n` decimal places
+ *
+ * @param {number} n
+ * @param {number} x
+ *
+ * @returns {number}
+ */
+function roundN(n, x) {
+    return Math.round(x * n) / n;
+}
+
+function reportOperation(operation, durationMs) {
+    const durationS = roundN(1000, durationMs / 1000);
+
+    return `${operation}
+(${durationS}s)`;
+}
+
+async function runLpisChangeCase(body) {
+    const opStart = performance.now();
+    const response = await fetch(
+        url('/rest/specific/filtered/lpisChangeCase'),
+        {
+            method: 'POST',
+            headers: new fetch.Headers({
+                Authorization: createAdminToken(),
+                'Content-Type': 'application/json',
+            }),
+            body: JSON.stringify(body),
+        }
+    );
+    const opDuration = performance.now() - opStart;
+
+    if (response.status !== 200) {
+        throw new Error(`Invalid response: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data.data.lpisChangeCase.length !== 100) {
+        throw new Error(`Invalid total: ${data.total}`);
+    }
+
+    return reportOperation(
+        `POST /rest/specific/filtered/lpisChangeCase (${data.total} in db)
+${JSON.stringify(body, null, 2)}`,
+        opDuration
+    );
+}
+
+async function run() {
+    const reports = [
+        await runLpisChangeCase({}),
+        await runLpisChangeCase({order: [['key', 'ascending']]}),
+    ];
+
+    const reportsStr = reports
+        .map((report) =>
+            report
+                .split('\n')
+                .map((v) => '  ' + v)
+                .join('\n')
+        )
+        .join('\n\n');
+
+    console.log(
+        `Results:
+
+${reportsStr}`
+    );
+}
+
+run().then(() => {
+    process.exit(0);
+});
