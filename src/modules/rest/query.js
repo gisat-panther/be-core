@@ -724,6 +724,53 @@ function cleanDependentTypeCols({plan, group, type}, rows) {
 }
 
 /**
+ * @param {{group: string, type: string}} context
+ * @param {string} alias
+ *
+ * @param {import('@imatic/pgqb').Sql}
+ */
+function createdAtQuery({group, table}, alias) {
+    return qb.select([
+        qb.expr.as(
+            qb.merge(
+                qb.select([qb.expr.as('a.action_tstamp_stm', 'createdAt')]),
+                qb.from('audit.logged_actions', 'a'),
+                qb.where(
+                    qb.expr.and(
+                        qb.expr.eq('a.schema_name', qb.val.inlineParam(group)),
+                        qb.expr.eq('a.table_name', qb.val.inlineParam(table)),
+                        qb.expr.eq('a.action', qb.val.inlineParam('I')),
+                        qb.expr.eq(
+                            qb.val.raw(
+                                `"a"."row_data" OPERATOR("public".->) 'key'`
+                            ),
+                            qb.val.raw(`"${alias}"."key"::text`)
+                        )
+                    )
+                ),
+                qb.limit(1)
+            ),
+            'createdAt'
+        ),
+    ]);
+}
+
+/**
+ * @param {{group: string, type: string}} context
+ * @param {string} alias
+ * @param {import('@imatic/pgqb').Sql} sortExpr
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
+function createSortQuery({group, table}, alias, sortExpr) {
+    if (!_.isEmpty(sortExpr)) {
+        return sortExpr;
+    }
+
+    return qb.orderBy(createdAtQuery({group, table}, alias, sortExpr));
+}
+
+/**
  * Returns list data.
  *
  * @param {{plan: import('./compiler').Plan, group: string, type: string, client?: import('../../db').Client, user: object}} context
@@ -793,7 +840,11 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
                 qb.toSql(
                     qb.merge(
                         sqlMap,
-                        sortToSqlExpr(sort, 't'),
+                        createSortQuery(
+                            {group, table},
+                            't',
+                            sortToSqlExpr(sort, 't')
+                        ),
                         pageToQuery(page)
                     )
                 )
