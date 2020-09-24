@@ -825,6 +825,154 @@ describe('modules/user', function () {
         });
     });
 
+    it('PUT /rest/user non existing', async function () {
+        const response = await fetch(url('/rest/user'), {
+            method: 'PUT',
+            headers: new fetch.Headers({
+                Authorization: createAdminToken(),
+                'Content-Type': 'application/json',
+            }),
+            body: JSON.stringify({
+                data: {
+                    user: [
+                        {
+                            key: '682abd2e-1bd4-4524-af79-c08696f37a65',
+                            data: {
+                                email: 'creating@example.com',
+                            },
+                        },
+                    ],
+                },
+            }),
+        });
+
+        assert.strictEqual(response.status, 200);
+
+        const data = await response.json();
+
+        assert.deepStrictEqual(data, {
+            data: {
+                user: [
+                    {
+                        key: '682abd2e-1bd4-4524-af79-c08696f37a65',
+                        data: {
+                            email: 'creating@example.com',
+                            name: null,
+                            phone: null,
+                            groupKeys: null,
+                            permissionKeys: null,
+                        },
+                        permissions: {
+                            activeUser: {
+                                view: true,
+                                create: true,
+                                update: true,
+                                delete: true,
+                            },
+                            guest: {
+                                view: false,
+                                create: false,
+                                update: false,
+                                delete: false,
+                            },
+                        },
+                    },
+                ],
+            },
+            success: true,
+            total: 1,
+        });
+    });
+
+    it('PUT /rest/user non existing and existing', async function () {
+        const response = await fetch(url('/rest/user'), {
+            method: 'PUT',
+            headers: new fetch.Headers({
+                Authorization: createAdminToken(),
+                'Content-Type': 'application/json',
+            }),
+            body: JSON.stringify({
+                data: {
+                    user: [
+                        {
+                            key: '16fab6ab-4709-4668-a28f-735d6e13d1be',
+                            data: {
+                                email: 'creating2@example.com',
+                            },
+                        },
+                        {
+                            key: '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8',
+                            data: {
+                                phone: '+420222222233',
+                            },
+                        },
+                    ],
+                },
+            }),
+        });
+
+        assert.strictEqual(response.status, 200);
+
+        const data = await response.json();
+
+        assert.deepStrictEqual(data, {
+            data: {
+                user: [
+                    {
+                        key: '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8',
+                        data: {
+                            email: 'newWithKey@example.com',
+                            groupKeys: null,
+                            name: null,
+                            permissionKeys: null,
+                            phone: '+420222222233',
+                        },
+                        permissions: {
+                            activeUser: {
+                                create: true,
+                                delete: true,
+                                update: true,
+                                view: true,
+                            },
+                            guest: {
+                                create: false,
+                                delete: false,
+                                update: false,
+                                view: false,
+                            },
+                        },
+                    },
+                    {
+                        key: '16fab6ab-4709-4668-a28f-735d6e13d1be',
+                        data: {
+                            email: 'creating2@example.com',
+                            name: null,
+                            phone: null,
+                            groupKeys: null,
+                            permissionKeys: null,
+                        },
+                        permissions: {
+                            activeUser: {
+                                view: true,
+                                create: true,
+                                update: true,
+                                delete: true,
+                            },
+                            guest: {
+                                view: false,
+                                create: false,
+                                update: false,
+                                delete: false,
+                            },
+                        },
+                    },
+                ],
+            },
+            success: true,
+            total: 2,
+        });
+    });
+
     it('DELETE /rest/user without permissions', async function () {
         const userKey = '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8';
 

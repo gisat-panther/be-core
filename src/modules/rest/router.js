@@ -5,6 +5,7 @@ const autoLoginMiddleware = require('../../middlewares/auto-login');
 const createDependentTypeMiddleware = require('./middlewares/dependentType');
 const permission = require('../../permission');
 const _ = require('lodash');
+const _fp = require('lodash/fp');
 const schema = require('./schema');
 const q = require('./query');
 const db = require('../../db');
@@ -155,6 +156,33 @@ function formatList({plan, group}, recordsByType, page) {
     return data;
 }
 
+function mergeListsWithoutPage(l1, l2) {
+    const l1Keys = Object.keys(l1.data);
+    const l2Keys = Object.keys(l2.data);
+    const conflictingKeys = _.intersection(l1Keys, l2Keys);
+
+    const newData = _.reduce(
+        conflictingKeys,
+        (acc, k) => {
+            acc[k] = _.concat(l1.data[k], l2.data[k]);
+
+            return acc;
+        },
+        Object.assign({}, l1.data, l2.data)
+    );
+
+    const data = {
+        data: newData,
+        success: l1.success && l2.success,
+        total: Object.values(newData).reduce(
+            (acc, records) => Math.max(acc, records.length),
+            0
+        ),
+    };
+
+    return data;
+}
+
 /**
  * @param {import('./compiler').Plan} plan
  * @param {string} group
@@ -219,9 +247,8 @@ async function fetchOldData({plan, group, user}, data) {
 const RESULT_FORBIDDEN = 'forbidden';
 const RESULT_CREATED = 'created';
 const RESULT_UPDATED = 'updated';
-const RESULT_NOT_FOUND = 'not_found';
 
-async function createData({plan, group}, request) {
+async function createData({plan, group, client}, request) {
     const data = request.parameters.body.data;
 
     const requiredResourcePermissions = Object.keys(data).map((k) => ({
@@ -251,26 +278,22 @@ async function createData({plan, group}, request) {
         return {type: RESULT_FORBIDDEN};
     }
 
-    const records = await db.transactional(async function (client) {
-        await client.setUser(request.user.realKey);
+    const records = await Promise.all(
+        _.map(data, async function (records, type) {
+            const createdKeys = await q.create(
+                {plan, group, type, client},
+                records
+            );
+            const createdRecords = await q.list(
+                {plan, group, type, client, user: request.user},
+                {
+                    filter: {key: {in: createdKeys}},
+                }
+            );
 
-        return await Promise.all(
-            _.map(data, async function (records, type) {
-                const createdKeys = await q.create(
-                    {plan, group, type, client},
-                    records
-                );
-                const createdRecords = await q.list(
-                    {plan, group, type, client, user: request.user},
-                    {
-                        filter: {key: {in: createdKeys}},
-                    }
-                );
-
-                return createdRecords;
-            })
-        );
-    });
+            return createdRecords;
+        })
+    );
     const recordsByType = _.zipObject(_.keys(data), records);
 
     return {
@@ -279,7 +302,7 @@ async function createData({plan, group}, request) {
     };
 }
 
-async function updateData({plan, group}, request) {
+async function updateData({plan, group, client}, request) {
     const data = request.parameters.body.data;
 
     const requiredResourcePermissions = Object.keys(data).map((k) => ({
@@ -319,31 +342,29 @@ async function updateData({plan, group}, request) {
         return {type: RESULT_FORBIDDEN};
     }
 
-    const records = await db.transactional(async function (client) {
-        await client.setUser(request.user.realKey);
+    const records = await Promise.all(
+        _.map(data, async function (records, type) {
+            await q.update({plan, group, type, client}, records);
 
-        return await Promise.all(
-            _.map(data, async function (records, type) {
-                await q.update({plan, group, type, client}, records);
+            const updatedRecords = await q.list(
+                {plan, group, type, client, user: request.user},
+                {
+                    filter: {
+                        key: {in: records.map((u) => u.key)},
+                    },
+                }
+            );
 
-                const updatedRecords = await q.list(
-                    {plan, group, type, client, user: request.user},
-                    {
-                        filter: {
-                            key: {in: records.map((u) => u.key)},
-                        },
-                    }
-                );
+            return updatedRecords;
+        })
+    );
 
-                return updatedRecords;
-            })
-        );
-    });
     const recordsByType = _.zipObject(_.keys(data), records);
 
     return {
         type: RESULT_UPDATED,
         data: formatList({plan, group}, recordsByType),
+        oldData: oldData,
     };
 }
 
@@ -447,7 +468,11 @@ function createGroup(plan, group) {
             ],
             handler: async function (request, response) {
                 sendResponseFromResult(
-                    await createData({plan, group}, request),
+                    await db.transactional(async (client) => {
+                        await client.setUser(request.user.realKey);
+
+                        return await createData({plan, group, client}, request);
+                    }),
                     response
                 );
             },
@@ -470,10 +495,84 @@ function createGroup(plan, group) {
                 createDependentTypeMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
-                sendResponseFromResult(
-                    await updateData({plan, group}, request),
-                    response
-                );
+                await db.transactional(async (client) => {
+                    await client.setUser(request.user.realKey);
+
+                    const updatedResult = await updateData(
+                        {plan, group, client},
+                        request
+                    );
+                    if (updatedResult.type !== RESULT_UPDATED) {
+                        return sendResponseFromResult(updatedResult, response);
+                    }
+
+                    const newData = _.pickBy(
+                        _.mapValues(
+                            request.parameters.body.data,
+                            (records, type) => {
+                                const updatedKeys = _.map(
+                                    updatedResult.data.data[type],
+                                    (record) => record.key
+                                );
+                                const requestedKeys = _.map(
+                                    request.parameters.body.data[type],
+                                    (record) => record.key
+                                );
+                                const missingKeys = new Set(
+                                    _.difference(requestedKeys, updatedKeys)
+                                );
+
+                                return _.filter(
+                                    request.body.data[type],
+                                    (record) => missingKeys.has(record.key)
+                                );
+                            }
+                        ),
+                        (records) => !_.isEmpty(records)
+                    );
+
+                    if (_.isEmpty(newData)) {
+                        return sendResponseFromResult(updatedResult, response);
+                    }
+
+                    request.body = {data: newData};
+                    request.match = _fp.set(
+                        ['data', 'parameters'],
+                        {
+                            body: schema.createBody(plan, group),
+                        },
+                        request.match
+                    );
+
+                    await new Promise((resolve, reject) => {
+                        parameters(request, response, (err) => {
+                            if (err) {
+                                return reject(err);
+                            }
+
+                            resolve();
+                        });
+                    });
+
+                    const createdResult = await createData(
+                        {plan, group, client},
+                        request
+                    );
+                    if (createdResult.type !== RESULT_CREATED) {
+                        return sendResponseFromResult(createdResult, response);
+                    }
+
+                    return sendResponseFromResult(
+                        {
+                            type: RESULT_UPDATED,
+                            data: mergeListsWithoutPage(
+                                updatedResult.data,
+                                createdResult.data
+                            ),
+                        },
+                        response
+                    );
+                });
             },
         },
         {
