@@ -302,11 +302,11 @@ CREATE TABLE IF NOT EXISTS "public"."exampleSpatialAttributeData"
 );
 
 INSERT INTO "public"."exampleSpatialAttributeData"
-    ("geometry", "attribute1", "attribute2")
-VALUES (ST_GeomFromText(
+    ("key", "geometry", "attribute1", "attribute2")
+VALUES ('43c0dc2f-0c86-447f-9861-7969e1cbbe0a', ST_GeomFromText(
                 'POLYGON((14.224435 50.17743, 14.706787 50.17743, 14.706787 49.941901, 14.224435 49.941901, 14.224435 50.17743))',
                 4326), 'praha-wkt-bbox', 1),
-       (ST_GeomFromText(
+       ('84657e95-8ba0-4c9c-bfd9-7725fa388dfb', ST_GeomFromText(
                 'POLYGON((16.42799 49.294371, 16.727835 49.294371, 16.727835 49.10988, 16.42799 49.10988, 16.42799 49.294371))',
                 4326), 'brno-wkt-bbox', 2);
 
@@ -341,16 +341,16 @@ INSERT INTO "metadata"."layerTemplate"
 VALUES ('b8cb9263-d656-4606-a326-a02e851ea0bb', 'exampleLayer');
 
 INSERT INTO "relations"."spatialDataSourceRelation"
-    ("scopeKey", "periodKey", "spatialDataSourceKey", "layerTemplateKey")
-VALUES ('c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
+    ("key", "scopeKey", "periodKey", "spatialDataSourceKey", "layerTemplateKey")
+VALUES ('352cf401-c44d-4f98-95b2-686621994aa3', 'c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
         'cf55212e-2893-46d0-8a02-cbf10cb4471d', 'b8cb9263-d656-4606-a326-a02e851ea0bb');
 
 INSERT INTO "relations"."attributeDataSourceRelation"
-("scopeKey", "periodKey", "attributeDataSourceKey", "attributeKey", "layerTemplateKey")
-VALUES ('c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
+("key", "scopeKey", "periodKey", "attributeDataSourceKey", "attributeKey", "layerTemplateKey")
+VALUES ('faa00c17-3fdc-4c25-bb49-91e1bbe0c137', 'c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
         '7c11916a-20f4-4c6b-99a8-8b95bd1ec041', 'f9f6dc0d-4b6a-4794-9243-5948d920239c',
         'b8cb9263-d656-4606-a326-a02e851ea0bb'),
-       ('c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
+       ('ffcd6e38-7238-4f27-a41e-dd6d3a14ff59', 'c67eaa05-64e0-4b60-8552-7adb4962e93a', '6eca6523-0756-49cb-b39d-405dcafd2386',
         'd0329b4c-5214-4aea-8291-bc7443b643e7', '3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc',
         'b8cb9263-d656-4606-a326-a02e851ea0bb');
 
