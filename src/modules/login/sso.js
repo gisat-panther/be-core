@@ -1,6 +1,7 @@
 const config = require('../../../config');
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const FacebookStrategy = require('passport-facebook').Strategy;
 const _ = require('lodash/fp');
 const db = require('../../db');
 const info = require('./info');
@@ -8,6 +9,9 @@ const info = require('./info');
 const providers = {
     google: {
         column: 'googleId',
+    },
+    facebook: {
+        column: 'facebookId',
     },
 };
 
@@ -69,6 +73,30 @@ function createUserWithProvider(provider, {id, email}) {
     ]);
 }
 
+function createSsoHandler(plan) {
+    return async function (request, response) {
+        const data = {
+            type: 'sso_response',
+            data: await info.getWithToken(plan, request.ssoUser),
+        };
+
+        const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Logged in</title>
+</head>
+<body>
+<script>
+  window.opener.postMessage(${JSON.stringify(data)}, '*')
+</script>
+</body>
+</html>`;
+
+        response.status(200).send(html);
+    };
+}
+
 function useGoogle(plan) {
     const googleConfig = config.sso.google;
     if (googleConfig.clientId == null && googleConfig.clientSecret == null) {
@@ -109,32 +137,60 @@ function useGoogle(plan) {
                 assignProperty: 'ssoUser',
             }),
         ],
-        handler: async function (request, response) {
-            const data = {
-                type: 'sso_response',
-                data: await info.getWithToken(plan, request.ssoUser),
-            };
+        handler: createSsoHandler(plan),
+    };
+}
 
-            const html = `<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8">
-    <title>Logged in</title>
-  </head>
-  <body>
-    <script>
-      window.opener.postMessage(${JSON.stringify(data)}, '*')
-    </script>
-  </body>
-</html>`;
+function useFacebook(plan) {
+    const facebookConfig = config.sso.facebook;
+    if (facebookConfig.appId == null && facebookConfig.appSecret == null) {
+        return;
+    }
 
-            response.status(200).send(html);
+    passport.use(
+        new FacebookStrategy(
+            {
+                clientID: facebookConfig.appId,
+                clientSecret: facebookConfig.appSecret,
+                callbackURL: `${config.url}/api/login/sso/facebook`,
+                profileFields: ['email'],
+            },
+            async function (accessToken, refreshToken, profile, cb) {
+                const id = profile.id;
+                const email = _.get('value', _.first(profile.emails));
+
+                const userKey = await createUserWithProvider(
+                    providers.facebook,
+                    {
+                        id,
+                        email,
+                    }
+                );
+
+                cb(null, userKey);
+            }
+        )
+    );
+
+    return {
+        path: '/api/login/sso/facebook',
+        method: 'get',
+        swagger: {
+            tags: ['login'],
         },
+        middlewares: [
+            passport.authenticate('facebook', {
+                scope: ['email'],
+                session: false,
+                assignProperty: 'ssoUser',
+            }),
+        ],
+        handler: createSsoHandler(plan),
     };
 }
 
 function createRouter(plan) {
-    return [useGoogle(plan)].filter((v) => v != null);
+    return [useGoogle(plan), useFacebook(plan)].filter((v) => v != null);
 }
 
 module.exports = {
