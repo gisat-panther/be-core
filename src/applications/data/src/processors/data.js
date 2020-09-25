@@ -28,8 +28,8 @@ function formatData(rawData, filter) {
 			attributeRelations: [],
 			spatialDataSources: [],
 			attributeDataSources: [],
-			spatialData: {},
-			attributeData: {}
+			spatialData: rawData.data.spatial,
+			attributeData: rawData.data.attribute
 		},
 		total: {
 			spatialRelations: rawData.spatial.length,
@@ -40,14 +40,6 @@ function formatData(rawData, filter) {
 	};
 
 	rawData.spatial.forEach((spatialRelation) => {
-		if (filter.data.geometry) {
-			formattedResponse.data.spatialData[spatialRelation.spatialDataSourceKey] =
-				{
-					data: spatialRelation.data,
-					spatialIndex: spatialRelation.spatialIndex
-				};
-		}
-
 		formattedResponse.data.spatialDataSources.push({
 			key: spatialRelation.spatialDataSource.key,
 			data: {
@@ -59,10 +51,6 @@ function formatData(rawData, filter) {
 	})
 
 	rawData.attribute.forEach((attributeRelation) => {
-		formattedResponse.data.attributeData[attributeRelation.attributeDataSourceKey] = {};
-
-		formattedResponse.data.attributeData[attributeRelation.attributeDataSourceKey] = attributeRelation.data;
-
 		formattedResponse.data.attributeDataSources.push({
 			key: attributeRelation.attributeDataSource.key,
 			data: {
@@ -95,7 +83,6 @@ function formatData(rawData, filter) {
 		delete clearSpatialRelation.data.key;
 		delete clearSpatialRelation.data.data;
 		delete clearSpatialRelation.data.spatialDataSource;
-		delete clearSpatialRelation.data.spatialDataSourceKey;
 		delete clearSpatialRelation.data.spatialIndex;
 
 		return clearSpatialRelation;
@@ -112,7 +99,6 @@ function formatData(rawData, filter) {
 		delete clearAttributeRelation.data.key;
 		delete clearAttributeRelation.data.data;
 		delete clearAttributeRelation.data.attributeDataSource;
-		delete clearAttributeRelation.data.attributeDataSourceKey;
 
 		return clearAttributeRelation;
 	});
@@ -125,11 +111,76 @@ async function getPopulatedRelationsByFilter(filter, user) {
 
 	await populateRelationsWithDataSources(relations, user);
 
-	await populateRelationsWithSpatialIndex(relations, filter);
-
-	await populateRelationsWithData(relations, filter);
+	relations.data = await getDataForRelations(relations, filter);
 
 	return relations;
+}
+
+async function getDataForRelations(relations, filter) {
+	const data = {
+		spatial: {},
+		attribute: {}
+	};
+
+	const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.level);
+
+	const tileGeometries = {};
+	_.each(filter.data.spatialFilter.tiles, (tile) => {
+		tileGeometries[`${tile[0]},${tile[1]}`] = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
+	});
+	const spatialIndex = filter.data.spatialIndex || filter.data.spatialFilter;
+
+	for (const spatialRelation of relations.spatial) {
+		const spatialDataSource = spatialRelation.spatialDataSource;
+
+		const columns = [];
+		const joins = [];
+		const wheres = [];
+
+		columns.push(`"${spatialDataSource.key}"."${spatialDataSource.fidColumnName}", st_asgeojson("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}") AS "${spatialDataSource.geometryColumnName}"`);
+
+		const relatedAttributeRelations = _.filter(relations.attribute, (attributeRelation) => {
+			return attributeRelation.layerTemplateKey === spatialRelation.layerTemplateKey;
+		});
+
+		for (const attributeRelation of relatedAttributeRelations) {
+			const attributeDataSource = attributeRelation.attributeDataSource;
+			columns.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" AS "${attributeDataSource.key}"`);
+			joins.push(`LEFT JOIN "${attributeDataSource.tableName}" AS "${attributeDataSource.key}" ON "${attributeDataSource.key}"."${attributeDataSource.fidColumnName}" = "${spatialDataSource.key}"."${spatialDataSource.fidColumnName}"`)
+		}
+
+		wheres.push(`st_intersects("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}", st_geomfromgeojson('${JSON.stringify(tileGeometries[spatialIndex.tiles[0]].geometry)}'))`);
+
+		const sqlQueryString = `SELECT ${columns.join(", ")} FROM "${spatialDataSource.tableName}" AS "${spatialDataSource.key}" ${joins.join(" ")} ${wheres.length ? "WHERE " + wheres.join(" AND ") : ""}`
+
+		const queryResult = await db.query(sqlQueryString);
+
+		data.spatial[spatialDataSource.key] = {
+			data: {},
+			spatialIndex: {
+				[filter.data.spatialFilter.level]: {
+					[spatialIndex.tiles[0]]: _.map(queryResult.rows, spatialDataSource.fidColumnName)
+				}
+			}
+		}
+
+		for (const attributeRelation of relatedAttributeRelations) {
+			const attributeDataSource = attributeRelation.attributeDataSource;
+			data.attribute[attributeDataSource.key] = {};
+		}
+
+		_.each(queryResult.rows, (row) => {
+			data.spatial[spatialDataSource.key].data[row[spatialDataSource.fidColumnName]] = JSON.parse(row[spatialDataSource.geometryColumnName]);
+
+			_.each(_.keys(data.attribute), (attributeDataSourceKey) => {
+				if(row.hasOwnProperty(attributeDataSourceKey)) {
+					data.attribute[attributeDataSourceKey][row[spatialDataSource.fidColumnName]] = row[attributeDataSourceKey];
+				}
+			})
+		})
+	}
+
+	return data;
 }
 
 async function populateRelationsWithDataSources(relations, user) {
@@ -144,66 +195,6 @@ async function populateRelationsWithDataSources(relations, user) {
 	}
 }
 
-async function populateRelationsWithData(relations, filter) {
-	for(const spatialRelation of relations.spatial) {
-		let featureKeys = _.flatten(_.map(spatialRelation.spatialIndex, (featureKeys, spatialIndex) => {
-			return featureKeys;
-		}));
-		let spatialDataQuery = await db.query(
-			`SELECT "${spatialRelation.spatialDataSource.fidColumnName}", st_asgeojson("${spatialRelation.spatialDataSource.geometryColumnName}") AS geometry FROM "${spatialRelation.spatialDataSource.tableName}" WHERE "${spatialRelation.spatialDataSource.fidColumnName}" IN ('${featureKeys.join('\', \'')}')`
-		);
-
-		spatialRelation.data = {};
-		for(const row of spatialDataQuery.rows) {
-			spatialRelation.data[row[spatialRelation.spatialDataSource.fidColumnName]] = JSON.parse(row.geometry);
-		}
-
-		let relatedAttributeRelations = _.filter(relations.attribute, (attributeRelation) => {
-			return attributeRelation.layerTemplateKey = spatialRelation.layerTemplateKey;
-		});
-
-		for(const attributeRelation of relatedAttributeRelations) {
-			let attributeDataQuery = await db.query(
-				`SELECT "${attributeRelation.attributeDataSource.fidColumnName}", "${attributeRelation.attributeDataSource.columnName}" FROM "${attributeRelation.attributeDataSource.tableName}" WHERE "${attributeRelation.attributeDataSource.fidColumnName}" IN ('${featureKeys.join('\', \'')}')`
-			);
-
-			attributeRelation.data = {};
-			for(const row of attributeDataQuery.rows) {
-				attributeRelation.data[row[attributeRelation.attributeDataSource.fidColumnName]] = row[attributeRelation.attributeDataSource.columnName];
-			}
-		}
-	}
-}
-
-async function populateRelationsWithSpatialIndex(relations, filter) {
-	let gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.level);
-
-	let tileGeometries = {};
-	_.each(filter.data.spatialFilter.tiles, (tile) => {
-		tileGeometries[`${tile[0]},${tile[1]}`] = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
-	});
-
-	for (const relation of relations.spatial) {
-		let spatialIndex = {};
-		for(const key of _.keys(tileGeometries)) {
-			let geometry = tileGeometries[key].geometry;
-			let queryResult = await db.query(
-				`SELECT "${relation.spatialDataSource.fidColumnName}" FROM "${relation.spatialDataSource.tableName}" WHERE st_intersects("${relation.spatialDataSource.geometryColumnName}", st_geomfromgeojson('${JSON.stringify(geometry)}'))`
-			)
-			spatialIndex[key] = _.map(queryResult.rows, (row) => {
-				return row[relation.spatialDataSource.fidColumnName];
-			})
-		}
-
-		//todo here should be logic which chose how many tiles has to be returned based on feature count (or something like that)
-		if(filter.data.spatialIndex) {
-			relation.spatialIndex = _.pick(spatialIndex, [`${filter.data.spatialIndex.tiles[0][0]},${filter.data.spatialIndex.tiles[0][1]}`]);
-		} else {
-			relation.spatialIndex = _.pick(spatialIndex, [`${filter.data.spatialFilter.tiles[0][0]},${filter.data.spatialFilter.tiles[0][1]}`]);
-		}
-	}
-}
-
 async function getRelationsByFilter(filter, user) {
 	let relations = {
 		attribute: [],
@@ -215,15 +206,19 @@ async function getRelationsByFilter(filter, user) {
 		_.set(spatialRelationsFilter, 'layerTemplateKey', filter.layerTemplateKey);
 	}
 
-	relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
-
-	if (filter.hasOwnProperty("attributeFilter")) {
-		filter.relationsFilter = _.merge(filter.relationsFilter, filter.attributeFilter);
+	if(filter.data.hasOwnProperty('dataSourceKeys')) {
+		_.set(spatialRelationsFilter, 'spatialDataSourceKey', {in: filter.data.dataSourceKeys});
 	}
+
+	relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
 
 	let attributeRelationsFilter = filter.modifiers;
 	if (filter.hasOwnProperty('styleKey')) {
-		let styles = await getData(`metadata`, `style`, user, {key: filter.styleKey});
+		if(filter.data.hasOwnProperty('dataSourceKeys')) {
+			_.set(attributeRelationsFilter, 'attributeDataSourceKey', {in: filter.data.dataSourceKeys});
+		}
+
+		let styles = await getData(`metadata`, `styles`, user, {key: filter.styleKey});
 		let style = styles[0];
 
 		if (style) {
@@ -237,8 +232,9 @@ async function getRelationsByFilter(filter, user) {
 				_.set(attributeRelationsFilter, 'attributeKey', {in: attributeKeys});
 			}
 		}
+
+		relations.attribute = await getData(`relations`, `attribute`, user, attributeRelationsFilter);
 	}
-	relations.attribute = await getData(`relations`, `attribute`, user, attributeRelationsFilter);
 
 	return relations;
 }
