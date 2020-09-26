@@ -35,8 +35,8 @@ function formatData(rawData, filter) {
 			spatialRelations: rawData.spatial.length,
 			attributeRelations: rawData.attribute.length
 		},
-		limit: filter.relations.limit,
-		offset: filter.relations.offset
+		limit: (filter.relations && filter.relations.limit) || 100,
+		offset: (filter.relations && filter.relations.offset) || 0
 	};
 
 	rawData.spatial.forEach((spatialRelation) => {
@@ -61,8 +61,8 @@ function formatData(rawData, filter) {
 		formattedResponse.data.attributeRelations.push(attributeRelation);
 	})
 
-	formattedResponse.data.spatialRelations = _.slice(formattedResponse.data.spatialRelations, filter.relations.offset, filter.relations.offset + filter.relations.limit);
-	formattedResponse.data.attributeRelations = _.slice(formattedResponse.data.attributeRelations, filter.relations.offset, filter.relations.offset + filter.relations.limit);
+	formattedResponse.data.spatialRelations = _.slice(formattedResponse.data.spatialRelations, formattedResponse.data.offset, formattedResponse.data.offset + formattedResponse.data.limit);
+	formattedResponse.data.attributeRelations = _.slice(formattedResponse.data.attributeRelations, formattedResponse.data.offset, formattedResponse.data.offset + formattedResponse.data.limit);
 
 	formattedResponse.data.spatialDataSources = _.filter(formattedResponse.data.spatialDataSources, (spatialDataSource) => {
 		return _.map(formattedResponse.data.spatialRelations, 'spatialDataSourceKey').includes(spatialDataSource.key);
