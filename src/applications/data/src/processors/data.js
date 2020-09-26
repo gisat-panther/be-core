@@ -147,6 +147,50 @@ async function getDataForRelations(relations, filter) {
 			const attributeDataSource = attributeRelation.attributeDataSource;
 			columns.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" AS "${attributeDataSource.key}"`);
 			joins.push(`LEFT JOIN "${attributeDataSource.tableName}" AS "${attributeDataSource.key}" ON "${attributeDataSource.key}"."${attributeDataSource.fidColumnName}" = "${spatialDataSource.key}"."${spatialDataSource.fidColumnName}"`)
+
+			if (filter.data.attributeFilter && filter.data.attributeFilter.hasOwnProperty(attributeRelation.attributeKey)) {
+				const attributeFilter = filter.data.attributeFilter[attributeRelation.attributeKey];
+				if (_.isObject(attributeFilter)) {
+					let filterMethods = _.keys(attributeFilter);
+					for (const filterMethod of filterMethods) {
+						switch (filterMethod) {
+							case "in":
+								wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" IN ('${attributeFilter.in.join("', '")}')`);
+								break;
+							case "notin":
+								wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" NOT IN ('${attributeFilter.notin.join("', '")}')`);
+								break;
+							case "gt":
+								if (_.isString(attributeFilter.gt)) {
+									wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" > '${attributeFilter.gt}'`);
+								} else if (_.isNumber(attributeFilter.gt)) {
+									wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" > ${attributeFilter.gt}`);
+								}
+								break;
+							case "lt":
+								if (_.isString(attributeFilter.lt)) {
+									wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" < '${attributeFilter.lt}'`);
+								} else if (_.isNumber(attributeFilter.lt)) {
+									wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" < ${attributeFilter.lt}`);
+								}
+								break;
+							case "eq":
+								if (_.isString(attributeFilter.eq)) {
+									wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" = '${attributeFilter.eq}'`);
+								} else if (_.isNumber(attributeFilter.eq)) {
+									wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" = ${attributeFilter.eq}`);
+								}
+								break;
+						}
+					}
+				} else if (_.isString(attributeFilter)) {
+					wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" = '${attributeFilter}'`)
+				} else if (_.isNumber(attributeFilter)) {
+					wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" = ${attributeFilter}`)
+				} else if (_.isNull(attributeFilter)) {
+					wheres.push(`"${attributeDataSource.key}"."${attributeDataSource.columnName}" IS NULL`);
+				}
+			}
 		}
 
 		wheres.push(`st_intersects("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}", st_geomfromgeojson('${JSON.stringify(tileGeometries[spatialIndex.tiles[0]].geometry)}'))`);
@@ -173,7 +217,7 @@ async function getDataForRelations(relations, filter) {
 			data.spatial[spatialDataSource.key].data[row[spatialDataSource.fidColumnName]] = JSON.parse(row[spatialDataSource.geometryColumnName]);
 
 			_.each(_.keys(data.attribute), (attributeDataSourceKey) => {
-				if(row.hasOwnProperty(attributeDataSourceKey)) {
+				if (row.hasOwnProperty(attributeDataSourceKey)) {
 					data.attribute[attributeDataSourceKey][row[spatialDataSource.fidColumnName]] = row[attributeDataSourceKey];
 				}
 			})
@@ -206,7 +250,7 @@ async function getRelationsByFilter(filter, user) {
 		_.set(spatialRelationsFilter, 'layerTemplateKey', filter.layerTemplateKey);
 	}
 
-	if(filter.data.hasOwnProperty('dataSourceKeys')) {
+	if (filter.data.hasOwnProperty('dataSourceKeys')) {
 		_.set(spatialRelationsFilter, 'spatialDataSourceKey', {in: filter.data.dataSourceKeys});
 	}
 
@@ -214,7 +258,7 @@ async function getRelationsByFilter(filter, user) {
 
 	let attributeRelationsFilter = filter.modifiers;
 	if (filter.hasOwnProperty('styleKey')) {
-		if(filter.data.hasOwnProperty('dataSourceKeys')) {
+		if (filter.data.hasOwnProperty('dataSourceKeys')) {
 			_.set(attributeRelationsFilter, 'attributeDataSourceKey', {in: filter.data.dataSourceKeys});
 		}
 
