@@ -137,7 +137,11 @@ async function getDataForRelations(relations, filter) {
 		const joins = [];
 		const wheres = [];
 
-		columns.push(`"${spatialDataSource.key}"."${spatialDataSource.fidColumnName}", st_asgeojson("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}") AS "${spatialDataSource.geometryColumnName}"`);
+		columns.push(`"${spatialDataSource.key}"."${spatialDataSource.fidColumnName}"`);
+
+		if (filter.data.geometry) {
+			columns.push(`st_asgeojson("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}") AS "${spatialDataSource.geometryColumnName}"`);
+		}
 
 		const relatedAttributeRelations = _.filter(relations.attribute, (attributeRelation) => {
 			return attributeRelation.layerTemplateKey === spatialRelation.layerTemplateKey;
@@ -214,7 +218,9 @@ async function getDataForRelations(relations, filter) {
 		}
 
 		_.each(queryResult.rows, (row) => {
-			data.spatial[spatialDataSource.key].data[row[spatialDataSource.fidColumnName]] = JSON.parse(row[spatialDataSource.geometryColumnName]);
+			if(row.hasOwnProperty(spatialDataSource.geometryColumnName)) {
+				data.spatial[spatialDataSource.key].data[row[spatialDataSource.fidColumnName]] = JSON.parse(row[spatialDataSource.geometryColumnName]);
+			}
 
 			_.each(_.keys(data.attribute), (attributeDataSourceKey) => {
 				if (row.hasOwnProperty(attributeDataSourceKey)) {
