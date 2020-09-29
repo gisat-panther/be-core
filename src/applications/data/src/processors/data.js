@@ -61,8 +61,8 @@ function formatData(rawData, filter) {
 		formattedResponse.data.attributeRelations.push(attributeRelation);
 	})
 
-	formattedResponse.data.spatialRelations = _.slice(formattedResponse.data.spatialRelations, formattedResponse.data.offset, formattedResponse.data.offset + formattedResponse.data.limit);
-	formattedResponse.data.attributeRelations = _.slice(formattedResponse.data.attributeRelations, formattedResponse.data.offset, formattedResponse.data.offset + formattedResponse.data.limit);
+	formattedResponse.data.spatialRelations = _.slice(formattedResponse.data.spatialRelations, formattedResponse.offset, formattedResponse.offset + formattedResponse.limit);
+	formattedResponse.data.attributeRelations = _.slice(formattedResponse.data.attributeRelations, formattedResponse.offset, formattedResponse.offset + formattedResponse.limit);
 
 	formattedResponse.data.spatialDataSources = _.filter(formattedResponse.data.spatialDataSources, (spatialDataSource) => {
 		return _.map(formattedResponse.data.spatialRelations, 'spatialDataSourceKey').includes(spatialDataSource.key);
