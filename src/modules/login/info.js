@@ -44,6 +44,11 @@ function formatPermissions(permissions, plan) {
     return formattedPermissions;
 }
 
+/**
+ * @param {{key: string, realKey: string}} user
+ * @param {string} token
+ * @param {import('../rest/compiler').Plan} plan
+ */
 async function get(user, token, plan) {
     const [userInfo, permissions] = await Promise.all([
         q.getUserInfoByKey(user.realKey),
@@ -62,6 +67,10 @@ async function get(user, token, plan) {
     };
 }
 
+/**
+ * @param {import('../rest/compiler').Plan} plan
+ * @param {{key: string}} user
+ */
 async function getWithToken(plan, user) {
     const token = await auth.createAuthToken(
         auth.tokenPayload({
