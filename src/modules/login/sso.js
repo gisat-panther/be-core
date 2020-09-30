@@ -6,11 +6,19 @@ const _ = require('lodash/fp');
 const db = require('../../db');
 const info = require('./info');
 
+/**
+ * @typedef {Object} Provider
+ * @property {string} name
+ * @property {string} column
+ */
+
 const providers = {
     google: {
+        name: 'google',
         column: 'googleId',
     },
     facebook: {
+        name: 'facebook',
         column: 'facebookId',
     },
 };
@@ -97,41 +105,73 @@ function createSsoHandler(plan) {
     };
 }
 
+/**
+ * @param {Provider} provider
+ * @param {{id: string, email: string}} user
+ */
+function validateProviderUser({name}, {id, email}) {
+    if (id == null) {
+        return Error(`User received from provider ${name} has no id.`);
+    }
+
+    if (email == null) {
+        return Error(`User received from provider ${name} has no email.`);
+    }
+}
+
+/**
+ * @param {Provider} provider
+ */
+function createVerifyCallback(provider) {
+    return async function (accessToken, refreshToken, profile, cb) {
+        const id = profile.id;
+        const email = _.get('value', _.first(profile.emails));
+        const providerUser = {id, email};
+        const violation = validateProviderUser(provider, providerUser);
+
+        if (violation != null) {
+            return cb(violation);
+        }
+
+        const userKey = await createUserWithProvider(provider, providerUser);
+
+        if (userKey == null) {
+            return cb(
+                new Error(`Couldn't find user for provider ${provider.name}`)
+            );
+        }
+
+        cb(null, userKey);
+    };
+}
+
 function useGoogle(plan) {
     const googleConfig = config.sso.google;
     if (googleConfig.clientId == null && googleConfig.clientSecret == null) {
         return;
     }
 
+    const provider = providers.google;
+
     passport.use(
         new GoogleStrategy(
             {
                 clientID: googleConfig.clientId,
                 clientSecret: googleConfig.clientSecret,
-                callbackURL: `${config.url}/api/login/sso/google`,
+                callbackURL: `${config.url}/api/login/sso/${provider.name}`,
             },
-            async function (accessToken, refreshToken, profile, cb) {
-                const id = profile.id;
-                const email = _.get('value', _.first(profile.emails));
-
-                const userKey = await createUserWithProvider(providers.google, {
-                    id,
-                    email,
-                });
-
-                cb(null, userKey);
-            }
+            createVerifyCallback(provider)
         )
     );
 
     return {
-        path: '/api/login/sso/google',
+        path: `/api/login/sso/${provider.name}`,
         method: 'get',
         swagger: {
             tags: ['login'],
         },
         middlewares: [
-            passport.authenticate('google', {
+            passport.authenticate(provider.name, {
                 scope: ['email'],
                 session: false,
                 assignProperty: 'ssoUser',
@@ -147,39 +187,28 @@ function useFacebook(plan) {
         return;
     }
 
+    const provider = providers.facebook;
+
     passport.use(
         new FacebookStrategy(
             {
                 clientID: facebookConfig.appId,
                 clientSecret: facebookConfig.appSecret,
-                callbackURL: `${config.url}/api/login/sso/facebook`,
+                callbackURL: `${config.url}/api/login/sso/${provider.name}`,
                 profileFields: ['email'],
             },
-            async function (accessToken, refreshToken, profile, cb) {
-                const id = profile.id;
-                const email = _.get('value', _.first(profile.emails));
-
-                const userKey = await createUserWithProvider(
-                    providers.facebook,
-                    {
-                        id,
-                        email,
-                    }
-                );
-
-                cb(null, userKey);
-            }
+            createVerifyCallback(provider)
         )
     );
 
     return {
-        path: '/api/login/sso/facebook',
+        path: `/api/login/sso/${provider.name}`,
         method: 'get',
         swagger: {
             tags: ['login'],
         },
         middlewares: [
-            passport.authenticate('facebook', {
+            passport.authenticate(provider.name, {
                 scope: ['email'],
                 session: false,
                 assignProperty: 'ssoUser',
