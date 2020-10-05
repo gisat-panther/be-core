@@ -122,6 +122,8 @@ async function getDataForRelations(relations, filter) {
 		attribute: {}
 	};
 
+	const allowedDataSourceTypes = ["vector"];
+
 	const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.level);
 
 	const tileGeometries = {};
@@ -132,6 +134,10 @@ async function getDataForRelations(relations, filter) {
 
 	for (const spatialRelation of relations.spatial) {
 		const spatialDataSource = spatialRelation.spatialDataSource;
+
+		if(!allowedDataSourceTypes.includes(spatialDataSource.type)) {
+			continue;
+		}
 
 		const columns = [];
 		const joins = [];
@@ -251,7 +257,7 @@ async function getRelationsByFilter(filter, user) {
 		spatial: []
 	};
 
-	let spatialRelationsFilter = filter.modifiers;
+	let spatialRelationsFilter = filter.modifiers || {};
 	if (filter.hasOwnProperty('layerTemplateKey')) {
 		_.set(spatialRelationsFilter, 'layerTemplateKey', filter.layerTemplateKey);
 	}
@@ -262,7 +268,7 @@ async function getRelationsByFilter(filter, user) {
 
 	relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
 
-	let attributeRelationsFilter = filter.modifiers;
+	let attributeRelationsFilter = filter.modifiers || {};
 	if (filter.hasOwnProperty('styleKey')) {
 		if (filter.data.hasOwnProperty('dataSourceKeys')) {
 			_.set(attributeRelationsFilter, 'attributeDataSourceKey', {in: filter.data.dataSourceKeys});
