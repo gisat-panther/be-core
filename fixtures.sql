@@ -57,6 +57,7 @@ VALUES
 INSERT INTO "user"."permissions"
   ("key", "resourceKey", "resourceGroup", "resourceType", "permission")
 VALUES
+  ('ed6a9cb0-7662-4d85-bb9a-ed5b78396008', null, 'metadata', 'case', 'view'),
   ('0da66083-77ad-4e66-9338-0c8344de9eba', null, 'metadata', 'case', 'create'),
   ('42e8bdf8-19c8-4658-aded-b1c724539072', null, 'metadata', 'case', 'update'),
   ('a307e381-8c12-4d0e-9934-0d739cce7fa2', null, 'metadata', 'scope', 'view'),
@@ -86,6 +87,8 @@ INSERT INTO "user"."userPermissions"
 VALUES
   -- testWithPermissions@example.com     ,  case:create
   ('3e3f4300-1336-4043-baa3-b65a025c2d83', '0da66083-77ad-4e66-9338-0c8344de9eba'),
+  -- user: admin@example.com             ,  case:view
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', 'ed6a9cb0-7662-4d85-bb9a-ed5b78396008'),
   -- user: admin@example.com             ,  users:view
   ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '828af8c1-5438-475b-9f91-af432745e83f'),
   -- user: admin@example.com             ,  users:create

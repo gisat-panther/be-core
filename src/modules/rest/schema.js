@@ -50,7 +50,15 @@ function colFilterSchema(col) {
         case 'object':
             return null;
         case 'array':
-            return null;
+            const itemSchema = Joi.alternatives().try(
+                ..._.get(schema, ['$_terms', 'items'])
+            );
+
+            return Joi.object().keys({
+                eq: itemSchema,
+                in: Joi.array().items(itemSchema).min(1),
+                notin: Joi.array().items(itemSchema).min(1),
+            });
     }
 
     throw new Error(`Type "${type}" is not supported in filter.`);
@@ -111,7 +119,38 @@ function listBody(plan, group) {
             return mergeColumns(
                 _.concat(
                     s.columns,
-                    _.map(types, (t) => t.columns)
+                    _.map(types, (t) => t.columns),
+                    _.reduce(
+                        _.keys(s.relations),
+                        (columns, name) => {
+                            const rel = s.relations[name];
+                            switch (rel.type) {
+                                case 'manyToMany':
+                                    columns[name + 'Keys'] = {
+                                        schema: Joi.array().items(
+                                            plan[rel.resourceGroup][
+                                                rel.resourceType
+                                            ].columns.key.schema
+                                        ),
+                                    };
+
+                                    return columns;
+                                case 'manyToOne':
+                                    columns[name + 'Key'] = {
+                                        schema: plan[rel.resourceGroup][
+                                            rel.resourceType
+                                        ].columns.key.schema.allow(null),
+                                    };
+
+                                    return columns;
+                            }
+
+                            throw new Error(
+                                `Unspported relation type: ${rel.type}`
+                            );
+                        },
+                        {}
+                    )
                 )
             );
         })
