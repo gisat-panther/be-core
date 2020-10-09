@@ -1,3 +1,27 @@
+# v0.0.9 (Thu Oct 08 2020)
+
+#### 🐾 Patch
+
+- sso [#16](https://github.com/gisat-panther/be-core/pull/16) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
+# v0.0.8 (Thu Sep 24 2020)
+
+#### 🐾 Patch
+
+- Default sorting [#15](https://github.com/gisat-panther/be-core/pull/15) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.7 (Thu Sep 24 2020)
 
 #### 🐾 Patch

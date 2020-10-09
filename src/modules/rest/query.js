@@ -86,15 +86,17 @@ function getPlan(plan) {
  *
  * @param requestFilter {Object<string, any>}
  * @param columnToAliases {Object<string, string[]>}
+ * @param columnToField {Object<string, string>}
  *
  * @returns {Filter[]}
  */
-function createFilters(requestFilter, columnToAliases) {
+function createFilters(requestFilter, columnToAliases, columnToField) {
     const filters = [];
     _.forEach(requestFilter, (filterData, field) => {
         filters.push(
             _.map(columnToAliases[field], (alias) => {
-                const column = `${alias}.${field}`;
+                const aliasField = columnToField[field] || field;
+                const column = `${alias}.${aliasField}`;
 
                 if (_.isObject(filterData)) {
                     const type = Object.keys(filterData)[0];
@@ -195,6 +197,17 @@ function pageToQuery(page) {
 }
 
 /**
+ * Returns deterministic relation table alias.
+ *
+ * @param {string} name
+ *
+ * @returns {string}
+ */
+function listRelationAlias(name) {
+    return 'rel_' + name;
+}
+
+/**
  * Creates part of query related to `type` relations.
  *
  * @param {{plan: import('./compiler').Plan, group: string, type: string}} context
@@ -208,7 +221,7 @@ function relationsQuery({plan, group, type}, alias) {
     const queries = _.map(relations, (rel, name) => {
         switch (rel.type) {
             case 'manyToMany': {
-                const relAlias = 'rel_' + name;
+                const relAlias = listRelationAlias(name);
                 const column = name + 'Keys';
                 const ownKey = `${relAlias}.${rel.ownKey}`;
 
@@ -228,7 +241,7 @@ function relationsQuery({plan, group, type}, alias) {
                 );
             }
             case 'manyToOne': {
-                const relAlias = 'rel_' + name;
+                const relAlias = listRelationAlias(name);
                 const column = name + 'Key';
                 const ownKey = `${relAlias}.${rel.ownKey}`;
 
@@ -798,6 +811,16 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
                     ])
                 );
             }),
+            ..._.map(plan[group][type].relations, (rel, name) => {
+                switch (rel.type) {
+                    case 'manyToMany':
+                        return {[name + 'Keys']: [listRelationAlias(name)]};
+                    case 'manyToOne':
+                        return {[name + 'Key']: [listRelationAlias(name)]};
+                }
+
+                throw new Error(`Unspported relation type: ${rel.type}`);
+            }),
         ],
         function (res, next) {
             return _.mergeWith(res, next, function (x, y) {
@@ -807,6 +830,24 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
 
                 return _.concat(x, y);
             });
+        },
+        {}
+    );
+
+    const columnToField = _.reduce(
+        _.keys(plan[group][type].relations),
+        (res, name) => {
+            const rel = plan[group][type].relations[name];
+            switch (rel.type) {
+                case 'manyToMany':
+                    res[name + 'Keys'] = rel.inverseKey;
+                    return res;
+                case 'manyToOne':
+                    res[name + 'Key'] = rel.inverseKey;
+                    return res;
+            }
+
+            throw new Error(`Unspported relation type: ${rel.type}`);
         },
         {}
     );
@@ -823,7 +864,7 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
         listPermissionRelationQuery({user, plan, group, type}, 't'),
         listUserPermissionsQuery({user, plan, group, type}, 't'),
         listDependentTypeQuery({plan, group, type}, 't'),
-        filtersToSqlExpr(createFilters(filter, columnToAliases)),
+        filtersToSqlExpr(createFilters(filter, columnToAliases, columnToField)),
         relationsQuery({plan, group, type}, 't')
     );
 
@@ -834,22 +875,22 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
 
     const db = getDb(client);
 
+    const keysSqlMap = qb.merge(
+        sqlMap,
+        qb.select(['t.key']),
+        createSortQuery({group, table}, 't', sortToSqlExpr(sort, 't')),
+        pageToQuery(page)
+    );
+
+    const resultSqlMap = qb.merge(
+        sqlMap,
+        qb.where(qb.expr.in('t.key', keysSqlMap)),
+        createSortQuery({group, table}, 't', sortToSqlExpr(sort, 't')),
+        pageToQuery(page)
+    );
+
     return Promise.all([
-        db
-            .query(
-                qb.toSql(
-                    qb.merge(
-                        sqlMap,
-                        createSortQuery(
-                            {group, table},
-                            't',
-                            sortToSqlExpr(sort, 't')
-                        ),
-                        pageToQuery(page)
-                    )
-                )
-            )
-            .then((res) => res.rows),
+        db.query(qb.toSql(resultSqlMap)).then((res) => res.rows),
         db
             .query(qb.toSql(countSqlMap))
             .then((res) => _.get(res.rows[0], 'count', 0)),
