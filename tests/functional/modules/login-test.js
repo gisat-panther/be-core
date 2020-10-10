@@ -277,11 +277,11 @@ describe('modules/login', function () {
                             application: {},
                             dataSources: {},
                             metadata: {
-                                case: {
+                                cases: {
                                     create: true,
                                     update: true,
                                 },
-                                scope: {
+                                scopes: {
                                     delete: true,
                                 },
                             },
@@ -325,7 +325,7 @@ describe('modules/login', function () {
                             application: {},
                             dataSources: {},
                             metadata: {
-                                case: {
+                                cases: {
                                     update: true,
                                 },
                             },

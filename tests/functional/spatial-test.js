@@ -63,6 +63,8 @@ describe('/rest/dataSources', function () {
                                     type: 'vector',
                                     layerName: 'lv',
                                     tableName: 'tv',
+                                    fidColumnName: 'fid',
+                                    geometryColumnName: 'geom'
                                 },
                             },
                             {
@@ -170,6 +172,8 @@ describe('/rest/dataSources', function () {
                                         type: 'vector',
                                         layerName: 'lv',
                                         tableName: 'tv',
+                                        fidColumnName: 'fid',
+                                        geometryColumnName: 'geom'
                                     },
                                     permissions: {
                                         activeUser: {
@@ -242,7 +246,7 @@ describe('/rest/dataSources', function () {
         });
     });
 
-    describe('POST ​/rest​/dataSources​/filtered​/spatial', function () {
+    describe('POST/rest/dataSources/filtered/spatial', function () {
         const tests = [
             {
                 name: 'all',
@@ -334,6 +338,8 @@ describe('/rest/dataSources', function () {
                                         type: 'vector',
                                         layerName: 'lv',
                                         tableName: 'tv',
+                                        fidColumnName: 'fid',
+                                        geometryColumnName: 'geom'
                                     },
                                     permissions: {
                                         activeUser: {

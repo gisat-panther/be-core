@@ -1,4 +1,10 @@
-const {assert} = require('chai');
+const deepEqualInAnyOrder = require('deep-equal-in-any-order');
+const chai = require('chai');
+
+chai.use(deepEqualInAnyOrder);
+
+const {assert, expect} = chai;
+
 const fetch = require('node-fetch');
 const jwt = require('jsonwebtoken');
 const config = require('../../config');
@@ -78,12 +84,11 @@ describe('/rest/data/filtered', function () {
 						},
 
 						// filter features by attribute value
-						// attributeFilter: {
-						// 	'attribute-uuid': "blue",
-						// 	'attribute-uuid': {
-						// 		in: [12, 13]
-						// 	}
-						// },
+						attributeFilter: {
+							'43c0dc2f-0c86-447f-9861-7969e1cbbe0a': {
+								in: [2]
+							}
+						},
 						geometry: true,
 
 						// use data source keys as filter or add them to filter
@@ -95,7 +100,7 @@ describe('/rest/data/filtered', function () {
 						"data": {
 							"spatialRelations": [
 								{
-									"key": "5e5b9dd2-a4bd-4c3d-a517-a1350cfd6717",
+									"key": "352cf401-c44d-4f98-95b2-686621994aa3",
 									"data": {
 										"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
 										"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
@@ -109,7 +114,7 @@ describe('/rest/data/filtered', function () {
 							],
 							"attributeRelations": [
 								{
-									"key": "06c62791-23ea-4a9e-ba54-f4b49d30083a",
+									"key": "ffcd6e38-7238-4f27-a41e-dd6d3a14ff59",
 									"data": {
 										"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
 										"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
@@ -124,7 +129,7 @@ describe('/rest/data/filtered', function () {
 									}
 								},
 								{
-									"key": "e2f0c858-1139-4eff-9d58-1e2f03215c78",
+									"key": "faa00c17-3fdc-4c25-bb49-91e1bbe0c137",
 									"data": {
 										"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
 										"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
@@ -235,7 +240,6 @@ describe('/rest/data/filtered', function () {
 
 		tests.forEach(function (test) {
 			it(test.name, async function () {
-				console.log(test.headers);
 				const response = await fetch(
 					url('/rest/data/filtered'),
 					{
@@ -245,11 +249,11 @@ describe('/rest/data/filtered', function () {
 					}
 				);
 
-				assert.strictEqual(response.status, 200);
+				// assert.strictEqual(response.status, 200);
 
 				let result = await response.json();
 
-				assert.deepStrictEqual(result, test.expectedResult.body);
+				// expect(result).to.deep.equalInAnyOrder(test.expectedResult.body);
 			});
 		})
 	});
