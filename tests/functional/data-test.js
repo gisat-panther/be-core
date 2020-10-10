@@ -1,8 +1,4 @@
-const deepEqualInAnyOrder = require('deep-equal-in-any-order');
 const chai = require('chai');
-
-chai.use(deepEqualInAnyOrder);
-
 const {assert, expect} = chai;
 
 const fetch = require('node-fetch');
