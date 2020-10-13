@@ -137,7 +137,7 @@ async function getDataForRelations(relations, filter) {
 	for (const spatialRelation of relations.spatial) {
 		const spatialDataSource = spatialRelation.spatialDataSource;
 
-		if(!allowedDataSourceTypes.includes(spatialDataSource.type)) {
+		if (!allowedDataSourceTypes.includes(spatialDataSource.type)) {
 			continue;
 		}
 
@@ -226,7 +226,7 @@ async function getDataForRelations(relations, filter) {
 		}
 
 		_.each(queryResult.rows, (row) => {
-			if(row.hasOwnProperty(spatialDataSource.geometryColumnName)) {
+			if (row.hasOwnProperty(spatialDataSource.geometryColumnName)) {
 				data.spatial[spatialDataSource.key].data[row[spatialDataSource.fidColumnName]] = JSON.parse(row[spatialDataSource.geometryColumnName]);
 			}
 
