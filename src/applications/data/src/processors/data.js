@@ -39,27 +39,29 @@ function formatData(rawData, filter) {
 		offset: (filter.relations && filter.relations.offset) || 0
 	};
 
-	rawData.spatial.forEach((spatialRelation) => {
-		formattedResponse.data.spatialDataSources.push({
-			key: spatialRelation.spatialDataSource.key,
-			data: {
-				..._.pick(spatialRelation.spatialDataSource, _.without(_.keys(spatialRelation.spatialDataSource), 'key'))
-			}
-		});
+	if (filter.data.relations) {
+		rawData.spatial.forEach((spatialRelation) => {
+			formattedResponse.data.spatialDataSources.push({
+				key: spatialRelation.spatialDataSource.key,
+				data: {
+					..._.pick(spatialRelation.spatialDataSource, _.without(_.keys(spatialRelation.spatialDataSource), 'key'))
+				}
+			});
 
-		formattedResponse.data.spatialRelations.push(spatialRelation);
-	})
+			formattedResponse.data.spatialRelations.push(spatialRelation);
+		})
 
-	rawData.attribute.forEach((attributeRelation) => {
-		formattedResponse.data.attributeDataSources.push({
-			key: attributeRelation.attributeDataSource.key,
-			data: {
-				..._.pick(attributeRelation.attributeDataSource, _.without(_.keys(attributeRelation.attributeDataSource), 'key'))
-			}
-		});
+		rawData.attribute.forEach((attributeRelation) => {
+			formattedResponse.data.attributeDataSources.push({
+				key: attributeRelation.attributeDataSource.key,
+				data: {
+					..._.pick(attributeRelation.attributeDataSource, _.without(_.keys(attributeRelation.attributeDataSource), 'key'))
+				}
+			});
 
-		formattedResponse.data.attributeRelations.push(attributeRelation);
-	})
+			formattedResponse.data.attributeRelations.push(attributeRelation);
+		})
+	}
 
 	formattedResponse.data.spatialRelations = _.slice(formattedResponse.data.spatialRelations, formattedResponse.offset, formattedResponse.offset + formattedResponse.limit);
 	formattedResponse.data.attributeRelations = _.slice(formattedResponse.data.attributeRelations, formattedResponse.offset, formattedResponse.offset + formattedResponse.limit);
