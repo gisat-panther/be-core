@@ -1,3 +1,15 @@
+# v0.0.12 (Wed Oct 14 2020)
+
+#### 🐾 Patch
+
+- Dependent type issues [#19](https://github.com/gisat-panther/be-core/pull/19) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.11 (Wed Oct 14 2020)
 
 #### 🐾 Patch
