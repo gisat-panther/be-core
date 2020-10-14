@@ -7,6 +7,7 @@ const h = require('../helper');
 const helper = require('../helper');
 
 const USER_KEY = '39ed471f-8383-4283-bb8a-303cb05cadef';
+const HASH_KEY = '2fe36872-e8e2-4b11-949b-19a7cb2abd6d';
 
 db.init();
 
@@ -202,6 +203,10 @@ describe('/rest/relations', function () {
 
     describe('POST /rest/relations/filtered/attribute', async function () {
         beforeEach(async function () {
+            await h.createRecord('"user"."hashes"', {
+                key: HASH_KEY,
+            })
+
             await Promise.all([
                 h.grantPermissions(
                     [
@@ -212,6 +217,7 @@ describe('/rest/relations', function () {
                     ],
                     USER_KEY
                 ),
+                h.grantHashPermission(h.PERMISSION_RELATIONS_ATTRIBUTE_VIEW, HASH_KEY)
             ]);
         });
 
@@ -311,6 +317,116 @@ describe('/rest/relations', function () {
                                             delete: false,
                                             update: false,
                                             view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        limit: 100,
+                        offset: 0,
+                        success: true,
+                        total: 1,
+                    },
+                },
+            },
+            {
+                name: 'cols with permissions without permission with hash',
+                before: async function () {
+                    const permissions = [
+                        '3c93904f-2cf8-4f57-9fbf-58079a9ae854',
+                    ];
+                    await Promise.all([
+                        helper.createRecord('"user"."permissions"', {
+                            key: permissions[0],
+                            resourceGroup: 'metadata',
+                            resourceType: 'scope',
+                            permission: 'view',
+                            resourceKey: scopeKey,
+                        }),
+                    ]);
+                    await helper.grantHashPermissions(permissions, HASH_KEY);
+                },
+                headers: new fetch.Headers({
+                    Hash: HASH_KEY,
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({}),
+                expectedResult: {
+                    status: 200,
+                    body: {
+                        data: {
+                            attribute: [],
+                        },
+                        limit: 100,
+                        offset: 0,
+                        success: true,
+                        total: 0,
+                    },
+                },
+            },
+            {
+                name: 'cols with permissions with hash',
+                before: async function () {
+                    const permissions = [
+                        '3c93904f-2cf8-4f57-9fbf-58079a9ae854',
+                        'd5ec756f-60c3-427d-ba36-c6599de5b9b4',
+                    ];
+                    await Promise.all([
+                        helper.createRecord('"user"."permissions"', {
+                            key: permissions[0],
+                            resourceGroup: 'metadata',
+                            resourceType: 'scope',
+                            permission: 'view',
+                            resourceKey: scopeKey,
+                        }),
+                        helper.createRecord('"user"."permissions"', {
+                            key: permissions[1],
+                            resourceGroup: 'metadata',
+                            resourceType: 'place',
+                            permission: 'view',
+                            resourceKey: placeKey,
+                        }),
+                    ]);
+                    await helper.grantHashPermissions(permissions, HASH_KEY);
+                },
+                headers: new fetch.Headers({
+                    Hash: HASH_KEY,
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({}),
+                expectedResult: {
+                    status: 200,
+                    body: {
+                        data: {
+                            attribute: [
+                                {
+                                    key: 'e896b814-47f9-4f56-b4bb-552d9d912134',
+                                    data: {
+                                        applicationKey: null,
+                                        areaTreeLevelKey: null,
+                                        attributeDataSourceKey: null,
+                                        attributeKey: null,
+                                        attributeSetKey: null,
+                                        caseKey: null,
+                                        fidColumnName: null,
+                                        layerTemplateKey: null,
+                                        periodKey: null,
+                                        placeKey: placeKey,
+                                        scenarioKey: null,
+                                        scopeKey: scopeKey,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
                                         },
                                         guest: {
                                             create: false,

@@ -278,7 +278,7 @@ function relationsQuery({plan, group, type}, alias) {
 /**
  * Creates limiting query based on list permissions for `type` of `user`.
  *
- * @param {{user: {realKey: string}, group: string, type: string}} context
+ * @param {{user: {realKey: string, hash: string}, group: string, type: string}} context
  * @param {string} alias Type table alias
  *
  * @returns {import('@imatic/pgqb').Sql}
@@ -288,9 +288,9 @@ function listPermissionQuery({user, group, type}, alias) {
         return {};
     }
 
-    return qb.merge(
+    const userQuery = qb.merge(
         qb.joins(
-            qb.join(
+            qb.leftJoin(
                 'user.v_userPermissions',
                 'tp',
                 qb.expr.and(
@@ -306,15 +306,53 @@ function listPermissionQuery({user, group, type}, alias) {
                     )
                 )
             )
-        ),
-        qb.where(qb.expr.eq('tp.userKey', qb.val.inlineParam(user.realKey)))
+        )
+    );
+    const userCondition = qb.expr.eq(
+        'tp.userKey',
+        qb.val.inlineParam(user.realKey)
+    );
+
+    if (user.hash == null) {
+        return qb.merge(userQuery, qb.where(userCondition));
+    }
+
+    const hashQuery = qb.merge(
+        qb.joins(
+            qb.leftJoin(
+                'user.v_hashPermissions',
+                'tph',
+                qb.expr.and(
+                    qb.expr.eq('tph.resourceGroup', qb.val.inlineParam(group)),
+                    qb.expr.eq('tph.resourceType', qb.val.inlineParam(type)),
+                    qb.expr.eq('tph.permission', qb.val.inlineParam('view')),
+                    qb.expr.or(
+                        qb.expr.null('tph.resourceKey'),
+                        qb.expr.eq(
+                            'tph.resourceKey',
+                            qb.val.raw(`"${alias}"."key"::text`)
+                        )
+                    )
+                )
+            )
+        )
+    );
+    const hashCondition = qb.expr.eq(
+        'tph.hashKey',
+        qb.val.inlineParam(user.hash)
+    );
+
+    return qb.append(
+        userQuery,
+        hashQuery,
+        qb.where(qb.expr.or(userCondition, hashCondition))
     );
 }
 
 /**
  * Creates limiting query based on list permissions for relations of `type` of `user`.
  *
- * @param {{user: {realKey: string}, group: string, type: string, plan: import('./compiler').Plan}} context
+ * @param {{user: {realKey: string, hash: string}, group: string, type: string, plan: import('./compiler').Plan}} context
  * @param {string} alias Type table alias
  *
  * @returns {import('@imatic/pgqb').Sql}
@@ -328,8 +366,7 @@ function listPermissionRelationQuery({user, plan, group, type}, alias) {
     return qb.append(
         ..._.map(restrictedColumns, (col, name) => {
             const joinAlias = 'tp_' + name;
-
-            return qb.merge(
+            const userQuery = qb.merge(
                 qb.joins(
                     qb.leftJoin(
                         'user.v_userPermissions',
@@ -356,19 +393,68 @@ function listPermissionRelationQuery({user, plan, group, type}, alias) {
                             )
                         )
                     )
+                )
+            );
+            const userCondition = qb.expr.or(
+                qb.expr.and(
+                    qb.expr.notNull(`${joinAlias}.userKey`),
+                    qb.expr.eq(
+                        `${joinAlias}.userKey`,
+                        qb.val.inlineParam(user.realKey)
+                    )
                 ),
-                qb.where(
-                    qb.expr.or(
+                qb.expr.null(`${alias}.${name}`)
+            );
+
+            if (user.hash == null) {
+                return qb.merge(userQuery, qb.where(userCondition));
+            }
+
+            const hashJoinAlias = 'tph_' + name;
+            const hashQuery = qb.merge(
+                qb.joins(
+                    qb.leftJoin(
+                        'user.v_hashPermissions',
+                        hashJoinAlias,
                         qb.expr.and(
-                            qb.expr.notNull(`${joinAlias}.userKey`),
                             qb.expr.eq(
-                                `${joinAlias}.userKey`,
-                                qb.val.inlineParam(user.realKey)
+                                `${hashJoinAlias}.resourceGroup`,
+                                qb.val.inlineParam(col.relation.resourceGroup)
+                            ),
+                            qb.expr.eq(
+                                `${hashJoinAlias}.resourceType`,
+                                qb.val.inlineParam(col.relation.resourceType)
+                            ),
+                            qb.expr.eq(
+                                `${hashJoinAlias}.permission`,
+                                qb.val.inlineParam('view')
+                            ),
+                            qb.expr.or(
+                                qb.expr.null(`${hashJoinAlias}.resourceKey`),
+                                qb.expr.eq(
+                                    `${hashJoinAlias}.resourceKey`,
+                                    qb.val.raw(`"${alias}"."${name}"::text`)
+                                )
                             )
-                        ),
-                        qb.expr.null(`${alias}.${name}`)
+                        )
                     )
                 )
+            );
+            const hashCondition = qb.expr.or(
+                qb.expr.and(
+                    qb.expr.notNull(`${hashJoinAlias}.hashKey`),
+                    qb.expr.eq(
+                        `${hashJoinAlias}.hashKey`,
+                        qb.val.inlineParam(user.hash)
+                    )
+                ),
+                qb.expr.null(`${alias}.${name}`)
+            );
+
+            return qb.append(
+                userQuery,
+                hashQuery,
+                qb.where(qb.expr.or(userCondition, hashCondition))
             );
         })
     );
@@ -1320,7 +1406,7 @@ async function updateRecordRelation({plan, group, type, client}, record) {
  */
 function updateType({plan, group, type, client}, record) {
     const typeSchema = plan[group][type];
-    if (typeSchema.type == null) {
+    if (typeSchema.type == null || record.type == null) {
         return Promise.resolve(null);
     }
 

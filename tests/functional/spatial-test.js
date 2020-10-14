@@ -719,6 +719,63 @@ describe('/rest/dataSources', function () {
                     },
                 },
             },
+            {
+                name: 'create new dependent type',
+                headers: new fetch.Headers({
+                    Authorization: createAdminToken(),
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    data: {
+                        spatial: [
+                            {
+                                key: '2780786e-56d6-4fc0-a006-8179db9e7697',
+                                data: {
+                                    nameInternal: 'vector type',
+                                    attribution: 'vattr',
+                                    type: 'vector',
+                                    layerName: 'lv',
+                                    tableName: 'tv',
+                                },
+                            },
+                        ],
+                    },
+                }),
+                expectedResult: {
+                    body: {
+                        data: {
+                            spatial: [
+                                {
+                                    data: {
+                                        attribution: 'vattr',
+                                        layerName: 'lv',
+                                        nameInternal: 'vector type',
+                                        tableName: 'tv',
+                                        type: 'vector',
+                                    },
+                                    key: '2780786e-56d6-4fc0-a006-8179db9e7697',
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: true,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                    },
+                },
+            },
         ];
 
         tests.forEach((test) => {
