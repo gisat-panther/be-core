@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+
+const cache = require('../src/cache');
+
+if (process.argv.length !== 4) {
+    throw new Error('Script expects exactly two parameters - key, value.');
+}
+
+const key = process.argv[2];
+const value = process.argv[3];
+
+const timeout = setTimeout(() => {}, 2147483647);
+
+cache
+    .set(key, value, 3600)
+    .catch(console.error)
+    .finally(() => {
+        clearTimeout(timeout);
+        process.exit();
+    });
