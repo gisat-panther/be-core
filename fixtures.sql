@@ -12,9 +12,15 @@ TRUNCATE
     "dataSources"."vector",
     "dataSources"."wms",
     "dataSources"."wmts",
+    "dataSources"."attributeDataSource",
     "metadata"."place",
     "metadata"."scope",
+    "metadata"."period",
+    "metadata"."style",
+    "metadata"."layerTemplate",
+    "metadata"."attribute",
     "relations"."attributeDataSourceRelation",
+    "relations"."spatialDataSourceRelation",
     "specific"."lpisChangeCase"
     CASCADE;
 
