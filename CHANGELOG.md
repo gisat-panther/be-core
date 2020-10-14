@@ -1,3 +1,15 @@
+# v0.0.14 (Wed Oct 14 2020)
+
+#### 🐾 Patch
+
+- Accept `null` in `in` and `notin` filters [#21](https://github.com/gisat-panther/be-core/pull/21) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.13 (Wed Oct 14 2020)
 
 #### 🐾 Patch
