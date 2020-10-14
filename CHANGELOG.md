@@ -1,3 +1,15 @@
+# v0.0.10 (Fri Oct 09 2020)
+
+#### 🐾 Patch
+
+- Relation filter [#17](https://github.com/gisat-panther/be-core/pull/17) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.9 (Thu Oct 08 2020)
 
 #### 🐾 Patch
