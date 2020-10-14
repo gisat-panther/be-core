@@ -39,16 +39,42 @@ const filterOperatorToSqlExpr = {
         );
     },
     in: function (filter) {
-        return qb.expr.in(
-            filter.column,
-            filter.value.map((v) => qb.val.inlineParam(v))
-        );
+        const exprs = [];
+
+        const nonNullValues = filter.value.filter((v) => v != null);
+        if (nonNullValues.length > 0) {
+            exprs.push(
+                qb.expr.in(
+                    filter.column,
+                    nonNullValues.map((v) => qb.val.inlineParam(v))
+                )
+            );
+        }
+
+        if (nonNullValues.length !== filter.value.length) {
+            exprs.push(qb.expr.null(filter.column));
+        }
+
+        return qb.expr.or(...exprs);
     },
     notin: function (filter) {
-        return qb.expr.notin(
-            filter.column,
-            filter.value.map((v) => qb.val.inlineParam(v))
-        );
+        const exprs = [];
+
+        const nonNullValues = filter.value.filter((v) => v != null);
+        if (nonNullValues.length > 0) {
+            exprs.push(
+                qb.expr.notIn(
+                    filter.column,
+                    nonNullValues.map((v) => qb.val.inlineParam(v))
+                )
+            );
+        }
+
+        if (nonNullValues.length !== filter.value.length) {
+            exprs.push(qb.expr.notNull(filter.column));
+        }
+
+        return qb.expr.and(...exprs);
     },
     eq: function (filter) {
         if (filter.value === null) {

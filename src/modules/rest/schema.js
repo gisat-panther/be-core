@@ -18,8 +18,8 @@ function colFilterSchema(col) {
                     .keys({
                         like: schema,
                         eq: schema,
-                        in: Joi.array().items(schema).min(1),
-                        notin: Joi.array().items(schema).min(1),
+                        in: Joi.array().items(schema.allow(null)).min(1),
+                        notin: Joi.array().items(schema.allow(null)).min(1),
                     })
                     .length(1)
             );
@@ -29,8 +29,8 @@ function colFilterSchema(col) {
                 Joi.object()
                     .keys({
                         eq: schema,
-                        in: Joi.array().items(schema).min(1),
-                        notin: Joi.array().items(schema).min(1),
+                        in: Joi.array().items(schema.allow(null)).min(1),
+                        notin: Joi.array().items(schema.allow(null)).min(1),
                     })
                     .length(1)
             );
@@ -42,8 +42,8 @@ function colFilterSchema(col) {
                         eq: schema,
                         timefrom: schema,
                         timeto: schema,
-                        in: Joi.array().items(schema).min(1),
-                        notin: Joi.array().items(schema).min(1),
+                        in: Joi.array().items(schema.allow(null)).min(1),
+                        notin: Joi.array().items(schema.allow(null)).min(1),
                     })
                     .length(1)
             );
@@ -56,8 +56,8 @@ function colFilterSchema(col) {
 
             return Joi.object().keys({
                 eq: itemSchema,
-                in: Joi.array().items(itemSchema).min(1),
-                notin: Joi.array().items(itemSchema).min(1),
+                in: Joi.array().items(itemSchema.allow(null)).min(1),
+                notin: Joi.array().items(itemSchema.allow(null)).min(1),
             });
     }
 
