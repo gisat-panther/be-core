@@ -47,10 +47,6 @@ const ptr4 = {
 			clientId: null,
 			clientSecret: null,
 		}
-	},
-	memcached: {
-		location: 'localhost:11211',
-		options: {}
 	}
 };
 

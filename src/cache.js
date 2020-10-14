@@ -1,42 +1,33 @@
-const config = require('../config');
-const Memcached = require('memcached');
-
-const cache = new Memcached(
-    config.memcached.location,
-    config.memcached.options
-);
+const db = require('./db');
+const _ = require('lodash/fp');
 
 /**
  * @param {string} key
  * @returns {Promise<any>}
  */
 function get(key) {
-    return new Promise((resolve, reject) => {
-        cache.get(key, function (err, data) {
-            if (err != null) {
-                return reject(err);
-            }
-
-            resolve(data);
-        });
-    });
+    return db
+        .query('SELECT "value" FROM "public"."cache" WHERE "key" = $1', [key])
+        .then(_.get(['rows', 0, 'value']));
 }
 
 /**
  * @param {string} key
  * @param {any} value
- * @param {number} lifetime
  */
-function set(key, value, lifetime) {
-    return new Promise((resolve, reject) => {
-        cache.set(key, value, lifetime, function (err) {
-            if (err != null) {
-                return reject(err);
-            }
-
-            resolve();
-        });
-    });
+function set(key, value) {
+    return db
+        .query(
+            `
+INSERT INTO "public"."cache"
+  ("key", "value")
+VALUES
+  ($1, $2)
+ON CONFLICT ("key")
+DO UPDATE SET "value" = EXCLUDED."value"`,
+            [key, JSON.stringify(value)]
+        )
+        .then(() => null);
 }
 
 module.exports = {
