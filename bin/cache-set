@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+
+const cache = require('../src/cache');
+const db = require('../src/db');
+db.init();
+
+if (process.argv.length !== 4) {
+    throw new Error('Script expects exactly two parameters - key, value.');
+}
+
+const key = process.argv[2];
+const value = process.argv[3];
+
+cache
+    .set(key, value)
+    .catch(console.error)
+    .finally(() => {
+        process.exit();
+    });

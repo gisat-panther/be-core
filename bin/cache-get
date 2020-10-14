@@ -1,0 +1,19 @@
+#!/usr/bin/env node
+
+const cache = require('../src/cache');
+const db = require('../src/db');
+db.init();
+
+if (process.argv.length !== 3) {
+    throw new Error('Script expects exactly one parameter - key.');
+}
+
+const key = process.argv[2];
+
+cache
+    .get(key)
+    .then(console.log)
+    .catch(console.error)
+    .finally(() => {
+        process.exit();
+    });
