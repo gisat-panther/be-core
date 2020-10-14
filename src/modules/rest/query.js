@@ -1406,7 +1406,7 @@ async function updateRecordRelation({plan, group, type, client}, record) {
  */
 function updateType({plan, group, type, client}, record) {
     const typeSchema = plan[group][type];
-    if (typeSchema.type == null) {
+    if (typeSchema.type == null || record.type == null) {
         return Promise.resolve(null);
     }
 
