@@ -1,3 +1,15 @@
+# v0.0.13 (Wed Oct 14 2020)
+
+#### 🐾 Patch
+
+- Add cache [#20](https://github.com/gisat-panther/be-core/pull/20) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.12 (Wed Oct 14 2020)
 
 #### 🐾 Patch
