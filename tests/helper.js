@@ -9,6 +9,8 @@ const PERMISSION_RELATIONS_ATTRIBUTE_VIEW =
 const PERMISSION_RELATIONS_ATTRIBUTE_DELETE =
     '0585eda7-de9e-4aab-8f47-1c1085804054';
 
+const PERMISSION_METADATA_CASE_VIEW = 'ed6a9cb0-7662-4d85-bb9a-ed5b78396008';
+
 const PERMISSION_METADATA_SCOPE_VIEW = 'a307e381-8c12-4d0e-9934-0d739cce7fa2';
 
 const PERMISSION_METADATA_PLACE_VIEW = 'd221213b-a956-43b6-989e-32b73bee90f6';
@@ -41,6 +43,48 @@ function prevScope() {
  */
 function pushChange(change) {
     changes[changesIndex].push(change);
+}
+
+/**
+ * @param {string} permissionKey
+ * @param {string} hashKey
+ */
+function removeHashPermission(permissionKey, hashKey) {
+    return db.query(
+        `DELETE FROM "user"."hashPermissions" WHERE "hashKey" = $1 AND "permissionKey" = $2`,
+        [hashKey, permissionKey]
+    );
+}
+
+/**
+ * @param {string} permissionKey
+ * @param {string} hashKey
+ */
+async function grantHashPermission(permissionKey, hashKey) {
+    pushChange([removeHashPermission, permissionKey, hashKey]);
+
+    return db.query(
+        `
+INSERT INTO "user"."hashPermissions"
+  ("hashKey", "permissionKey")
+VALUES
+  ($1, $2)`,
+        [hashKey, permissionKey]
+    );
+}
+
+/**
+ * @param {string[]} permissionKeys
+ * @param {string} hashKey
+ */
+async function grantHashPermissions(permissionKeys, hashKey) {
+    permissionKeys.forEach((p) => {
+        pushChange([removeHashPermission, p, hashKey]);
+    });
+
+    await Promise.all(
+        permissionKeys.map((p) => grantHashPermission(p, hashKey))
+    );
 }
 
 /**
@@ -112,6 +156,7 @@ async function createRecord(table, columns) {
  * Reverts all changes made by functions in this module.
  */
 async function revertChanges() {
+    // return;
     for (const change of changes[changesIndex].reverse()) {
         await change[0].apply(null, change.splice(1));
     }
@@ -125,11 +170,14 @@ module.exports = {
     createRecord,
     grantPermission,
     grantPermissions,
+    grantHashPermission,
+    grantHashPermissions,
     revertChanges,
     PERMISSION_RELATIONS_ATTRIBUTE_CREATE,
     PERMISSION_RELATIONS_ATTRIBUTE_DELETE,
     PERMISSION_RELATIONS_ATTRIBUTE_UPDATE,
     PERMISSION_RELATIONS_ATTRIBUTE_VIEW,
+    PERMISSION_METADATA_CASE_VIEW,
     PERMISSION_METADATA_PERIOD_VIEW,
     PERMISSION_METADATA_PLACE_VIEW,
     PERMISSION_METADATA_SCOPE_VIEW,

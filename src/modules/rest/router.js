@@ -3,6 +3,7 @@ const userMiddleware = require('../../middlewares/user');
 const authMiddleware = require('../../middlewares/auth');
 const autoLoginMiddleware = require('../../middlewares/auto-login');
 const createDependentTypeMiddleware = require('./middlewares/dependentType');
+const hashMiddleware = require('../../middlewares/hash');
 const permission = require('../../permission');
 const _ = require('lodash');
 const _fp = require('lodash/fp');
@@ -416,6 +417,7 @@ function createGroup(plan, group) {
                 userMiddleware,
                 autoLoginMiddleware,
                 authMiddleware,
+                hashMiddleware,
             ],
             handler: async function (request, response) {
                 const types = request.parameters.path.types;

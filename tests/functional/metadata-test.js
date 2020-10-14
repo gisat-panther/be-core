@@ -7,6 +7,8 @@ const h = require('../helper');
 
 db.init();
 
+const HASH_KEY = '2fe36872-e8e2-4b11-949b-19a7cb2abd6d';
+
 function url(path) {
     return 'http://localhost:' + config.clusterPorts[0] + path;
 }
@@ -44,6 +46,9 @@ describe('/rest/metadata', function () {
                 h.createRecord('"metadata"."case"', {
                     key: '9466d6c1-6596-49c0-9729-0e3ff3ad08a1',
                 }),
+                h.createRecord('"user"."hashes"', {
+                    key: HASH_KEY,
+                }),
             ]);
 
             await Promise.all([
@@ -63,9 +68,16 @@ describe('/rest/metadata', function () {
                     tagKey: 'ce42e748-16f3-48f5-8152-24f98b4d8fa1',
                 }),
             ]);
+
+            h.newScope();
+        });
+
+        afterEach(async function () {
+            h.revertChanges();
         });
 
         after(async function () {
+            h.prevScope();
             await h.revertChanges();
         });
 
@@ -257,10 +269,116 @@ describe('/rest/metadata', function () {
                     },
                 },
             },
+            {
+                name: 'all for guest without hash',
+                headers: new fetch.Headers({
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    order: [['key', 'ascending']],
+                }),
+                expectedResult: {
+                    status: 200,
+                    body: {
+                        data: {
+                            case: [],
+                        },
+                        limit: 100,
+                        offset: 0,
+                        success: true,
+                        total: 0,
+                    },
+                },
+            },
+            {
+                name: 'all for guest with hash',
+                headers: new fetch.Headers({
+                    'Content-Type': 'application/json',
+                    Hash: HASH_KEY,
+                }),
+                before: async () => {
+                    await Promise.all([
+                        h.grantHashPermissions(
+                            [h.PERMISSION_METADATA_CASE_VIEW],
+                            HASH_KEY
+                        ),
+                    ]);
+                },
+                body: JSON.stringify({
+                    order: [['key', 'ascending']],
+                }),
+                expectedResult: {
+                    status: 200,
+                    body: {
+                        data: {
+                            case: [
+                                {
+                                    key: '9466d6c1-6596-49c0-9729-0e3ff3ad08a0',
+                                    data: {
+                                        applicationKey:
+                                            'ce42e748-16f3-48f5-8152-24f98b4d8f70',
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        tagKeys: [
+                                            'ce42e748-16f3-48f5-8152-24f98b4d8fa0',
+                                            'ce42e748-16f3-48f5-8152-24f98b4d8fa1',
+                                        ],
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: false,
+                                            delete: false,
+                                            update: true,
+                                            view: false,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: true,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                                {
+                                    key: '9466d6c1-6596-49c0-9729-0e3ff3ad08a1',
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        tagKeys: null,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: false,
+                                            delete: false,
+                                            update: true,
+                                            view: false,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: true,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        limit: 100,
+                        offset: 0,
+                        success: true,
+                        total: 2,
+                    },
+                },
+            },
         ];
 
         tests.forEach((test) => {
             it(test.name, async function () {
+                test.before && (await test.before());
+
                 const response = await fetch(
                     url('/rest/metadata/filtered/case'),
                     {
