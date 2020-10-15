@@ -317,8 +317,6 @@ module.exports = {
                         'nameInternal',
                         'description',
                         'period',
-                        'start',
-                        'end',
                     ],
                 },
                 create: {
@@ -328,8 +326,6 @@ module.exports = {
                         'nameInternal',
                         'description',
                         'period',
-                        'start',
-                        'end',
                     ],
                 },
                 update: {
@@ -339,8 +335,6 @@ module.exports = {
                         'nameInternal',
                         'description',
                         'period',
-                        'start',
-                        'end',
                     ],
                 },
             },
@@ -364,14 +358,6 @@ module.exports = {
                 period: {
                     defaultValue: null,
                     schema: Joi.string(),
-                },
-                start: {
-                    defaultValue: null,
-                    schema: Joi.date(),
-                },
-                end: {
-                    defaultValue: null,
-                    schema: Joi.date(),
                 },
             },
             relations: {

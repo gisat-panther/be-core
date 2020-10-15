@@ -1,0 +1,4 @@
+ALTER TABLE "metadata"."period"
+  DROP COLUMN "start" TIMESTAMPTZ,
+  DROP COLUMN "end" TIMESTAMPTZ,
+  DROP COLUMN "periodRange" TSRANGE;
