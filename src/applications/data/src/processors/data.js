@@ -119,11 +119,7 @@ async function getPopulatedRelationsByFilter(filter, user) {
 }
 
 function getGeometryTolerance(level) {
-	let resolution = ptrTileGrid.constants.resolutions[level];
-	if(resolution < 1) {
-		resolution = 1;
-	}
-	return resolution;
+	return (ptrTileGrid.constants.resolutions[level] * 111000) / 5;
 }
 
 async function getDataForRelations(relations, filter) {
