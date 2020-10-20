@@ -118,6 +118,14 @@ async function getPopulatedRelationsByFilter(filter, user) {
 	return relations;
 }
 
+function getGeometryTolerance(level) {
+	let resolution = ptrTileGrid.constants.resolutions[level];
+	if(resolution < 1) {
+		resolution = 1;
+	}
+	return resolution;
+}
+
 async function getDataForRelations(relations, filter) {
 	const data = {
 		spatial: {},
@@ -127,6 +135,7 @@ async function getDataForRelations(relations, filter) {
 	const allowedDataSourceTypes = ["vector"];
 
 	const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.level);
+	const geometryTolerance = getGeometryTolerance(filter.data.spatialFilter.level);
 
 	const tileGeometries = {};
 	_.each(filter.data.spatialFilter.tiles, (tile) => {
@@ -148,7 +157,7 @@ async function getDataForRelations(relations, filter) {
 		columns.push(`"${spatialDataSource.key}"."${spatialDataSource.fidColumnName}"`);
 
 		if (filter.data.geometry) {
-			columns.push(`st_asgeojson("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}") AS "${spatialDataSource.geometryColumnName}"`);
+			columns.push(`st_asgeojson(st_simplifypreservetopology("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}", ${geometryTolerance})) AS "${spatialDataSource.geometryColumnName}"`);
 		}
 
 		const relatedAttributeRelations = _.filter(relations.attribute, (attributeRelation) => {
