@@ -1297,10 +1297,10 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
         return Promise.resolve();
     }
 
-    const queryColumns = _fp.getOr(
-        [],
-        ['context', 'create', 'queryColumns'],
-        typeSchema
+    const queryColumns = _fp.filter(
+        (col) =>
+            _fp.some((input) => _.has(data, input), columnsConfig[col].inputs),
+        _fp.getOr([], ['context', 'create', 'queryColumns'], typeSchema)
     );
     const enrichedData = _fp.merge(
         data,

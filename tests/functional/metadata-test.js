@@ -611,6 +611,62 @@ describe('/rest/metadata', function () {
                     },
                 },
             },
+            {
+                name: 'update period omitting `period` prop',
+                body: JSON.stringify({
+                    data: {
+                        period: [
+                            {
+                                key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                data: {
+                                    nameDisplay: 'dis',
+                                },
+                            },
+                        ],
+                    },
+                }),
+                expectedResult: {
+                    status: 200,
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: 'dis',
+                                        nameInternal: null,
+                                        period: '2012-03-01/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                    },
+                    periodRanges: {
+                        '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1':
+                            '["2012-03-01 00:00:00","2014-03-01 00:00:00"]',
+                    },
+                },
+            },
         ];
 
         tests.forEach((test) => {
