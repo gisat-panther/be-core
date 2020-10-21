@@ -27,6 +27,12 @@ function colFilterSchema(col) {
                     })
                     .length(1)
             );
+        case 'isoDuration':
+            return Joi.object()
+                .keys({
+                    overlaps: schema,
+                })
+                .length(1);
         case 'number':
             return Joi.alternatives().try(
                 schema,

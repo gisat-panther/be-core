@@ -1,24 +1,9 @@
-const Joi = require('@hapi/joi');
+const Joi = require('../../joi');
 const uuid = require('../../uuid');
 const config = require('../../../config');
 const qb = require('@imatic/pgqb');
 const {SQL} = require('sql-template-strings');
-const momentInterval = require('moment-interval');
-
-function toISOStringIgnoringTz(moment) {
-    return moment.format('YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
-}
-
-function intervalToRange(interval) {
-    if (interval == null) {
-        return null;
-    }
-    const minterval = momentInterval.interval(interval);
-
-    return `["${toISOStringIgnoringTz(
-        minterval.start()
-    )}","${toISOStringIgnoringTz(minterval.end())}"]`;
-}
+const p = require('../../postgres');
 
 module.exports = {
     user: {
@@ -373,14 +358,19 @@ module.exports = {
                 },
                 period: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.isoDuration(),
+                    filter: ({alias, value, operator}) => ({
+                        column: alias + '.periodRange',
+                        value: p.intervalToRange(value),
+                        operator,
+                    }),
                 },
                 periodRange: {
                     inputs: ['period'],
                     defaultValue: null,
                     modifyExpr: function ({record}) {
                         return qb.val.inlineParam(
-                            intervalToRange(record.period)
+                            p.intervalToRange(record.period)
                         );
                     },
                 },

@@ -14,6 +14,7 @@ const qb = require('@imatic/pgqb');
  * @typedef {Object} Column
  * @property {any} defaultValue
  * @property {object=} schema
+ * @property {Function=} filter
  * @property {import('@imatic/pgqb').Value} selectExpr
  * @property {import('@imatic/pgqb').Value} modifyExpr
  * @property {ColumnRelation=} relation
@@ -162,6 +163,9 @@ function compileGroup(group) {
  *
  * ### defaultValue (optional)
  *   Default value if none was provided (https://hapi.dev/module/joi/api/#anydefaultvalue).
+ *
+ * ### filter (optional)
+ *  Creates filter object.
  *
  * ### selectExpr (optional)
  *   Returns query expression used as a value in list queries.
