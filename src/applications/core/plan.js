@@ -3,6 +3,22 @@ const uuid = require('../../uuid');
 const config = require('../../../config');
 const qb = require('@imatic/pgqb');
 const {SQL} = require('sql-template-strings');
+const momentInterval = require('moment-interval');
+
+function toISOStringIgnoringTz(moment) {
+    return moment.format('YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
+}
+
+function intervalToRange(interval) {
+    if (interval == null) {
+        return null;
+    }
+    const minterval = momentInterval.interval(interval);
+
+    return `["${toISOStringIgnoringTz(
+        minterval.start()
+    )}","${toISOStringIgnoringTz(minterval.end())}"]`;
+}
 
 module.exports = {
     user: {
@@ -358,6 +374,15 @@ module.exports = {
                 period: {
                     defaultValue: null,
                     schema: Joi.string(),
+                },
+                periodRange: {
+                    inputs: ['period'],
+                    defaultValue: null,
+                    modifyExpr: function ({record}) {
+                        return qb.val.inlineParam(
+                            intervalToRange(record.period)
+                        );
+                    },
                 },
             },
             relations: {

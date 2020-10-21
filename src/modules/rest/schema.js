@@ -8,7 +8,11 @@ const _fp = require('lodash/fp');
  * @returns {object|null}
  */
 function colFilterSchema(col) {
-    const type = col.schema.type;
+    const type = _fp.get(['schema', 'type'], col);
+    if (type == null) {
+        return null;
+    }
+
     const schema = col.schema;
     switch (type) {
         case 'string':

@@ -1024,7 +1024,9 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
 function recordValues(record, columns, columnsConfig) {
     const data = {...record.data, ...{key: record.key}};
 
-    return columns.map((c) => columnsConfig[c].modifyExpr({value: data[c]}));
+    return columns.map((c) =>
+        columnsConfig[c].modifyExpr({value: data[c], record: data})
+    );
 }
 
 /**
@@ -1160,8 +1162,11 @@ async function create({plan, group, type, client}, records) {
 
     const columnsConfig = typeSchema.columns;
     const validColumns = new Set(Object.keys(columnsConfig));
-    const columns = ['key', ...Object.keys(records[0].data)].filter((c) =>
-        validColumns.has(c)
+    const columns = _.concat(
+        ['key', ...Object.keys(records[0].data)].filter((c) =>
+            validColumns.has(c)
+        ),
+        _fp.getOr([], ['context', 'create', 'queryColumns'], typeSchema)
     );
     const table = _.get(typeSchema, 'table', type);
 
@@ -1265,7 +1270,10 @@ async function create({plan, group, type, client}, records) {
  */
 function updateExprs(recordData, columnsConfig) {
     return Object.entries(recordData).map(([col, value]) => {
-        return qb.expr.eq(col, columnsConfig[col].modifyExpr({value}));
+        return qb.expr.eq(
+            col,
+            columnsConfig[col].modifyExpr({value, record: recordData})
+        );
     });
 }
 
@@ -1289,10 +1297,20 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
         return Promise.resolve();
     }
 
+    const queryColumns = _fp.getOr(
+        [],
+        ['context', 'create', 'queryColumns'],
+        typeSchema
+    );
+    const enrichedData = _fp.merge(
+        data,
+        _fp.zipObject(queryColumns, new Array(queryColumns.length))
+    );
+
     const sqlMap = qb.append(
         qb.merge(
             qb.update(`${group}.${table}`, 'r'),
-            qb.set(updateExprs(data, columnsConfig)),
+            qb.set(updateExprs(enrichedData, columnsConfig)),
             qb.where(qb.expr.eq('r.key', qb.val.inlineParam(record.key)))
         ),
         typeKey == null
