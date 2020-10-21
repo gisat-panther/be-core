@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../../config');
 const db = require('../../src/db');
 const h = require('../helper');
+const _ = require('lodash/fp');
 
 db.init();
 
@@ -25,6 +26,20 @@ function createAdminToken() {
             config.jwt.secret
         )
     );
+}
+
+function periodRanges(periodKeys) {
+    return db
+        .query(
+            'SELECT "key", "periodRange" FROM "metadata"."period" WHERE "key" = ANY($1)',
+            [periodKeys]
+        )
+        .then((res) =>
+            _.zipObj(
+                _.map(_.prop('key'), res.rows),
+                _.map(_.prop('periodRange'), res.rows)
+            )
+        );
 }
 
 describe('/rest/metadata', function () {
@@ -393,6 +408,235 @@ describe('/rest/metadata', function () {
                 const data = await response.json();
                 delete data.changes;
                 assert.deepStrictEqual(data, test.expectedResult.body);
+            });
+        });
+    });
+
+    describe('POST /rest/metadata', function () {
+        const tests = [
+            {
+                name: 'create period without `period` prop',
+                body: JSON.stringify({
+                    data: {
+                        period: [
+                            {
+                                key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d0',
+                                data: {},
+                            },
+                        ],
+                    },
+                }),
+                expectedResult: {
+                    status: 201,
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d0',
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: null,
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                    },
+                    periodRanges: {
+                        '7eeea607-d9d7-4cf2-b765-fbcb1177e2d0': null,
+                    },
+                },
+            },
+            {
+                name: 'create period with `period` prop',
+                body: JSON.stringify({
+                    data: {
+                        period: [
+                            {
+                                key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                data: {
+                                    period: '2012-03-01/P1Y',
+                                },
+                            },
+                        ],
+                    },
+                }),
+                expectedResult: {
+                    status: 201,
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2012-03-01/P1Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                    },
+                    periodRanges: {
+                        '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1':
+                            '["2012-03-01 00:00:00","2013-03-01 00:00:00"]',
+                    },
+                },
+            },
+        ];
+
+        tests.forEach((test) => {
+            it(test.name, async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'POST',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: test.body,
+                });
+
+                assert.strictEqual(response.status, test.expectedResult.status);
+
+                const data = await response.json();
+                assert.deepStrictEqual(data, test.expectedResult.body);
+
+                const periods = _.get(
+                    ['data', 'period'],
+                    test.expectedResult.body
+                );
+                const periodKeys = _.map((period) => period.key, periods);
+                const pr = await periodRanges(periodKeys);
+
+                assert.deepStrictEqual(pr, test.expectedResult.periodRanges);
+            });
+        });
+    });
+
+    describe('PUT /rest/metadata', function () {
+        const tests = [
+            {
+                name: 'update period with `period` prop',
+                body: JSON.stringify({
+                    data: {
+                        period: [
+                            {
+                                key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                data: {
+                                    period: '2012-03-01/P2Y',
+                                },
+                            },
+                        ],
+                    },
+                }),
+                expectedResult: {
+                    status: 200,
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2012-03-01/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                    },
+                    periodRanges: {
+                        '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1':
+                            '["2012-03-01 00:00:00","2014-03-01 00:00:00"]',
+                    },
+                },
+            },
+        ];
+
+        tests.forEach((test) => {
+            it(test.name, async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'PUT',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: test.body,
+                });
+
+                assert.strictEqual(response.status, test.expectedResult.status);
+
+                const data = await response.json();
+                assert.deepStrictEqual(data, test.expectedResult.body);
+
+                const periods = _.get(
+                    ['data', 'period'],
+                    test.expectedResult.body
+                );
+                const periodKeys = _.map((period) => period.key, periods);
+                const pr = await periodRanges(periodKeys);
+
+                assert.deepStrictEqual(pr, test.expectedResult.periodRanges);
             });
         });
     });

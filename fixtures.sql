@@ -14,6 +14,7 @@ TRUNCATE
   "dataSources"."wmts",
   "metadata"."place",
   "metadata"."scope",
+  "metadata"."period",
   "relations"."attributeDataSourceRelation",
   "specific"."lpisChangeCase"
   CASCADE;
@@ -65,6 +66,8 @@ VALUES
   ('d221213b-a956-43b6-989e-32b73bee90f6', null, 'metadata', 'place', 'view'),
   ('6a7df854-4dc0-4093-b8a0-15e2e0a91ed0', null, 'metadata', 'place', 'delete'),
   ('0cc99d81-8038-49a0-8f3a-b5bd55b94513', null, 'metadata', 'period', 'view'),
+  ('a6463b68-ef2d-4550-a3b7-67be1a7a0edf', null, 'metadata', 'period', 'create'),
+  ('6d594989-2adb-44cc-8915-9c12dad907ba', null, 'metadata', 'period', 'update'),
   ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'user', 'create'),
   ('913e3bae-e5dd-4600-a854-ca7b65199bbf', null, 'user', 'user', 'update'),
   ('9ac648e7-00d0-4196-be44-9ae2d7cfb598', null, 'user', 'user', 'delete'),
@@ -89,6 +92,12 @@ VALUES
   ('3e3f4300-1336-4043-baa3-b65a025c2d83', '0da66083-77ad-4e66-9338-0c8344de9eba'),
   -- user: admin@example.com             ,  case:view
   ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', 'ed6a9cb0-7662-4d85-bb9a-ed5b78396008'),
+  -- user: admin@example.com             ,  period:view
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '0cc99d81-8038-49a0-8f3a-b5bd55b94513'),
+  -- user: admin@example.com             ,  period:create
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', 'a6463b68-ef2d-4550-a3b7-67be1a7a0edf'),
+  -- user: admin@example.com             ,  period:update
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '6d594989-2adb-44cc-8915-9c12dad907ba'),
   -- user: admin@example.com             ,  users:view
   ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '828af8c1-5438-475b-9f91-af432745e83f'),
   -- user: admin@example.com             ,  users:create
