@@ -94,10 +94,16 @@ function compileType(type, name) {
             ? _.identity
             : _.update(['type', 'types'], compileTypes),
         (type) => {
-            const queryColumns = _.pickBy(
-                (col) => _.size(col.inputs) > 0,
-                type.columns
-            );
+            const queryColumns = _.pickBy((col) => {
+                const size = _.size(col.inputs);
+                if (size > 1) {
+                    throw new Error(
+                        'Multiple column inputs are not implemented.'
+                    );
+                }
+
+                return size > 0;
+            }, type.columns);
 
             function updateQueryColumns(contextName) {
                 return function (type) {
