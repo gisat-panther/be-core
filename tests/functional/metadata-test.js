@@ -412,6 +412,174 @@ describe('/rest/metadata', function () {
         });
     });
 
+    describe('POST /rest/metadata/filtered/period', async function () {
+        before(async function () {
+            await Promise.all([
+                h.createRecord('"metadata"."period"', {
+                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e00',
+                    period: '2010-01-01T01:00:00.000Z/P2Y',
+                    periodRange:
+                        '["2010-01-01T01:00:00.000Z","2012-01-01T01:00:00.000Z"]',
+                }),
+                h.createRecord('"metadata"."period"', {
+                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e01',
+                    period: '2014-01-01T01:00:00.000Z/P2Y',
+                    periodRange:
+                        '["2014-01-01T01:00:00.000Z","2016-01-01T01:00:00.000Z"]',
+                }),
+            ]);
+        });
+
+        after(async function () {
+            await h.revertChanges();
+        });
+
+        const tests = [
+            {
+                name: 'all overlapping',
+                body: JSON.stringify({
+                    filter: {
+                        period: {overlaps: '2011-02-01T01:00:00.000Z/P3Y'},
+                    },
+                    order: [['key', 'ascending']],
+                }),
+                expectedResult: {
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2010-01-01T01:00:00.000Z/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e00',
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                                {
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2014-01-01T01:00:00.000Z/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e01',
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        limit: 100,
+                        offset: 0,
+                        success: true,
+                        total: 2,
+                    },
+                },
+            },
+            {
+                name: 'one overlapping',
+                body: JSON.stringify({
+                    filter: {
+                        period: {overlaps: '2012-01-01T01:00:00.000Z'},
+                    },
+                    order: [['key', 'ascending']],
+                }),
+                expectedResult: {
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2010-01-01T01:00:00.000Z/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e00',
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        limit: 100,
+                        offset: 0,
+                        success: true,
+                        total: 1,
+                    },
+                },
+            },
+        ];
+
+        tests.forEach((test) => {
+            it(test.name, async function () {
+                const response = await fetch(
+                    url('/rest/metadata/filtered/period'),
+                    {
+                        method: 'POST',
+                        headers: new fetch.Headers({
+                            Authorization: createAdminToken(),
+                            'Content-Type': 'application/json',
+                        }),
+                        body: test.body,
+                    }
+                );
+
+                assert.strictEqual(response.status, 200);
+
+                const data = await response.json();
+                delete data.changes;
+                assert.deepStrictEqual(data, test.expectedResult.body);
+            });
+        });
+    });
+
     describe('POST /rest/metadata', function () {
         const tests = [
             {
