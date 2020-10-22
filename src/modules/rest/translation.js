@@ -2,7 +2,7 @@ const Joi = require('../../joi');
 const _ = require('lodash/fp');
 const qb = require('@imatic/pgqb');
 
-function translationData(type, records) {
+function translationData({group, type}, records) {
     const translations = [];
     records.forEach(function (record) {
         const recordTranslations = _.getOr({}, 'translations', record);
@@ -10,6 +10,7 @@ function translationData(type, records) {
             Object.entries(translation).forEach(([field, value]) => {
                 translations.push([
                     qb.val.inlineParam(record.key),
+                    qb.val.inlineParam(group),
                     qb.val.inlineParam(type),
                     qb.val.inlineParam(locale),
                     qb.val.inlineParam(field),
@@ -24,13 +25,20 @@ function translationData(type, records) {
     }
 
     return {
-        columns: ['resourceKey', 'resourceType', 'locale', 'field', 'value'],
+        columns: [
+            'resourceKey',
+            'resourceGroup',
+            'resourceType',
+            'locale',
+            'field',
+            'value',
+        ],
         values: translations,
     };
 }
 
-async function updateTranslations({client, type}, records) {
-    const translations = translationData(type, records);
+async function updateTranslations({client, group, type}, records) {
+    const translations = translationData({group, type}, records);
     if (translations == null) {
         return null;
     }
@@ -39,14 +47,20 @@ async function updateTranslations({client, type}, records) {
         qb.insertInto('public.translations'),
         qb.columns(translations.columns),
         qb.values(translations.values),
-        qb.onConflict(['resourceKey', 'resourceType', 'locale', 'field']),
+        qb.onConflict([
+            'resourceKey',
+            'resourceGroup',
+            'resourceType',
+            'locale',
+            'field',
+        ]),
         qb.doUpdate([qb.expr.eq('value', qb.val.raw('EXCLUDED."value"'))])
     );
 
     await client.query(qb.toSql(sqlMap));
 }
 
-function listTranslationsQuery({type, translations}, alias) {
+function listTranslationsQuery({group, type, translations}, alias) {
     if (_.size(translations) === 0) {
         return {};
     }
@@ -73,6 +87,10 @@ function listTranslationsQuery({type, translations}, alias) {
                                 qb.expr.eq(
                                     qb.val.raw('"t"."key"::text'),
                                     '_ptrans.resourceKey'
+                                ),
+                                qb.expr.eq(
+                                    '_ptrans.resourceGroup',
+                                    qb.val.inlineParam(group)
                                 ),
                                 qb.expr.eq(
                                     '_ptrans.resourceType',

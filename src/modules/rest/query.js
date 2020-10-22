@@ -1011,7 +1011,7 @@ function list(
             createFilters(filter, columnToAliases, columnToField, columnsConfig)
         ),
         relationsQuery({plan, group, type}, 't'),
-        translation.listTranslationsQuery({type, translations}, 't')
+        translation.listTranslationsQuery({group, type, translations}, 't')
     );
 
     const countSqlMap = qb.merge(

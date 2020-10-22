@@ -294,7 +294,7 @@ async function createData({plan, group, client}, request) {
         _.map(data, async function (records, type) {
             const [createdKeys] = await Promise.all([
                 q.create({plan, group, type, client}, records),
-                translation.updateTranslations({client, type}, records),
+                translation.updateTranslations({client, group, type}, records),
             ]);
 
             const createdRecords = await q.list(
@@ -359,7 +359,7 @@ async function updateData({plan, group, client}, request) {
         _.map(data, async function (records, type) {
             await Promise.all([
                 q.update({plan, group, type, client}, records),
-                translation.updateTranslations({client, type}, records),
+                translation.updateTranslations({client, group, type}, records),
             ]);
 
             const updatedRecords = await q.list(
