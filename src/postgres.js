@@ -2,28 +2,34 @@ const moment = require('moment');
 const momentInterval = require('moment-interval');
 const _ = require('lodash/fp');
 
-const missingInfo = [
-    ['year', 'M'],
-    ['month', 'D'],
+const missingTimeInfo = [
     ['day', 'H'],
     ['hour', 'm'],
     ['minute', 's'],
     ['second', 'S'],
 ];
 
+const missingWeekInfo = [['year', 'W'], ['week', 'E'], ...missingTimeInfo];
+
+const missingInfo = [['year', 'M'], ['month', 'D'], ...missingTimeInfo];
+
+function missingInfoData(from) {
+    return from.indexOf('G') === -1 ? missingInfo : missingWeekInfo;
+}
+
 function createEnd(start) {
     start = start.clone();
 
     const {format} = start.creationData();
-    const [endOf] = _.find(
+    const foundInfo = _.find(
         ([, substr]) => format.indexOf(substr) === -1,
-        missingInfo
+        missingInfoData(format)
     );
-    if (endOf == null) {
+    if (foundInfo == null) {
         return start;
     }
 
-    return start.endOf(endOf);
+    return start.endOf(foundInfo[0]);
 }
 
 function normalizeInterval(input) {

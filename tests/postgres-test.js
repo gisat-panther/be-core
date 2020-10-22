@@ -52,6 +52,48 @@ describe('postgres', function () {
                 expectedValue:
                     '["2012-03-03T01:04:02.000Z","2012-03-03T01:04:02.999Z"]',
             },
+            {
+                name: 'using a year-month-dayThour:minute:second:millisecond',
+                value: '2012-03-03T01:04:02.111Z',
+                expectedValue:
+                    '["2012-03-03T01:04:02.111Z","2012-03-03T01:04:02.111Z"]',
+            },
+            {
+                name: 'using a year-week',
+                value: '2012-W11',
+                expectedValue:
+                    '["2012-03-12T00:00:00.000Z","2012-03-17T23:59:59.999Z"]',
+            },
+            {
+                name: 'using a year-week-day',
+                value: '2012-W11-3',
+                expectedValue:
+                    '["2012-03-14T00:00:00.000Z","2012-03-14T23:59:59.999Z"]',
+            },
+            {
+                name: 'using a year-week-dayThour',
+                value: '2012-W11-3T01',
+                expectedValue:
+                    '["2012-03-14T01:00:00.000Z","2012-03-14T01:59:59.999Z"]',
+            },
+            {
+                name: 'using a year-week-dayTminute',
+                value: '2012-W11-3T01:13',
+                expectedValue:
+                    '["2012-03-14T01:13:00.000Z","2012-03-14T01:13:59.999Z"]',
+            },
+            {
+                name: 'using a year-week-dayTminute:second',
+                value: '2012-W11-3T01:13:33',
+                expectedValue:
+                    '["2012-03-14T01:13:33.000Z","2012-03-14T01:13:33.999Z"]',
+            },
+            {
+                name: 'using a year-week-dayTminute:second:millisecond',
+                value: '2012-W11-3T01:13:33.222Z',
+                expectedValue:
+                    '["2012-03-14T01:13:33.222Z","2012-03-14T01:13:33.222Z"]',
+            },
         ];
 
         tests.forEach((test) => {
