@@ -38,7 +38,7 @@
     "@auto-it/git-tag": "^9.60.0",
     "auto": "^9.60.0",
     "chai": "^4.2.0",
-    "faker": "^4.1.0",
+    "faker": "^5.1.0",
     "mocha": "^8.2.0",
     "node-fetch": "^2.6.1",
     "node-mocks-http": "^1.9.0",
