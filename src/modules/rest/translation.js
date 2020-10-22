@@ -46,16 +46,87 @@ async function updateTranslations({client, type}, records) {
     await client.query(qb.toSql(sqlMap));
 }
 
+function listTranslationsQuery({type, translations}, alias) {
+    if (_.size(translations) === 0) {
+        return {};
+    }
+
+    return qb.select([
+        qb.expr.as(
+            qb.merge(
+                qb.select([
+                    qb.val.raw(
+                        'JSON_OBJECT_AGG("_trans"."locale", "_trans"."t") _translation'
+                    ),
+                ]),
+                qb.from(
+                    qb.merge(
+                        qb.select([
+                            '_ptrans.locale',
+                            qb.val.raw(
+                                'JSON_OBJECT_AGG("_ptrans"."field", "_ptrans"."value") "t"'
+                            ),
+                        ]),
+                        qb.from('public.translations', '_ptrans'),
+                        qb.where(
+                            qb.expr.and(
+                                qb.expr.eq(
+                                    qb.val.raw('"t"."key"::text'),
+                                    '_ptrans.resourceKey'
+                                ),
+                                qb.expr.eq(
+                                    '_ptrans.resourceType',
+                                    qb.val.inlineParam(type)
+                                ),
+                                qb.expr.in(
+                                    '_ptrans.locale',
+                                    translations.map(qb.val.inlineParam)
+                                )
+                            )
+                        ),
+                        qb.groupBy(['_ptrans.locale'])
+                    ),
+                    '_trans'
+                )
+            ),
+            '__translations'
+        ),
+    ]);
+}
+
+const LocaleSchema = Joi.string().min(1);
+
 function schema() {
     return {
         translations: Joi.object().pattern(
             Joi.string().min(1),
-            Joi.object().pattern(Joi.string().min(1), Joi.any())
+            Joi.object().pattern(LocaleSchema, Joi.any())
         ),
     };
 }
 
+function listSchema() {
+    return {
+        translations: Joi.array().items(LocaleSchema).min(1),
+    };
+}
+
+function formatRow(row) {
+    const translations = _.get(['data', '__translations'], row);
+    if (translations === undefined) {
+        return row;
+    }
+
+    return _.flow(
+        _.update('data', _.omit('__translations')),
+        _.set('translations', translations)
+    )(row);
+}
+
 module.exports = {
     schema,
+    listSchema,
     updateTranslations,
+    listTranslationsQuery,
+    formatRow,
 };

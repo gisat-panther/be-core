@@ -98,7 +98,7 @@ function updatePermissionWithRestrictedColumns(
  * @returns {Row}
  */
 function formatRow(row, restrictedColumns) {
-    return {
+    return translation.formatRow({
         key: row.key,
         data: _.omit(row, [
             'key',
@@ -123,7 +123,7 @@ function formatRow(row, restrictedColumns) {
                 restrictedColumns
             ),
         },
-    };
+    });
 }
 
 /**
@@ -440,6 +440,7 @@ function createGroup(plan, group) {
                                 sort: parameters.order,
                                 filter: parameters.filter,
                                 page: page,
+                                translations: parameters.translations,
                             })
                         );
                     })

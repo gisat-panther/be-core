@@ -190,7 +190,8 @@ function listBody(plan, group) {
                 .default([]),
             limit: Joi.number().integer().default(100),
             offset: Joi.number().integer().default(0),
-        });
+        })
+        .append(translation.listSchema());
 }
 
 /**
