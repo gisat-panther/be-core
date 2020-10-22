@@ -3,7 +3,7 @@ const httpMocks = require('node-mocks-http');
 const {assert} = require('chai');
 const {EventEmitter} = require('events');
 const parameters = require('../../src/middlewares/parameters');
-const Joi = require('@hapi/joi');
+const Joi = require('joi');
 
 function responseMap(response) {
     const m = {status: response.statusCode};
