@@ -1,8 +1,9 @@
-const Joi = require('@hapi/joi');
+const Joi = require('../../joi');
 const uuid = require('../../uuid');
 const config = require('../../../config');
 const qb = require('@imatic/pgqb');
 const {SQL} = require('sql-template-strings');
+const p = require('../../postgres');
 
 module.exports = {
     user: {
@@ -317,8 +318,6 @@ module.exports = {
                         'nameInternal',
                         'description',
                         'period',
-                        'start',
-                        'end',
                     ],
                 },
                 create: {
@@ -328,8 +327,6 @@ module.exports = {
                         'nameInternal',
                         'description',
                         'period',
-                        'start',
-                        'end',
                     ],
                 },
                 update: {
@@ -339,8 +336,6 @@ module.exports = {
                         'nameInternal',
                         'description',
                         'period',
-                        'start',
-                        'end',
                     ],
                 },
             },
@@ -363,15 +358,21 @@ module.exports = {
                 },
                 period: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.isoDuration(),
+                    filter: ({alias, value, operator}) => ({
+                        column: alias + '.periodRange',
+                        value: p.intervalToRange(value),
+                        operator,
+                    }),
                 },
-                start: {
+                periodRange: {
+                    inputs: ['period'],
                     defaultValue: null,
-                    schema: Joi.date(),
-                },
-                end: {
-                    defaultValue: null,
-                    schema: Joi.date(),
+                    modifyExpr: function ({record}) {
+                        return qb.val.inlineParam(
+                            p.intervalToRange(record.period)
+                        );
+                    },
                 },
             },
             relations: {
