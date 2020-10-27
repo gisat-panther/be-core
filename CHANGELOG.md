@@ -1,3 +1,15 @@
+# v0.0.15 (Tue Oct 27 2020)
+
+#### 🐾 Patch
+
+- Period range [#22](https://github.com/gisat-panther/be-core/pull/22) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.14 (Wed Oct 14 2020)
 
 #### 🐾 Patch
