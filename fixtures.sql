@@ -17,7 +17,8 @@ TRUNCATE
   "metadata"."period",
   "relations"."attributeDataSourceRelation",
   "specific"."lpisChangeCase",
-  "public"."cache"
+  "public"."cache",
+  "public"."translations"
   CASCADE;
 
 INSERT INTO "user"."users"
@@ -63,6 +64,8 @@ VALUES
   ('0da66083-77ad-4e66-9338-0c8344de9eba', null, 'metadata', 'case', 'create'),
   ('42e8bdf8-19c8-4658-aded-b1c724539072', null, 'metadata', 'case', 'update'),
   ('a307e381-8c12-4d0e-9934-0d739cce7fa2', null, 'metadata', 'scope', 'view'),
+  ('55253c47-f406-4297-8a22-b4ef03200c36', null, 'metadata', 'scope', 'create'),
+  ('9df3cd8e-528d-4a7e-932e-e78ced43b0de', null, 'metadata', 'scope', 'update'),
   ('820c4a94-9588-4926-8ba0-2df7abe2eb7f', null, 'metadata', 'scope', 'delete'),
   ('d221213b-a956-43b6-989e-32b73bee90f6', null, 'metadata', 'place', 'view'),
   ('6a7df854-4dc0-4093-b8a0-15e2e0a91ed0', null, 'metadata', 'place', 'delete'),
@@ -91,6 +94,14 @@ INSERT INTO "user"."userPermissions"
 VALUES
   -- testWithPermissions@example.com     ,  case:create
   ('3e3f4300-1336-4043-baa3-b65a025c2d83', '0da66083-77ad-4e66-9338-0c8344de9eba'),
+  -- user: admin@example.com             ,  scope:view
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', 'a307e381-8c12-4d0e-9934-0d739cce7fa2'),
+  -- user: admin@example.com             ,  scope:create
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '55253c47-f406-4297-8a22-b4ef03200c36'),
+  -- user: admin@example.com             ,  scope:update
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '9df3cd8e-528d-4a7e-932e-e78ced43b0de'),
+  -- user: admin@example.com             ,  scope:delete
+  ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '820c4a94-9588-4926-8ba0-2df7abe2eb7f'),
   -- user: admin@example.com             ,  case:view
   ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', 'ed6a9cb0-7662-4d85-bb9a-ed5b78396008'),
   -- user: admin@example.com             ,  period:view

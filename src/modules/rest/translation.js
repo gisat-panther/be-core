@@ -1,6 +1,7 @@
 const Joi = require('../../joi');
 const _ = require('lodash/fp');
 const qb = require('@imatic/pgqb');
+const SQL = require('sql-template-strings');
 
 function translationData({group, type}, records) {
     const translations = [];
@@ -65,6 +66,38 @@ function listTranslationsQuery({group, type, translations}, alias) {
         return {};
     }
 
+    const orderBys = _.map(
+        (trans) =>
+            qb.orderBy(
+                qb.val.raw(SQL`("_ptrans"."locale" = ${trans})::int`),
+                'DESC'
+            ),
+        translations
+    );
+
+    const translationsMap = qb.merge(
+        qb.selectDistinct(
+            ['_ptrans.field'],
+            ['_ptrans.locale', '_ptrans.field', '_ptrans.value']
+        ),
+        qb.from('public.translations', '_ptrans'),
+        qb.where(
+            qb.expr.and(
+                qb.expr.eq(
+                    qb.val.raw('"t"."key"::text'),
+                    '_ptrans.resourceKey'
+                ),
+                qb.expr.eq('_ptrans.resourceGroup', qb.val.inlineParam(group)),
+                qb.expr.eq('_ptrans.resourceType', qb.val.inlineParam(type)),
+                qb.expr.in(
+                    '_ptrans.locale',
+                    translations.map(qb.val.inlineParam)
+                )
+            )
+        ),
+        qb.append(qb.orderBy('_ptrans.field'), ...orderBys)
+    );
+
     return qb.select([
         qb.expr.as(
             qb.merge(
@@ -81,27 +114,7 @@ function listTranslationsQuery({group, type, translations}, alias) {
                                 'JSON_OBJECT_AGG("_ptrans"."field", "_ptrans"."value") "t"'
                             ),
                         ]),
-                        qb.from('public.translations', '_ptrans'),
-                        qb.where(
-                            qb.expr.and(
-                                qb.expr.eq(
-                                    qb.val.raw('"t"."key"::text'),
-                                    '_ptrans.resourceKey'
-                                ),
-                                qb.expr.eq(
-                                    '_ptrans.resourceGroup',
-                                    qb.val.inlineParam(group)
-                                ),
-                                qb.expr.eq(
-                                    '_ptrans.resourceType',
-                                    qb.val.inlineParam(type)
-                                ),
-                                qb.expr.in(
-                                    '_ptrans.locale',
-                                    translations.map(qb.val.inlineParam)
-                                )
-                            )
-                        ),
+                        qb.from(translationsMap, '_ptrans'),
                         qb.groupBy(['_ptrans.locale'])
                     ),
                     '_trans'
