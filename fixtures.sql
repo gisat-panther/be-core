@@ -16,7 +16,8 @@ TRUNCATE
   "metadata"."scope",
   "metadata"."period",
   "relations"."attributeDataSourceRelation",
-  "specific"."lpisChangeCase"
+  "specific"."lpisChangeCase",
+  "public"."cache"
   CASCADE;
 
 INSERT INTO "user"."users"
