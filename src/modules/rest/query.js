@@ -758,6 +758,7 @@ async function lastChange({plan, group, type}, ids) {
                         ids.map(qb.val.inlineParam)
                     )
                 ),
+                ...translation.lastChangeExprs({group, type}, ids),
                 ...lastChangeRelationsExprs({plan, group, type}, ids),
                 ...lastChangeDependentTypesExprs({plan, group, type}, ids)
             )

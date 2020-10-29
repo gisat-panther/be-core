@@ -154,10 +154,42 @@ function formatRow(row) {
     )(row);
 }
 
+function lastChangeExprs({group, type}, ids) {
+    if (ids == null && ids.length === 0) {
+        return [];
+    }
+
+    return [
+        qb.expr.and(
+            qb.expr.eq('a.schema_name', qb.val.inlineParam('public')),
+            qb.expr.eq('a.table_name', qb.val.inlineParam('translations')),
+            qb.expr.eq(
+                qb.val.raw(
+                    `"a"."row_data" OPERATOR("public".->) 'resourceGroup'`
+                ),
+                qb.val.inlineParam(group)
+            ),
+            qb.expr.eq(
+                qb.val.raw(
+                    `"a"."row_data" OPERATOR("public".->) 'resourceType'`
+                ),
+                qb.val.inlineParam(type)
+            ),
+            qb.expr.in(
+                qb.val.raw(
+                    `"a"."row_data" OPERATOR("public".->) 'resourceKey'`
+                ),
+                ids.map(qb.val.inlineParam)
+            )
+        ),
+    ];
+}
+
 module.exports = {
     schema,
     listSchema,
     updateTranslations,
     listTranslationsQuery,
     formatRow,
+    lastChangeExprs,
 };
