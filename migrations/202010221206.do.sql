@@ -7,3 +7,5 @@ CREATE TABLE "public"."translations"(
   "value" JSONB,
   PRIMARY KEY("resourceKey", "resourceGroup", "resourceType", "locale", "field")
 );
+
+SELECT audit.audit_table('"public"."translations"');
