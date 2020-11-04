@@ -1,3 +1,4 @@
+ALTER TABLE "application"."application" DROP COLUMN "__customColumns";
 ALTER TABLE "application"."configuration" DROP COLUMN "__customColumns";
 ALTER TABLE "application"."layerTree" DROP COLUMN "__customColumns";
 ALTER TABLE "dataSources"."attributeDataSource" DROP COLUMN "__customColumns";

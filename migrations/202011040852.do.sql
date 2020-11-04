@@ -1,3 +1,4 @@
+ALTER TABLE "application"."application" ADD COLUMN "__customColumns" JSONB NOT NULL DEFAULT '{}';
 ALTER TABLE "application"."configuration" ADD COLUMN "__customColumns" JSONB NOT NULL DEFAULT '{}';
 ALTER TABLE "application"."layerTree" ADD COLUMN "__customColumns" JSONB NOT NULL DEFAULT '{}';
 ALTER TABLE "dataSources"."attributeDataSource" ADD COLUMN "__customColumns" JSONB NOT NULL DEFAULT '{}';
