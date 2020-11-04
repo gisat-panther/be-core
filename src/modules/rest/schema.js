@@ -2,6 +2,7 @@ const Joi = require('../../joi');
 const _ = require('lodash');
 const _fp = require('lodash/fp');
 const translation = require('./translation');
+const customFields = require('./custom-fields');
 
 /**
  * @param {import('./compiler').Column} col
@@ -304,22 +305,26 @@ function createBody(plan, group) {
 
                             const rs = relationSchemas(plan, group, type);
 
-                            return Joi.object().keys({
-                                key: keyCol.schema.default(keyCol.defaultValue),
-                                data: Joi.object()
-                                    .keys(
-                                        Object.assign(
-                                            {},
-                                            _.mapValues(
-                                                dataCols,
-                                                dataColCreateSchema
-                                            ),
-                                            rs
+                            return Joi.object()
+                                .keys({
+                                    key: keyCol.schema.default(
+                                        keyCol.defaultValue
+                                    ),
+                                    data: Joi.object()
+                                        .keys(
+                                            Object.assign(
+                                                {},
+                                                _.mapValues(
+                                                    dataCols,
+                                                    dataColCreateSchema
+                                                ),
+                                                rs
+                                            )
                                         )
-                                    )
-                                    .required()
-                                    .append(translation.schema()),
-                            });
+                                        .required()
+                                        .concat(customFields.schema()),
+                                })
+                                .append(translation.schema());
                         })
                     )
                 )
@@ -349,7 +354,8 @@ function createBody(plan, group) {
                                     rs
                                 )
                             )
-                            .required(),
+                            .required()
+                            .concat(customFields.schema()),
                     })
                     .append(translation.schema())
             )
@@ -454,7 +460,8 @@ function updateBody(plan, group) {
                                                 rs
                                             )
                                         )
-                                        .required(),
+                                        .required()
+                                        .concat(customFields.schema()),
                                 })
                                 .append(translation.schema());
                         })
@@ -485,7 +492,8 @@ function updateBody(plan, group) {
                                 rs
                             )
                         )
-                        .required(),
+                        .required()
+                        .concat(customFields.schema()),
                 })
                 .min(1)
                 .append(translation.schema())
