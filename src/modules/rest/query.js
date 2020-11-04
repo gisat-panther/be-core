@@ -1331,9 +1331,6 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
     const typeKey = _.get(typeSchema, ['type', 'key']);
 
     const data = _.pick(record.data, columns);
-    if (_.isEmpty(data)) {
-        return Promise.resolve();
-    }
 
     const queryColumns = _fp.filter(
         (col) =>
