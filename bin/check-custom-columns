@@ -7,29 +7,36 @@
 require('../src/applications/index');
 const getPlan = require('../src/applications/plan').get;
 const db = require('../src/db');
+const qb = require('@imatic/pgqb');
 const _ = require('lodash/fp');
+const {SQL} = require('sql-template-strings');
+
+const flatMapWithKey = _.flatMap.convert({cap: false});
 
 db.init();
 
-function filterTablesWithMissingCustomColumn(tableNames) {
-    return db
-        .query(
-            `
-SELECT
-  "table_name",
-  "table_schema"
-FROM
-  "information_schema"."columns"
-WHERE
-  "table_name" = ANY($1)
-GROUP BY
-  "table_schema",
-  "table_name"
-HAVING
-  NOT ('__customColumns' = ANY(ARRAY_AGG("column_name")))
-    `,
-            [tableNames]
+function filterTablesWithMissingCustomColumn(tables) {
+    const tableExprs = _.map(({schema, tables}) => {
+        return qb.expr.and(
+            qb.expr.eq('table_schema', qb.val.inlineParam(schema)),
+            qb.expr.in('table_name', tables.map(qb.val.inlineParam))
+        );
+    }, tables);
+
+    const sqlMap = qb.merge(
+        qb.select(['table_schema', 'table_name']),
+        qb.from('information_schema.columns'),
+        qb.where(qb.expr.or(...tableExprs)),
+        qb.groupBy(['table_schema', 'table_name']),
+        qb.having(
+            qb.val.raw(
+                SQL`NOT ('__customColumns' = ANY(ARRAY_AGG("column_name")))`
+            )
         )
+    );
+
+    return db
+        .query(qb.toSql(sqlMap))
         .then((res) =>
             res.rows.map((row) => `"${row.table_schema}"."${row.table_name}"`)
         );
@@ -44,10 +51,13 @@ function dropTableColumnQuery(tableName) {
 }
 
 async function main() {
-    const tables = _.flatMap((group) => {
-        return _.flatMap((type) => {
-            return type.table;
-        }, group);
+    const tables = flatMapWithKey((group, groupName) => {
+        return {
+            schema: groupName,
+            tables: _.flatMap((type) => {
+                return type.table;
+            }, group),
+        };
     }, getPlan());
 
     const tablesWithMissingCustomColumn = await filterTablesWithMissingCustomColumn(
