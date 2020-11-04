@@ -1,0 +1,84 @@
+#!/usr/bin/env node
+
+/**
+ * Exits with 0 if there are no missing colums to put custom columns in, otherwise 1.
+ */
+
+require('../src/applications/index');
+const getPlan = require('../src/applications/plan').get;
+const db = require('../src/db');
+const _ = require('lodash/fp');
+
+db.init();
+
+function filterTablesWithMissingCustomColumn(tableNames) {
+    return db
+        .query(
+            `
+SELECT
+  "table_name",
+  "table_schema"
+FROM
+  "information_schema"."columns"
+WHERE
+  "table_name" = ANY($1)
+GROUP BY
+  "table_schema",
+  "table_name"
+HAVING
+  NOT ('__customColumns' = ANY(ARRAY_AGG("column_name")))
+    `,
+            [tableNames]
+        )
+        .then((res) =>
+            res.rows.map((row) => `"${row.table_schema}"."${row.table_name}"`)
+        );
+}
+
+function addTableColumnQuery(tableName) {
+    return `ALTER TABLE ${tableName} ADD COLUMN "__customColumns" JSONB NOT NULL DEFAULT '{}';`;
+}
+
+function dropTableColumnQuery(tableName) {
+    return `ALTER TABLE ${tableName} DROP COLUMN "__customColumns";`;
+}
+
+async function main() {
+    const tables = _.flatMap((group) => {
+        return _.flatMap((type) => {
+            return type.table;
+        }, group);
+    }, getPlan());
+
+    const tablesWithMissingCustomColumn = await filterTablesWithMissingCustomColumn(
+        tables
+    );
+
+    if (tablesWithMissingCustomColumn.length === 0) {
+        return null;
+    }
+
+    return {
+        create: tablesWithMissingCustomColumn.map(addTableColumnQuery),
+        drop: tablesWithMissingCustomColumn.map(dropTableColumnQuery),
+    };
+}
+
+main().then((missingColumns) => {
+    if (missingColumns == null) {
+        return process.exit(0);
+    }
+
+    console.error(`Some columns are missing. Create migration with following contents:
+==================================================================================
+
+do.sql
+------
+${missingColumns.create.join('\n')}
+
+undo.sql:
+---------
+${missingColumns.drop.join('\n')}`);
+
+    process.exit(1);
+});
