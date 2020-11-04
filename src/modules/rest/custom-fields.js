@@ -5,14 +5,27 @@ const {SQL} = require('sql-template-strings');
 
 const mapWithKey = _.map.convert({cap: false});
 
+/**
+ * @returns {object}
+ */
 function schema() {
     return Joi.object().unknown(true);
 }
 
+/**
+ * @param {string} alias
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function listQuery(alias) {
     return qb.select([`${alias}.__customColumns`]);
 }
 
+/**
+ * @param {{plan: string, group: string, type: string}} context
+ *
+ * @returns {string[]}
+ */
 function validDataNames({plan, group, type}) {
     const typeSchema = plan[group][type];
 
@@ -41,6 +54,12 @@ function validDataNames({plan, group, type}) {
     );
 }
 
+/**
+ * @param {{plan: string, group: string, type: string}} context
+ * @param {object[]} records
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function create({plan, group, type}, records) {
     const validNames = validDataNames({plan, group, type});
     const values = _.map(
@@ -56,6 +75,12 @@ function create({plan, group, type}, records) {
     return qb.merge(qb.columns(['__customColumns']), qb.values(values));
 }
 
+/**
+ * @param {{plan: string, group: string, type: string}} context
+ * @param {object} record
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function update({plan, group, type}, record) {
     const validNames = validDataNames({plan, group, type});
     const value = JSON.stringify(_.omit(validNames, record.data));
@@ -68,6 +93,11 @@ function update({plan, group, type}, record) {
     ]);
 }
 
+/**
+ * @param {object} row
+ *
+ * @return {object}
+ */
 function formatRow(row) {
     const customColumns = _.getOr({}, ['data', '__customColumns'], row);
 

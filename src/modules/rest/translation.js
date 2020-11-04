@@ -3,6 +3,12 @@ const _ = require('lodash/fp');
 const qb = require('@imatic/pgqb');
 const SQL = require('sql-template-strings');
 
+/**
+ * @param {{group: string, type: string}} context
+ * @param {object[]} records
+ *
+ * @returns {{columns: string[], values: any[]} | null}
+ */
 function translationData({group, type}, records) {
     const translations = [];
     records.forEach(function (record) {
@@ -38,6 +44,12 @@ function translationData({group, type}, records) {
     };
 }
 
+/**
+ * @param {{client: import('../../db').Client, group: string, type: string}} context
+ * @param {object[]} records
+ *
+ * @returns {Promise<undefined>}
+ */
 async function updateTranslations({client, group, type}, records) {
     const translations = translationData({group, type}, records);
     if (translations == null) {
@@ -61,6 +73,12 @@ async function updateTranslations({client, group, type}, records) {
     await client.query(qb.toSql(sqlMap));
 }
 
+/**
+ * @param {{group: string, type: string, translations: string}} context
+ * @param {string} alias
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function listTranslationsQuery({group, type, translations}, alias) {
     if (_.size(translations) === 0) {
         return {};
@@ -127,6 +145,9 @@ function listTranslationsQuery({group, type, translations}, alias) {
 
 const LocaleSchema = Joi.string().min(1);
 
+/**
+ * @returns {object}
+ */
 function schema() {
     return {
         translations: Joi.object().pattern(
@@ -136,12 +157,20 @@ function schema() {
     };
 }
 
+/**
+ * @returns {object}
+ */
 function listSchema() {
     return {
         translations: Joi.array().items(LocaleSchema).min(1),
     };
 }
 
+/**
+ * @param {object} row
+ *
+ * @returns {object}
+ */
 function formatRow(row) {
     const translations = _.get(['data', '__translations'], row);
     if (translations === undefined) {
@@ -154,6 +183,12 @@ function formatRow(row) {
     )(row);
 }
 
+/**
+ * @param {{group: string, type: string}} context
+ * @param {any[]} ids
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
 function lastChangeExprs({group, type}, ids) {
     if (ids == null && ids.length === 0) {
         return [];

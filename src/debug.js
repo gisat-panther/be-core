@@ -1,5 +1,10 @@
 const _ = require('lodash/fp');
 
+/**
+ * @param {any} val
+ *
+ * @returns {any}
+ */
 function prepareVal(val) {
     switch (typeof val) {
         case 'string':

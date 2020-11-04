@@ -15,6 +15,11 @@ const flatMapWithKey = _.flatMap.convert({cap: false});
 
 db.init();
 
+/**
+ * @param {{schema: string, tables: string[]}[]} tables
+ *
+ * @return {string[]}
+ */
 function filterTablesWithMissingCustomColumn(tables) {
     const tableExprs = _.map(({schema, tables}) => {
         return qb.expr.and(
@@ -42,10 +47,20 @@ function filterTablesWithMissingCustomColumn(tables) {
         );
 }
 
+/**
+ * @param {string} tableName
+ *
+ * @returns {string}
+ */
 function addTableColumnQuery(tableName) {
     return `ALTER TABLE ${tableName} ADD COLUMN "__customColumns" JSONB NOT NULL DEFAULT '{}';`;
 }
 
+/**
+ * @param {string} tableName
+ *
+ * @returns {string}
+ */
 function dropTableColumnQuery(tableName) {
     return `ALTER TABLE ${tableName} DROP COLUMN "__customColumns";`;
 }
