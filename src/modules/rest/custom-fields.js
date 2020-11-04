@@ -3,6 +3,8 @@ const qb = require('@imatic/pgqb');
 const _ = require('lodash/fp');
 const {SQL} = require('sql-template-strings');
 
+const mapWithKey = _.map.convert({cap: false});
+
 function schema() {
     return Joi.object().unknown(true);
 }
@@ -15,11 +17,26 @@ function validDataNames({plan, group, type}) {
     const typeSchema = plan[group][type];
 
     return _.uniq(
-        _.concat(
-            Object.keys(typeSchema.columns),
-            _.flatMap(_.getOr({}, 'types', typeSchema), (type) =>
-                _.getOr([], 'columns', type)
-            )
+        _.reduce(
+            _.concat,
+            [],
+            [
+                Object.keys(_.getOr({}, 'columns', typeSchema)),
+                mapWithKey((rel, name) => {
+                    switch (rel.type) {
+                        case 'manyToMany':
+                            return name + 'Keys';
+                        case 'manyToOne':
+                            return name + 'Key';
+                    }
+
+                    throw new Error(`Unspported relation type: ${rel.type}`);
+                }, _.getOr({}, 'relations', typeSchema)),
+                _.flatMap(
+                    (type) => Object.keys(_.getOr([], 'columns', type)),
+                    _.getOr({}, ['type', 'types'], typeSchema)
+                ),
+            ]
         )
     );
 }
@@ -67,4 +84,5 @@ module.exports = {
     create,
     update,
     formatRow,
+    validDataNames,
 };
