@@ -6,6 +6,8 @@ const {SQL} = require('sql-template-strings');
 const {Client} = require('pg');
 const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
+const translation = require('./translation');
+const customFields = require('./custom-fields');
 
 const mapWithKey = _fp.map.convert({cap: false});
 
@@ -83,6 +85,16 @@ const filterOperatorToSqlExpr = {
 
         return qb.expr.eq(filter.column, qb.val.inlineParam(filter.value));
     },
+    overlaps: function (filter) {
+        if (filter.value === null) {
+            return qb.expr.null(filter.column);
+        }
+
+        return qb.expr.overlaps(
+            filter.column,
+            qb.val.inlineParam(filter.value)
+        );
+    },
 };
 
 /**
@@ -113,32 +125,49 @@ function getPlan(plan) {
  * @param requestFilter {Object<string, any>}
  * @param columnToAliases {Object<string, string[]>}
  * @param columnToField {Object<string, string>}
+ * @param {Object<string, import('./compiler').Column>} columnsConfig
  *
  * @returns {Filter[]}
  */
-function createFilters(requestFilter, columnToAliases, columnToField) {
+function createFilters(
+    requestFilter,
+    columnToAliases,
+    columnToField,
+    columnsConfig
+) {
     const filters = [];
     _.forEach(requestFilter, (filterData, field) => {
         filters.push(
             _.map(columnToAliases[field], (alias) => {
-                const aliasField = columnToField[field] || field;
-                const column = `${alias}.${aliasField}`;
+                const createFilter = _fp.getOr(
+                    ({value, operator}) => {
+                        const aliasField = columnToField[field] || field;
+
+                        return {
+                            column: `${alias}.${aliasField}`,
+                            value: value,
+                            operator: operator,
+                        };
+                    },
+                    [field, 'filter'],
+                    columnsConfig
+                );
 
                 if (_.isObject(filterData)) {
                     const type = Object.keys(filterData)[0];
 
-                    return {
-                        column: column,
+                    return createFilter({
+                        alias,
                         value: filterData[type],
                         operator: type,
-                    };
+                    });
                 }
 
-                return {
-                    column: column,
+                return createFilter({
+                    alias,
                     value: filterData,
                     operator: 'eq',
-                };
+                });
             })
         );
     });
@@ -730,6 +759,7 @@ async function lastChange({plan, group, type}, ids) {
                         ids.map(qb.val.inlineParam)
                     )
                 ),
+                ...translation.lastChangeExprs({group, type}, ids),
                 ...lastChangeRelationsExprs({plan, group, type}, ids),
                 ...lastChangeDependentTypesExprs({plan, group, type}, ids)
             )
@@ -903,7 +933,10 @@ function createSortQuery({group, table}, alias, sortExpr) {
  *
  * @returns {Promise<{rows: object[], count: number}>}
  */
-function list({plan, group, type, client, user}, {sort, filter, page}) {
+function list(
+    {plan, group, type, client, user},
+    {sort, filter, page, translations}
+) {
     plan = getPlan(plan);
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
@@ -976,8 +1009,12 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
         listPermissionRelationQuery({user, plan, group, type}, 't'),
         listUserPermissionsQuery({user, plan, group, type}, 't'),
         listDependentTypeQuery({plan, group, type}, 't'),
-        filtersToSqlExpr(createFilters(filter, columnToAliases, columnToField)),
-        relationsQuery({plan, group, type}, 't')
+        filtersToSqlExpr(
+            createFilters(filter, columnToAliases, columnToField, columnsConfig)
+        ),
+        relationsQuery({plan, group, type}, 't'),
+        translation.listTranslationsQuery({group, type, translations}, 't'),
+        customFields.listQuery('t')
     );
 
     const countSqlMap = qb.merge(
@@ -1024,7 +1061,9 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
 function recordValues(record, columns, columnsConfig) {
     const data = {...record.data, ...{key: record.key}};
 
-    return columns.map((c) => columnsConfig[c].modifyExpr({value: data[c]}));
+    return columns.map((c) =>
+        columnsConfig[c].modifyExpr({value: data[c], record: data})
+    );
 }
 
 /**
@@ -1160,8 +1199,11 @@ async function create({plan, group, type, client}, records) {
 
     const columnsConfig = typeSchema.columns;
     const validColumns = new Set(Object.keys(columnsConfig));
-    const columns = ['key', ...Object.keys(records[0].data)].filter((c) =>
-        validColumns.has(c)
+    const columns = _.concat(
+        ['key', ...Object.keys(records[0].data)].filter((c) =>
+            validColumns.has(c)
+        ),
+        _fp.getOr([], ['context', 'create', 'queryColumns'], typeSchema)
     );
     const table = _.get(typeSchema, 'table', type);
 
@@ -1179,7 +1221,8 @@ async function create({plan, group, type, client}, records) {
             : qb.merge(
                   qb.columns([typeKey]),
                   qb.values(dependentTypes.map((v) => [qb.val.inlineParam(v)]))
-              )
+              ),
+        customFields.create({plan, group, type}, records)
     );
 
     const relationsByCol = _.mapKeys(typeSchema.relations, function (
@@ -1265,7 +1308,10 @@ async function create({plan, group, type, client}, records) {
  */
 function updateExprs(recordData, columnsConfig) {
     return Object.entries(recordData).map(([col, value]) => {
-        return qb.expr.eq(col, columnsConfig[col].modifyExpr({value}));
+        return qb.expr.eq(
+            col,
+            columnsConfig[col].modifyExpr({value, record: recordData})
+        );
     });
 }
 
@@ -1285,14 +1331,21 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
     const typeKey = _.get(typeSchema, ['type', 'key']);
 
     const data = _.pick(record.data, columns);
-    if (_.isEmpty(data)) {
-        return Promise.resolve();
-    }
+
+    const queryColumns = _fp.filter(
+        (col) =>
+            _fp.some((input) => _.has(data, input), columnsConfig[col].inputs),
+        _fp.getOr([], ['context', 'create', 'queryColumns'], typeSchema)
+    );
+    const enrichedData = _fp.merge(
+        data,
+        _fp.zipObject(queryColumns, new Array(queryColumns.length))
+    );
 
     const sqlMap = qb.append(
         qb.merge(
             qb.update(`${group}.${table}`, 'r'),
-            qb.set(updateExprs(data, columnsConfig)),
+            qb.set(updateExprs(enrichedData, columnsConfig)),
             qb.where(qb.expr.eq('r.key', qb.val.inlineParam(record.key)))
         ),
         typeKey == null
@@ -1301,7 +1354,8 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
                   qb.set([
                       qb.expr.eq(typeKey, qb.val.inlineParam(dependentType)),
                   ])
-              )
+              ),
+        customFields.update({plan, group, type}, record)
     );
 
     return client.query(qb.toSql(sqlMap));

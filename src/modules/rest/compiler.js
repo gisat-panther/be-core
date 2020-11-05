@@ -12,11 +12,13 @@ const qb = require('@imatic/pgqb');
  * @property {string} resourceType
  *
  * @typedef {Object} Column
- * @property defaultValue
- * @property {object} schema
+ * @property {any} defaultValue
+ * @property {object=} schema
+ * @property {Function=} filter
  * @property {import('@imatic/pgqb').Value} selectExpr
  * @property {import('@imatic/pgqb').Value} modifyExpr
  * @property {ColumnRelation=} relation
+ * @property {string[]=} inputs
  *
  * @typedef {Object} Relation
  * @property {'manyToOne'|'manyToMany'} type
@@ -91,7 +93,52 @@ function compileType(type, name) {
             : _.update('table', (table) => (table == null ? name : table)),
         type.type == null
             ? _.identity
-            : _.update(['type', 'types'], compileTypes)
+            : _.update(['type', 'types'], compileTypes),
+        (type) => {
+            const queryColumns = _.pickBy((col) => {
+                const size = _.size(col.inputs);
+                if (size > 1) {
+                    throw new Error(
+                        'Multiple column inputs are not implemented.'
+                    );
+                }
+
+                return size > 0;
+            }, type.columns);
+
+            function updateQueryColumns(contextName) {
+                return function (type) {
+                    const contextColumns = new Set(
+                        _.getOr([], ['context', contextName, 'columns'], type)
+                    );
+
+                    const queryColumnNames = _.flow(
+                        _.pickBy((col) =>
+                            _.some(
+                                (input) => contextColumns.has(input),
+                                col.inputs
+                            )
+                        ),
+                        _.keys
+                    )(queryColumns);
+
+                    if (queryColumnNames.length === 0) {
+                        return type;
+                    }
+
+                    return _.set(
+                        ['context', contextName, 'queryColumns'],
+                        queryColumnNames,
+                        type
+                    );
+                };
+            }
+
+            return _.flow(
+                updateQueryColumns('create'),
+                updateQueryColumns('update')
+            )(type);
+        }
     )(type);
 }
 
@@ -111,11 +158,14 @@ function compileGroup(group) {
  *
  * ## columns
  *
- * ### schema (required)
+ * ### schema (required in case `inputs` are not specified)
  *   Joi schema (https://hapi.dev/module/joi/api/). `.required()` should not be used as it is added automatically based on context.
  *
  * ### defaultValue (optional)
  *   Default value if none was provided (https://hapi.dev/module/joi/api/#anydefaultvalue).
+ *
+ * ### filter (optional)
+ *  Creates filter object.
  *
  * ### selectExpr (optional)
  *   Returns query expression used as a value in list queries.
@@ -126,6 +176,9 @@ function compileGroup(group) {
  * ### relation (optional)
  *
  *   In case column references some resource, this provides some additional features like checking permissions.
+ *
+ * ### inputs (optional)
+ *   Column names this column depends on. When mentioned columns are inserted/updated, this column is updated as well.
  *
  * #### resourceGroup
  *

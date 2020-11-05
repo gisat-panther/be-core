@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../../config');
 const db = require('../../src/db');
 const h = require('../helper');
+const _ = require('lodash/fp');
 
 db.init();
 
@@ -25,6 +26,20 @@ function createAdminToken() {
             config.jwt.secret
         )
     );
+}
+
+function periodRanges(periodKeys) {
+    return db
+        .query(
+            'SELECT "key", "periodRange" FROM "metadata"."period" WHERE "key" = ANY($1)',
+            [periodKeys]
+        )
+        .then((res) =>
+            _.zipObj(
+                _.map(_.prop('key'), res.rows),
+                _.map(_.prop('periodRange'), res.rows)
+            )
+        );
 }
 
 describe('/rest/metadata', function () {
@@ -393,6 +408,836 @@ describe('/rest/metadata', function () {
                 const data = await response.json();
                 delete data.changes;
                 assert.deepStrictEqual(data, test.expectedResult.body);
+            });
+        });
+    });
+
+    describe('POST /rest/metadata/filtered/period', async function () {
+        before(async function () {
+            await Promise.all([
+                h.createRecord('"metadata"."period"', {
+                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e00',
+                    period: '2010-01-01T01:00:00.000Z/P2Y',
+                    periodRange:
+                        '["2010-01-01T01:00:00.000Z","2012-01-01T01:00:00.000Z"]',
+                }),
+                h.createRecord('"metadata"."period"', {
+                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e01',
+                    period: '2014-01-01T01:00:00.000Z/P2Y',
+                    periodRange:
+                        '["2014-01-01T01:00:00.000Z","2016-01-01T01:00:00.000Z"]',
+                }),
+            ]);
+        });
+
+        after(async function () {
+            await h.revertChanges();
+        });
+
+        const tests = [
+            {
+                name: 'all overlapping',
+                body: JSON.stringify({
+                    filter: {
+                        period: {overlaps: '2011-02-01T01:00:00.000Z/P3Y'},
+                    },
+                    order: [['key', 'ascending']],
+                }),
+                expectedResult: {
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2010-01-01T01:00:00.000Z/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e00',
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                                {
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2014-01-01T01:00:00.000Z/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e01',
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        limit: 100,
+                        offset: 0,
+                        success: true,
+                        total: 2,
+                    },
+                },
+            },
+            {
+                name: 'one overlapping',
+                body: JSON.stringify({
+                    filter: {
+                        period: {overlaps: '2012-01-01T01:00:00.000Z'},
+                    },
+                    order: [['key', 'ascending']],
+                }),
+                expectedResult: {
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2010-01-01T01:00:00.000Z/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    key: '3a2da626-6ac2-4c31-bf53-e1a7929d2e00',
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        limit: 100,
+                        offset: 0,
+                        success: true,
+                        total: 1,
+                    },
+                },
+            },
+        ];
+
+        tests.forEach((test) => {
+            it(test.name, async function () {
+                const response = await fetch(
+                    url('/rest/metadata/filtered/period'),
+                    {
+                        method: 'POST',
+                        headers: new fetch.Headers({
+                            Authorization: createAdminToken(),
+                            'Content-Type': 'application/json',
+                        }),
+                        body: test.body,
+                    }
+                );
+
+                assert.strictEqual(response.status, 200);
+
+                const data = await response.json();
+                delete data.changes;
+                assert.deepStrictEqual(data, test.expectedResult.body);
+            });
+        });
+    });
+
+    describe('POST /rest/metadata', function () {
+        const tests = [
+            {
+                name: 'create period without `period` prop',
+                body: JSON.stringify({
+                    data: {
+                        period: [
+                            {
+                                key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d0',
+                                data: {},
+                            },
+                        ],
+                    },
+                }),
+                expectedResult: {
+                    status: 201,
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d0',
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: null,
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                    },
+                    periodRanges: {
+                        '7eeea607-d9d7-4cf2-b765-fbcb1177e2d0': null,
+                    },
+                },
+            },
+            {
+                name: 'create period with `period` prop',
+                body: JSON.stringify({
+                    data: {
+                        period: [
+                            {
+                                key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                data: {
+                                    period: '2012-03-01/P1Y',
+                                },
+                            },
+                        ],
+                    },
+                }),
+                expectedResult: {
+                    status: 201,
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2012-03-01/P1Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                    },
+                    periodRanges: {
+                        '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1':
+                            '["2012-03-01 00:00:00","2013-03-01 00:00:00"]',
+                    },
+                },
+            },
+        ];
+
+        tests.forEach((test) => {
+            it(test.name, async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'POST',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: test.body,
+                });
+
+                assert.strictEqual(response.status, test.expectedResult.status);
+
+                const data = await response.json();
+                assert.deepStrictEqual(data, test.expectedResult.body);
+
+                const periods = _.get(
+                    ['data', 'period'],
+                    test.expectedResult.body
+                );
+                const periodKeys = _.map((period) => period.key, periods);
+                const pr = await periodRanges(periodKeys);
+
+                assert.deepStrictEqual(pr, test.expectedResult.periodRanges);
+            });
+        });
+    });
+
+    describe('PUT /rest/metadata', function () {
+        const tests = [
+            {
+                name: 'update period with `period` prop',
+                body: JSON.stringify({
+                    data: {
+                        period: [
+                            {
+                                key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                data: {
+                                    period: '2012-03-01/P2Y',
+                                },
+                            },
+                        ],
+                    },
+                }),
+                expectedResult: {
+                    status: 200,
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: null,
+                                        nameInternal: null,
+                                        period: '2012-03-01/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                    },
+                    periodRanges: {
+                        '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1':
+                            '["2012-03-01 00:00:00","2014-03-01 00:00:00"]',
+                    },
+                },
+            },
+            {
+                name: 'update period omitting `period` prop',
+                body: JSON.stringify({
+                    data: {
+                        period: [
+                            {
+                                key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                data: {
+                                    nameDisplay: 'dis',
+                                },
+                            },
+                        ],
+                    },
+                }),
+                expectedResult: {
+                    status: 200,
+                    body: {
+                        data: {
+                            period: [
+                                {
+                                    key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
+                                    data: {
+                                        applicationKey: null,
+                                        description: null,
+                                        nameDisplay: 'dis',
+                                        nameInternal: null,
+                                        period: '2012-03-01/P2Y',
+                                        scopeKey: null,
+                                        tagKeys: null,
+                                    },
+                                    permissions: {
+                                        activeUser: {
+                                            create: true,
+                                            delete: false,
+                                            update: true,
+                                            view: true,
+                                        },
+                                        guest: {
+                                            create: false,
+                                            delete: false,
+                                            update: false,
+                                            view: false,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                        success: true,
+                        total: 1,
+                    },
+                    periodRanges: {
+                        '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1':
+                            '["2012-03-01 00:00:00","2014-03-01 00:00:00"]',
+                    },
+                },
+            },
+        ];
+
+        tests.forEach((test) => {
+            it(test.name, async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'PUT',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: test.body,
+                });
+
+                assert.strictEqual(response.status, test.expectedResult.status);
+
+                const data = await response.json();
+                assert.deepStrictEqual(data, test.expectedResult.body);
+
+                const periods = _.get(
+                    ['data', 'period'],
+                    test.expectedResult.body
+                );
+                const periodKeys = _.map((period) => period.key, periods);
+                const pr = await periodRanges(periodKeys);
+
+                assert.deepStrictEqual(pr, test.expectedResult.periodRanges);
+            });
+        });
+    });
+
+    describe('translations', function () {
+        it('POST /rest/metadata', async function () {
+            const response = await fetch(url('/rest/metadata'), {
+                method: 'POST',
+                headers: new fetch.Headers({
+                    Authorization: createAdminToken(),
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    data: {
+                        scope: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                data: {},
+                                translations: {
+                                    cs: {
+                                        nameDisplay: 'csNameDisplay',
+                                        description: 'csOnlyDescription',
+                                    },
+                                    en: {
+                                        nameDisplay: 'enNameDisplay',
+                                        enOnlyProp: 'enOnlyPvalue',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                }),
+            });
+
+            assert.strictEqual(response.status, 201);
+        });
+
+        describe('POST /rest/metadata/filtered/scope', async function () {
+            const tests = [
+                {
+                    name: 'cs,en',
+                    body: {
+                        filter: {
+                            key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                        },
+                        translations: ['cs', 'en'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                translations: {
+                                    cs: {
+                                        description: 'csOnlyDescription',
+                                        nameDisplay: 'csNameDisplay',
+                                    },
+                                    en: {
+                                        enOnlyProp: 'enOnlyPvalue',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'en,cs',
+                    body: {
+                        filter: {
+                            key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                        },
+                        translations: ['en', 'cs'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                translations: {
+                                    cs: {
+                                        description: 'csOnlyDescription',
+                                    },
+                                    en: {
+                                        nameDisplay: 'enNameDisplay',
+                                        enOnlyProp: 'enOnlyPvalue',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+            ];
+
+            tests.forEach((test) => {
+                it(test.name, async function () {
+                    const response = await fetch(
+                        url('/rest/metadata/filtered/scope'),
+                        {
+                            method: 'POST',
+                            headers: new fetch.Headers({
+                                Authorization: createAdminToken(),
+                                'Content-Type': 'application/json',
+                            }),
+                            body: JSON.stringify(test.body),
+                        }
+                    );
+
+                    assert.strictEqual(
+                        response.status,
+                        test.expectedResult.status
+                    );
+                    const data = await response.json();
+
+                    const interestingData = _.map(
+                        _.pick(['key', 'translations']),
+                        data.data.scope
+                    );
+                    assert.deepStrictEqual(
+                        interestingData,
+                        test.expectedResult.body
+                    );
+                });
+            });
+        });
+
+        describe('PUT /rest/metadata', function () {
+            it('make some changes', async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'PUT',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: JSON.stringify({
+                        data: {
+                            scope: [
+                                {
+                                    key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                    data: {},
+                                    translations: {
+                                        cs: {
+                                            nameDisplay: 'csNameDisplay2',
+                                            someProp: 'csNew',
+                                        },
+                                        en: {
+                                            nameDisplay: 'enNameDisplay2',
+                                            someEnProp: 'enSomeNew',
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    }),
+                });
+
+                assert.strictEqual(response.status, 200);
+            });
+        });
+
+        describe('POST /rest/metadata/filtered/scope after changes', async function () {
+            const tests = [
+                {
+                    name: 'cs,en',
+                    body: {
+                        filter: {
+                            key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                        },
+                        translations: ['cs', 'en'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                translations: {
+                                    cs: {
+                                        description: 'csOnlyDescription',
+                                        nameDisplay: 'csNameDisplay2',
+                                        someProp: 'csNew',
+                                    },
+                                    en: {
+                                        enOnlyProp: 'enOnlyPvalue',
+                                        someEnProp: 'enSomeNew',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'en,cs',
+                    body: {
+                        filter: {
+                            key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                        },
+                        translations: ['en', 'cs'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                translations: {
+                                    cs: {
+                                        description: 'csOnlyDescription',
+                                        someProp: 'csNew',
+                                    },
+                                    en: {
+                                        nameDisplay: 'enNameDisplay2',
+                                        enOnlyProp: 'enOnlyPvalue',
+                                        someEnProp: 'enSomeNew',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+            ];
+
+            tests.forEach((test) => {
+                it(test.name, async function () {
+                    const response = await fetch(
+                        url('/rest/metadata/filtered/scope'),
+                        {
+                            method: 'POST',
+                            headers: new fetch.Headers({
+                                Authorization: createAdminToken(),
+                                'Content-Type': 'application/json',
+                            }),
+                            body: JSON.stringify(test.body),
+                        }
+                    );
+
+                    assert.strictEqual(
+                        response.status,
+                        test.expectedResult.status
+                    );
+                    const data = await response.json();
+
+                    const interestingData = _.map(
+                        _.pick(['key', 'translations']),
+                        data.data.scope
+                    );
+                    assert.deepStrictEqual(
+                        interestingData,
+                        test.expectedResult.body
+                    );
+                });
+            });
+        });
+    });
+
+    describe('custom fields', function () {
+        it('POST /rest/metadata', async function () {
+            const response = await fetch(url('/rest/metadata'), {
+                method: 'POST',
+                headers: new fetch.Headers({
+                    Authorization: createAdminToken(),
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    data: {
+                        scope: [
+                            {
+                                key: 'bf866d9d-b20a-4518-87e5-caff38645886',
+                                data: {
+                                    stringCustomField: 'stringv',
+                                    numberCustomField: 6,
+                                },
+                            },
+                        ],
+                    },
+                }),
+            });
+
+            assert.strictEqual(response.status, 201);
+
+            const data = await response.json();
+            assert.deepStrictEqual(data, {
+                data: {
+                    scope: [
+                        {
+                            key: 'bf866d9d-b20a-4518-87e5-caff38645886',
+                            data: {
+                                applicationKey: null,
+                                configuration: null,
+                                description: null,
+                                nameDisplay: null,
+                                nameInternal: null,
+                                numberCustomField: 6,
+                                stringCustomField: 'stringv',
+                                tagKeys: null,
+                            },
+                            permissions: {
+                                activeUser: {
+                                    create: true,
+                                    delete: true,
+                                    update: true,
+                                    view: true,
+                                },
+                                guest: {
+                                    create: false,
+                                    delete: false,
+                                    update: false,
+                                    view: false,
+                                },
+                            },
+                        },
+                    ],
+                },
+                success: true,
+                total: 1,
+            });
+        });
+
+        describe('PUT /rest/metadata', function () {
+            it('make some changes', async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'PUT',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: JSON.stringify({
+                        data: {
+                            scope: [
+                                {
+                                    key: 'bf866d9d-b20a-4518-87e5-caff38645886',
+                                    data: {
+                                        numberCustomField: 7,
+                                        newField: 'new',
+                                    },
+                                },
+                            ],
+                        },
+                    }),
+                });
+
+                assert.strictEqual(response.status, 200);
+
+                const data = await response.json();
+                assert.deepStrictEqual(data, {
+                    data: {
+                        scope: [
+                            {
+                                key: 'bf866d9d-b20a-4518-87e5-caff38645886',
+                                data: {
+                                    applicationKey: null,
+                                    configuration: null,
+                                    description: null,
+                                    nameDisplay: null,
+                                    nameInternal: null,
+                                    numberCustomField: 7,
+                                    stringCustomField: 'stringv',
+                                    newField: 'new',
+                                    tagKeys: null,
+                                },
+                                permissions: {
+                                    activeUser: {
+                                        create: true,
+                                        delete: true,
+                                        update: true,
+                                        view: true,
+                                    },
+                                    guest: {
+                                        create: false,
+                                        delete: false,
+                                        update: false,
+                                        view: false,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    success: true,
+                    total: 1,
+                });
             });
         });
     });

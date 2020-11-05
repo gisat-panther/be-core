@@ -1,6 +1,8 @@
 const Joi = require('../../joi');
 const _ = require('lodash');
 const _fp = require('lodash/fp');
+const translation = require('./translation');
+const customFields = require('./custom-fields');
 
 /**
  * @param {import('./compiler').Column} col
@@ -8,7 +10,11 @@ const _fp = require('lodash/fp');
  * @returns {object|null}
  */
 function colFilterSchema(col) {
-    const type = col.schema.type;
+    const type = _fp.get(['schema', 'type'], col);
+    if (type == null) {
+        return null;
+    }
+
     const schema = col.schema;
     switch (type) {
         case 'string':
@@ -23,6 +29,12 @@ function colFilterSchema(col) {
                     })
                     .length(1)
             );
+        case 'isoDuration':
+            return Joi.object()
+                .keys({
+                    overlaps: schema,
+                })
+                .length(1);
         case 'number':
             return Joi.alternatives().try(
                 schema,
@@ -179,7 +191,8 @@ function listBody(plan, group) {
                 .default([]),
             limit: Joi.number().integer().default(100),
             offset: Joi.number().integer().default(0),
-        });
+        })
+        .append(translation.listSchema());
 }
 
 /**
@@ -292,21 +305,26 @@ function createBody(plan, group) {
 
                             const rs = relationSchemas(plan, group, type);
 
-                            return Joi.object().keys({
-                                key: keyCol.schema.default(keyCol.defaultValue),
-                                data: Joi.object()
-                                    .keys(
-                                        Object.assign(
-                                            {},
-                                            _.mapValues(
-                                                dataCols,
-                                                dataColCreateSchema
-                                            ),
-                                            rs
+                            return Joi.object()
+                                .keys({
+                                    key: keyCol.schema.default(
+                                        keyCol.defaultValue
+                                    ),
+                                    data: Joi.object()
+                                        .keys(
+                                            Object.assign(
+                                                {},
+                                                _.mapValues(
+                                                    dataCols,
+                                                    dataColCreateSchema
+                                                ),
+                                                rs
+                                            )
                                         )
-                                    )
-                                    .required(),
-                            });
+                                        .required()
+                                        .concat(customFields.schema()),
+                                })
+                                .append(translation.schema());
                         })
                     )
                 )
@@ -325,18 +343,21 @@ function createBody(plan, group) {
 
         return Joi.array()
             .items(
-                Joi.object().keys({
-                    key: keyCol.schema.default(keyCol.defaultValue),
-                    data: Joi.object()
-                        .keys(
-                            Object.assign(
-                                {},
-                                _.mapValues(dataCols, dataColCreateSchema),
-                                rs
+                Joi.object()
+                    .keys({
+                        key: keyCol.schema.default(keyCol.defaultValue),
+                        data: Joi.object()
+                            .keys(
+                                Object.assign(
+                                    {},
+                                    _.mapValues(dataCols, dataColCreateSchema),
+                                    rs
+                                )
                             )
-                        )
-                        .required(),
-                })
+                            .required()
+                            .concat(customFields.schema()),
+                    })
+                    .append(translation.schema())
             )
             .min(1);
     });
@@ -425,21 +446,24 @@ function updateBody(plan, group) {
 
                             const rs = relationSchemas(plan, group, type);
 
-                            return Joi.object().keys({
-                                key: keyCol.schema.required(),
-                                data: Joi.object()
-                                    .keys(
-                                        Object.assign(
-                                            {},
-                                            _.mapValues(
-                                                dataCols,
-                                                dataColUpdateSchema
-                                            ),
-                                            rs
+                            return Joi.object()
+                                .keys({
+                                    key: keyCol.schema.required(),
+                                    data: Joi.object()
+                                        .keys(
+                                            Object.assign(
+                                                {},
+                                                _.mapValues(
+                                                    dataCols,
+                                                    dataColUpdateSchema
+                                                ),
+                                                rs
+                                            )
                                         )
-                                    )
-                                    .required(),
-                            });
+                                        .required()
+                                        .concat(customFields.schema()),
+                                })
+                                .append(translation.schema());
                         })
                     )
                 )
@@ -468,9 +492,11 @@ function updateBody(plan, group) {
                                 rs
                             )
                         )
-                        .required(),
+                        .required()
+                        .concat(customFields.schema()),
                 })
                 .min(1)
+                .append(translation.schema())
         );
     });
 
