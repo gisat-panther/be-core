@@ -1,6 +1,7 @@
 const Joi = require('../../joi');
 const _ = require('lodash');
 const _fp = require('lodash/fp');
+const translation = require('./translation');
 
 /**
  * @param {import('./compiler').Column} col
@@ -189,7 +190,8 @@ function listBody(plan, group) {
                 .default([]),
             limit: Joi.number().integer().default(100),
             offset: Joi.number().integer().default(0),
-        });
+        })
+        .append(translation.listSchema());
 }
 
 /**
@@ -315,7 +317,8 @@ function createBody(plan, group) {
                                             rs
                                         )
                                     )
-                                    .required(),
+                                    .required()
+                                    .append(translation.schema()),
                             });
                         })
                     )
@@ -335,18 +338,20 @@ function createBody(plan, group) {
 
         return Joi.array()
             .items(
-                Joi.object().keys({
-                    key: keyCol.schema.default(keyCol.defaultValue),
-                    data: Joi.object()
-                        .keys(
-                            Object.assign(
-                                {},
-                                _.mapValues(dataCols, dataColCreateSchema),
-                                rs
+                Joi.object()
+                    .keys({
+                        key: keyCol.schema.default(keyCol.defaultValue),
+                        data: Joi.object()
+                            .keys(
+                                Object.assign(
+                                    {},
+                                    _.mapValues(dataCols, dataColCreateSchema),
+                                    rs
+                                )
                             )
-                        )
-                        .required(),
-                })
+                            .required(),
+                    })
+                    .append(translation.schema())
             )
             .min(1);
     });
@@ -435,21 +440,23 @@ function updateBody(plan, group) {
 
                             const rs = relationSchemas(plan, group, type);
 
-                            return Joi.object().keys({
-                                key: keyCol.schema.required(),
-                                data: Joi.object()
-                                    .keys(
-                                        Object.assign(
-                                            {},
-                                            _.mapValues(
-                                                dataCols,
-                                                dataColUpdateSchema
-                                            ),
-                                            rs
+                            return Joi.object()
+                                .keys({
+                                    key: keyCol.schema.required(),
+                                    data: Joi.object()
+                                        .keys(
+                                            Object.assign(
+                                                {},
+                                                _.mapValues(
+                                                    dataCols,
+                                                    dataColUpdateSchema
+                                                ),
+                                                rs
+                                            )
                                         )
-                                    )
-                                    .required(),
-                            });
+                                        .required(),
+                                })
+                                .append(translation.schema());
                         })
                     )
                 )
@@ -481,6 +488,7 @@ function updateBody(plan, group) {
                         .required(),
                 })
                 .min(1)
+                .append(translation.schema())
         );
     });
 

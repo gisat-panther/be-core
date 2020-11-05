@@ -864,4 +864,252 @@ describe('/rest/metadata', function () {
             });
         });
     });
+
+    describe('translations', function () {
+        it('POST /rest/metadata', async function () {
+            const response = await fetch(url('/rest/metadata'), {
+                method: 'POST',
+                headers: new fetch.Headers({
+                    Authorization: createAdminToken(),
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    data: {
+                        scope: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                data: {},
+                                translations: {
+                                    cs: {
+                                        nameDisplay: 'csNameDisplay',
+                                        description: 'csOnlyDescription',
+                                    },
+                                    en: {
+                                        nameDisplay: 'enNameDisplay',
+                                        enOnlyProp: 'enOnlyPvalue',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                }),
+            });
+
+            assert.strictEqual(response.status, 201);
+        });
+
+        describe('POST /rest/metadata/filtered/scope', async function () {
+            const tests = [
+                {
+                    name: 'cs,en',
+                    body: {
+                        filter: {
+                            key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                        },
+                        translations: ['cs', 'en'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                translations: {
+                                    cs: {
+                                        description: 'csOnlyDescription',
+                                        nameDisplay: 'csNameDisplay',
+                                    },
+                                    en: {
+                                        enOnlyProp: 'enOnlyPvalue',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'en,cs',
+                    body: {
+                        filter: {
+                            key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                        },
+                        translations: ['en', 'cs'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                translations: {
+                                    cs: {
+                                        description: 'csOnlyDescription',
+                                    },
+                                    en: {
+                                        nameDisplay: 'enNameDisplay',
+                                        enOnlyProp: 'enOnlyPvalue',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+            ];
+
+            tests.forEach((test) => {
+                it(test.name, async function () {
+                    const response = await fetch(
+                        url('/rest/metadata/filtered/scope'),
+                        {
+                            method: 'POST',
+                            headers: new fetch.Headers({
+                                Authorization: createAdminToken(),
+                                'Content-Type': 'application/json',
+                            }),
+                            body: JSON.stringify(test.body),
+                        }
+                    );
+
+                    assert.strictEqual(
+                        response.status,
+                        test.expectedResult.status
+                    );
+                    const data = await response.json();
+
+                    const interestingData = _.map(
+                        _.pick(['key', 'translations']),
+                        data.data.scope
+                    );
+                    assert.deepStrictEqual(
+                        interestingData,
+                        test.expectedResult.body
+                    );
+                });
+            });
+        });
+
+        describe('PUT /rest/metadata', function () {
+            it('make some changes', async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'PUT',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: JSON.stringify({
+                        data: {
+                            scope: [
+                                {
+                                    key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                    data: {},
+                                    translations: {
+                                        cs: {
+                                            nameDisplay: 'csNameDisplay2',
+                                            someProp: 'csNew',
+                                        },
+                                        en: {
+                                            nameDisplay: 'enNameDisplay2',
+                                            someEnProp: 'enSomeNew',
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    }),
+                });
+
+                assert.strictEqual(response.status, 200);
+            });
+        });
+
+        describe('POST /rest/metadata/filtered/scope after changes', async function () {
+            const tests = [
+                {
+                    name: 'cs,en',
+                    body: {
+                        filter: {
+                            key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                        },
+                        translations: ['cs', 'en'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                translations: {
+                                    cs: {
+                                        description: 'csOnlyDescription',
+                                        nameDisplay: 'csNameDisplay2',
+                                        someProp: 'csNew',
+                                    },
+                                    en: {
+                                        enOnlyProp: 'enOnlyPvalue',
+                                        someEnProp: 'enSomeNew',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'en,cs',
+                    body: {
+                        filter: {
+                            key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                        },
+                        translations: ['en', 'cs'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                translations: {
+                                    cs: {
+                                        description: 'csOnlyDescription',
+                                        someProp: 'csNew',
+                                    },
+                                    en: {
+                                        nameDisplay: 'enNameDisplay2',
+                                        enOnlyProp: 'enOnlyPvalue',
+                                        someEnProp: 'enSomeNew',
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                },
+            ];
+
+            tests.forEach((test) => {
+                it(test.name, async function () {
+                    const response = await fetch(
+                        url('/rest/metadata/filtered/scope'),
+                        {
+                            method: 'POST',
+                            headers: new fetch.Headers({
+                                Authorization: createAdminToken(),
+                                'Content-Type': 'application/json',
+                            }),
+                            body: JSON.stringify(test.body),
+                        }
+                    );
+
+                    assert.strictEqual(
+                        response.status,
+                        test.expectedResult.status
+                    );
+                    const data = await response.json();
+
+                    const interestingData = _.map(
+                        _.pick(['key', 'translations']),
+                        data.data.scope
+                    );
+                    assert.deepStrictEqual(
+                        interestingData,
+                        test.expectedResult.body
+                    );
+                });
+            });
+        });
+    });
 });

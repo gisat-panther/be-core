@@ -11,6 +11,7 @@ const schema = require('./schema');
 const q = require('./query');
 const db = require('../../db');
 const util = require('./util');
+const translation = require('./translation');
 
 /**
  * @typedef {Object} Permissions
@@ -97,7 +98,7 @@ function updatePermissionWithRestrictedColumns(
  * @returns {Row}
  */
 function formatRow(row, restrictedColumns) {
-    return {
+    return translation.formatRow({
         key: row.key,
         data: _.omit(row, [
             'key',
@@ -122,7 +123,7 @@ function formatRow(row, restrictedColumns) {
                 restrictedColumns
             ),
         },
-    };
+    });
 }
 
 /**
@@ -291,10 +292,11 @@ async function createData({plan, group, client}, request) {
 
     const records = await Promise.all(
         _.map(data, async function (records, type) {
-            const createdKeys = await q.create(
-                {plan, group, type, client},
-                records
-            );
+            const [createdKeys] = await Promise.all([
+                q.create({plan, group, type, client}, records),
+                translation.updateTranslations({client, group, type}, records),
+            ]);
+
             const createdRecords = await q.list(
                 {plan, group, type, client, user: request.user},
                 {
@@ -355,7 +357,10 @@ async function updateData({plan, group, client}, request) {
 
     const records = await Promise.all(
         _.map(data, async function (records, type) {
-            await q.update({plan, group, type, client}, records);
+            await Promise.all([
+                q.update({plan, group, type, client}, records),
+                translation.updateTranslations({client, group, type}, records),
+            ]);
 
             const updatedRecords = await q.list(
                 {plan, group, type, client, user: request.user},
@@ -435,6 +440,7 @@ function createGroup(plan, group) {
                                 sort: parameters.order,
                                 filter: parameters.filter,
                                 page: page,
+                                translations: parameters.translations,
                             })
                         );
                     })

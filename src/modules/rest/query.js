@@ -6,6 +6,7 @@ const {SQL} = require('sql-template-strings');
 const {Client} = require('pg');
 const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
+const translation = require('./translation');
 
 const mapWithKey = _fp.map.convert({cap: false});
 
@@ -757,6 +758,7 @@ async function lastChange({plan, group, type}, ids) {
                         ids.map(qb.val.inlineParam)
                     )
                 ),
+                ...translation.lastChangeExprs({group, type}, ids),
                 ...lastChangeRelationsExprs({plan, group, type}, ids),
                 ...lastChangeDependentTypesExprs({plan, group, type}, ids)
             )
@@ -930,7 +932,10 @@ function createSortQuery({group, table}, alias, sortExpr) {
  *
  * @returns {Promise<{rows: object[], count: number}>}
  */
-function list({plan, group, type, client, user}, {sort, filter, page}) {
+function list(
+    {plan, group, type, client, user},
+    {sort, filter, page, translations}
+) {
     plan = getPlan(plan);
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
@@ -1006,7 +1011,8 @@ function list({plan, group, type, client, user}, {sort, filter, page}) {
         filtersToSqlExpr(
             createFilters(filter, columnToAliases, columnToField, columnsConfig)
         ),
-        relationsQuery({plan, group, type}, 't')
+        relationsQuery({plan, group, type}, 't'),
+        translation.listTranslationsQuery({group, type, translations}, 't')
     );
 
     const countSqlMap = qb.merge(
