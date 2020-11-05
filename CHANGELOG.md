@@ -1,3 +1,16 @@
+# v0.0.17 (Thu Nov 05 2020)
+
+#### 🐾 Patch
+
+- Custom fields [#25](https://github.com/gisat-panther/be-core/pull/25) ([@nenadalm](https://github.com/nenadalm))
+- Translations [#24](https://github.com/gisat-panther/be-core/pull/24) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.16 (Thu Oct 29 2020)
 
 #### 🐾 Patch
