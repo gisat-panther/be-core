@@ -496,7 +496,8 @@ describe('/rest/data/filtered', () => {
 						key: {
 							in: ["f9f6dc0d-4b6a-4794-9243-5948d920239c", "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc"]
 						}
-					}
+					},
+					order: [["nameDisplay", "ascending"]]
 				})
 			};
 
@@ -508,14 +509,14 @@ describe('/rest/data/filtered', () => {
 							applicationKey: null,
 							color: null,
 							description: null,
-							nameDisplay: "attribute2",
+							nameDisplay: "attribute1",
 							nameInternal: null,
 							tagKeys: null,
 							type: null,
 							unit: null,
 							valueType: null
 						},
-						key: "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc",
+						key: "f9f6dc0d-4b6a-4794-9243-5948d920239c",
 						permissions: {
 							activeUser: {
 								create: false,
@@ -536,14 +537,14 @@ describe('/rest/data/filtered', () => {
 							applicationKey: null,
 							color: null,
 							description: null,
-							nameDisplay: "attribute1",
+							nameDisplay: "attribute2",
 							nameInternal: null,
 							tagKeys: null,
 							type: null,
 							unit: null,
 							valueType: null
 						},
-						key: "f9f6dc0d-4b6a-4794-9243-5948d920239c",
+						key: "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc",
 						permissions: {
 							activeUser: {
 								create: false,
@@ -650,7 +651,8 @@ describe('/rest/data/filtered', () => {
 						key: {
 							in: ["d0329b4c-5214-4aea-8291-bc7443b643e7", "7c11916a-20f4-4c6b-99a8-8b95bd1ec041"]
 						}
-					}
+					},
+					order: [["columnName", "ascending"]]
 				})
 			};
 
@@ -660,12 +662,12 @@ describe('/rest/data/filtered', () => {
 					{
 						data: {
 							attribution: null,
-							columnName: "attribute2",
+							columnName: "attribute1",
 							fidColumnName: "fid",
 							nameInternal: null,
 							tableName: "exampleSpatialAttributeData"
 						},
-						key: "d0329b4c-5214-4aea-8291-bc7443b643e7",
+						key: "7c11916a-20f4-4c6b-99a8-8b95bd1ec041",
 						permissions: {
 							activeUser: {
 								create: false,
@@ -684,12 +686,12 @@ describe('/rest/data/filtered', () => {
 					{
 						data: {
 							attribution: null,
-							columnName: "attribute1",
+							columnName: "attribute2",
 							fidColumnName: "fid",
 							nameInternal: null,
 							tableName: "exampleSpatialAttributeData"
 						},
-						key: "7c11916a-20f4-4c6b-99a8-8b95bd1ec041",
+						key: "d0329b4c-5214-4aea-8291-bc7443b643e7",
 						permissions: {
 							activeUser: {
 								create: false,
@@ -834,21 +836,6 @@ describe('/rest/data/filtered', () => {
 						}
 					}],
 					"attributeRelations": [{
-						"key": "ffcd6e38-7238-4f27-a41e-dd6d3a14ff59",
-						"data": {
-							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
-							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
-							"placeKey": null,
-							"attributeDataSourceKey": "d0329b4c-5214-4aea-8291-bc7443b643e7",
-							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
-							"scenarioKey": null,
-							"caseKey": null,
-							"attributeSetKey": null,
-							"attributeKey": "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc",
-							"areaTreeLevelKey": null,
-							"applicationKey": null
-						}
-					}, {
 						"key": "faa00c17-3fdc-4c25-bb49-91e1bbe0c137",
 						"data": {
 							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
@@ -860,6 +847,21 @@ describe('/rest/data/filtered', () => {
 							"caseKey": null,
 							"attributeSetKey": null,
 							"attributeKey": "f9f6dc0d-4b6a-4794-9243-5948d920239c",
+							"areaTreeLevelKey": null,
+							"applicationKey": null
+						}
+					}, {
+						"key": "ffcd6e38-7238-4f27-a41e-dd6d3a14ff59",
+						"data": {
+							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
+							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
+							"placeKey": null,
+							"attributeDataSourceKey": "d0329b4c-5214-4aea-8291-bc7443b643e7",
+							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
+							"scenarioKey": null,
+							"caseKey": null,
+							"attributeSetKey": null,
+							"attributeKey": "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc",
 							"areaTreeLevelKey": null,
 							"applicationKey": null
 						}
@@ -877,21 +879,21 @@ describe('/rest/data/filtered', () => {
 						}
 					}],
 					"attributeDataSources": [{
-						"key": "d0329b4c-5214-4aea-8291-bc7443b643e7",
-						"data": {
-							"nameInternal": null,
-							"attribution": null,
-							"tableName": "exampleSpatialAttributeData",
-							"columnName": "attribute2",
-							"fidColumnName": "fid"
-						}
-					}, {
 						"key": "7c11916a-20f4-4c6b-99a8-8b95bd1ec041",
 						"data": {
 							"nameInternal": null,
 							"attribution": null,
 							"tableName": "exampleSpatialAttributeData",
 							"columnName": "attribute1",
+							"fidColumnName": "fid"
+						}
+					}, {
+						"key": "d0329b4c-5214-4aea-8291-bc7443b643e7",
+						"data": {
+							"nameInternal": null,
+							"attribution": null,
+							"tableName": "exampleSpatialAttributeData",
+							"columnName": "attribute2",
 							"fidColumnName": "fid"
 						}
 					}],
@@ -977,21 +979,6 @@ describe('/rest/data/filtered', () => {
 						}
 					}],
 					"attributeRelations": [{
-						"key": "ffcd6e38-7238-4f27-a41e-dd6d3a14ff59",
-						"data": {
-							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
-							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
-							"placeKey": null,
-							"attributeDataSourceKey": "d0329b4c-5214-4aea-8291-bc7443b643e7",
-							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
-							"scenarioKey": null,
-							"caseKey": null,
-							"attributeSetKey": null,
-							"attributeKey": "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc",
-							"areaTreeLevelKey": null,
-							"applicationKey": null
-						}
-					}, {
 						"key": "faa00c17-3fdc-4c25-bb49-91e1bbe0c137",
 						"data": {
 							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
@@ -1003,6 +990,21 @@ describe('/rest/data/filtered', () => {
 							"caseKey": null,
 							"attributeSetKey": null,
 							"attributeKey": "f9f6dc0d-4b6a-4794-9243-5948d920239c",
+							"areaTreeLevelKey": null,
+							"applicationKey": null
+						}
+					}, {
+						"key": "ffcd6e38-7238-4f27-a41e-dd6d3a14ff59",
+						"data": {
+							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
+							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
+							"placeKey": null,
+							"attributeDataSourceKey": "d0329b4c-5214-4aea-8291-bc7443b643e7",
+							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
+							"scenarioKey": null,
+							"caseKey": null,
+							"attributeSetKey": null,
+							"attributeKey": "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc",
 							"areaTreeLevelKey": null,
 							"applicationKey": null
 						}
@@ -1020,21 +1022,21 @@ describe('/rest/data/filtered', () => {
 						}
 					}],
 					"attributeDataSources": [{
-						"key": "d0329b4c-5214-4aea-8291-bc7443b643e7",
-						"data": {
-							"nameInternal": null,
-							"attribution": null,
-							"tableName": "exampleSpatialAttributeData",
-							"columnName": "attribute2",
-							"fidColumnName": "fid"
-						}
-					}, {
 						"key": "7c11916a-20f4-4c6b-99a8-8b95bd1ec041",
 						"data": {
 							"nameInternal": null,
 							"attribution": null,
 							"tableName": "exampleSpatialAttributeData",
 							"columnName": "attribute1",
+							"fidColumnName": "fid"
+						}
+					}, {
+						"key": "d0329b4c-5214-4aea-8291-bc7443b643e7",
+						"data": {
+							"nameInternal": null,
+							"attribution": null,
+							"tableName": "exampleSpatialAttributeData",
+							"columnName": "attribute2",
 							"fidColumnName": "fid"
 						}
 					}],
