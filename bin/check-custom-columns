@@ -1,0 +1,109 @@
+#!/usr/bin/env node
+
+/**
+ * Exits with 0 if there are no missing colums to put custom columns in, otherwise 1.
+ */
+
+require('../src/applications/index');
+const getPlan = require('../src/applications/plan').get;
+const db = require('../src/db');
+const qb = require('@imatic/pgqb');
+const _ = require('lodash/fp');
+const {SQL} = require('sql-template-strings');
+
+const flatMapWithKey = _.flatMap.convert({cap: false});
+
+db.init();
+
+/**
+ * @param {{schema: string, tables: string[]}[]} tables
+ *
+ * @return {string[]}
+ */
+function filterTablesWithMissingCustomColumn(tables) {
+    const tableExprs = _.map(({schema, tables}) => {
+        return qb.expr.and(
+            qb.expr.eq('table_schema', qb.val.inlineParam(schema)),
+            qb.expr.in('table_name', tables.map(qb.val.inlineParam))
+        );
+    }, tables);
+
+    const sqlMap = qb.merge(
+        qb.select(['table_schema', 'table_name']),
+        qb.from('information_schema.columns'),
+        qb.where(qb.expr.or(...tableExprs)),
+        qb.groupBy(['table_schema', 'table_name']),
+        qb.having(
+            qb.val.raw(
+                SQL`NOT ('__customColumns' = ANY(ARRAY_AGG("column_name")))`
+            )
+        )
+    );
+
+    return db
+        .query(qb.toSql(sqlMap))
+        .then((res) =>
+            res.rows.map((row) => `"${row.table_schema}"."${row.table_name}"`)
+        );
+}
+
+/**
+ * @param {string} tableName
+ *
+ * @returns {string}
+ */
+function addTableColumnQuery(tableName) {
+    return `ALTER TABLE ${tableName} ADD COLUMN "__customColumns" JSONB NOT NULL DEFAULT '{}';`;
+}
+
+/**
+ * @param {string} tableName
+ *
+ * @returns {string}
+ */
+function dropTableColumnQuery(tableName) {
+    return `ALTER TABLE ${tableName} DROP COLUMN "__customColumns";`;
+}
+
+async function main() {
+    const tables = flatMapWithKey((group, groupName) => {
+        return {
+            schema: groupName,
+            tables: _.flatMap((type) => {
+                return type.table;
+            }, group),
+        };
+    }, getPlan());
+
+    const tablesWithMissingCustomColumn = await filterTablesWithMissingCustomColumn(
+        tables
+    );
+
+    if (tablesWithMissingCustomColumn.length === 0) {
+        return null;
+    }
+
+    return {
+        create: tablesWithMissingCustomColumn.map(addTableColumnQuery),
+        drop: tablesWithMissingCustomColumn.map(dropTableColumnQuery),
+    };
+}
+
+main().then((missingColumns) => {
+    if (missingColumns == null) {
+        return process.exit(0);
+    }
+
+    console.error(`Some columns are missing. Create migration with following contents:
+==================================================================================
+
+do.sql
+------
+${missingColumns.create.join('\n')}
+
+undo.sql:
+---------
+${missingColumns.drop.join('\n')}`);
+
+    process.exit(1);
+});

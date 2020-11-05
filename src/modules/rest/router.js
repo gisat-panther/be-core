@@ -12,6 +12,7 @@ const q = require('./query');
 const db = require('../../db');
 const util = require('./util');
 const translation = require('./translation');
+const customFields = require('./custom-fields');
 
 /**
  * @typedef {Object} Permissions
@@ -98,7 +99,10 @@ function updatePermissionWithRestrictedColumns(
  * @returns {Row}
  */
 function formatRow(row, restrictedColumns) {
-    return translation.formatRow({
+    return _fp.flow(
+        translation.formatRow,
+        customFields.formatRow
+    )({
         key: row.key,
         data: _.omit(row, [
             'key',

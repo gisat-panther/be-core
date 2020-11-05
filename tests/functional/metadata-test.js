@@ -1112,4 +1112,133 @@ describe('/rest/metadata', function () {
             });
         });
     });
+
+    describe('custom fields', function () {
+        it('POST /rest/metadata', async function () {
+            const response = await fetch(url('/rest/metadata'), {
+                method: 'POST',
+                headers: new fetch.Headers({
+                    Authorization: createAdminToken(),
+                    'Content-Type': 'application/json',
+                }),
+                body: JSON.stringify({
+                    data: {
+                        scope: [
+                            {
+                                key: 'bf866d9d-b20a-4518-87e5-caff38645886',
+                                data: {
+                                    stringCustomField: 'stringv',
+                                    numberCustomField: 6,
+                                },
+                            },
+                        ],
+                    },
+                }),
+            });
+
+            assert.strictEqual(response.status, 201);
+
+            const data = await response.json();
+            assert.deepStrictEqual(data, {
+                data: {
+                    scope: [
+                        {
+                            key: 'bf866d9d-b20a-4518-87e5-caff38645886',
+                            data: {
+                                applicationKey: null,
+                                configuration: null,
+                                description: null,
+                                nameDisplay: null,
+                                nameInternal: null,
+                                numberCustomField: 6,
+                                stringCustomField: 'stringv',
+                                tagKeys: null,
+                            },
+                            permissions: {
+                                activeUser: {
+                                    create: true,
+                                    delete: true,
+                                    update: true,
+                                    view: true,
+                                },
+                                guest: {
+                                    create: false,
+                                    delete: false,
+                                    update: false,
+                                    view: false,
+                                },
+                            },
+                        },
+                    ],
+                },
+                success: true,
+                total: 1,
+            });
+        });
+
+        describe('PUT /rest/metadata', function () {
+            it('make some changes', async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'PUT',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: JSON.stringify({
+                        data: {
+                            scope: [
+                                {
+                                    key: 'bf866d9d-b20a-4518-87e5-caff38645886',
+                                    data: {
+                                        numberCustomField: 7,
+                                        newField: 'new',
+                                    },
+                                },
+                            ],
+                        },
+                    }),
+                });
+
+                assert.strictEqual(response.status, 200);
+
+                const data = await response.json();
+                assert.deepStrictEqual(data, {
+                    data: {
+                        scope: [
+                            {
+                                key: 'bf866d9d-b20a-4518-87e5-caff38645886',
+                                data: {
+                                    applicationKey: null,
+                                    configuration: null,
+                                    description: null,
+                                    nameDisplay: null,
+                                    nameInternal: null,
+                                    numberCustomField: 7,
+                                    stringCustomField: 'stringv',
+                                    newField: 'new',
+                                    tagKeys: null,
+                                },
+                                permissions: {
+                                    activeUser: {
+                                        create: true,
+                                        delete: true,
+                                        update: true,
+                                        view: true,
+                                    },
+                                    guest: {
+                                        create: false,
+                                        delete: false,
+                                        update: false,
+                                        view: false,
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                    success: true,
+                    total: 1,
+                });
+            });
+        });
+    });
 });

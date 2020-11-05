@@ -7,6 +7,7 @@ const {Client} = require('pg');
 const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
 const translation = require('./translation');
+const customFields = require('./custom-fields');
 
 const mapWithKey = _fp.map.convert({cap: false});
 
@@ -1012,7 +1013,8 @@ function list(
             createFilters(filter, columnToAliases, columnToField, columnsConfig)
         ),
         relationsQuery({plan, group, type}, 't'),
-        translation.listTranslationsQuery({group, type, translations}, 't')
+        translation.listTranslationsQuery({group, type, translations}, 't'),
+        customFields.listQuery('t')
     );
 
     const countSqlMap = qb.merge(
@@ -1219,7 +1221,8 @@ async function create({plan, group, type, client}, records) {
             : qb.merge(
                   qb.columns([typeKey]),
                   qb.values(dependentTypes.map((v) => [qb.val.inlineParam(v)]))
-              )
+              ),
+        customFields.create({plan, group, type}, records)
     );
 
     const relationsByCol = _.mapKeys(typeSchema.relations, function (
@@ -1328,9 +1331,6 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
     const typeKey = _.get(typeSchema, ['type', 'key']);
 
     const data = _.pick(record.data, columns);
-    if (_.isEmpty(data)) {
-        return Promise.resolve();
-    }
 
     const queryColumns = _fp.filter(
         (col) =>
@@ -1354,7 +1354,8 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
                   qb.set([
                       qb.expr.eq(typeKey, qb.val.inlineParam(dependentType)),
                   ])
-              )
+              ),
+        customFields.update({plan, group, type}, record)
     );
 
     return client.query(qb.toSql(sqlMap));
