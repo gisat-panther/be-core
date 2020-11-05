@@ -3,78 +3,7 @@ const _ = require('lodash');
 const _fp = require('lodash/fp');
 const translation = require('./translation');
 const customFields = require('./custom-fields');
-
-/**
- * @param {import('./compiler').Column} col
- *
- * @returns {object|null}
- */
-function colFilterSchema(col) {
-    const type = _fp.get(['schema', 'type'], col);
-    if (type == null) {
-        return null;
-    }
-
-    const schema = col.schema;
-    switch (type) {
-        case 'string':
-            return Joi.alternatives().try(
-                schema,
-                Joi.object()
-                    .keys({
-                        like: schema,
-                        eq: schema,
-                        in: Joi.array().items(schema.allow(null)).min(1),
-                        notin: Joi.array().items(schema.allow(null)).min(1),
-                    })
-                    .length(1)
-            );
-        case 'isoDuration':
-            return Joi.object()
-                .keys({
-                    overlaps: schema,
-                })
-                .length(1);
-        case 'number':
-            return Joi.alternatives().try(
-                schema,
-                Joi.object()
-                    .keys({
-                        eq: schema,
-                        in: Joi.array().items(schema.allow(null)).min(1),
-                        notin: Joi.array().items(schema.allow(null)).min(1),
-                    })
-                    .length(1)
-            );
-        case 'date':
-            return Joi.alternatives().try(
-                schema,
-                Joi.object()
-                    .keys({
-                        eq: schema,
-                        timefrom: schema,
-                        timeto: schema,
-                        in: Joi.array().items(schema.allow(null)).min(1),
-                        notin: Joi.array().items(schema.allow(null)).min(1),
-                    })
-                    .length(1)
-            );
-        case 'object':
-            return null;
-        case 'array':
-            const itemSchema = Joi.alternatives().try(
-                ..._.get(schema, ['$_terms', 'items'])
-            );
-
-            return Joi.object().keys({
-                eq: itemSchema,
-                in: Joi.array().items(itemSchema.allow(null)).min(1),
-                notin: Joi.array().items(itemSchema.allow(null)).min(1),
-            });
-    }
-
-    throw new Error(`Type "${type}" is not supported in filter.`);
-}
+const schemaUtil = require('./schema-util');
 
 /**
  * @param {import('./compiler').Plan} plan
@@ -171,24 +100,8 @@ function listBody(plan, group) {
     return Joi.object()
         .meta({className: `${group}List`})
         .keys({
-            filter: Joi.object()
-                .keys(_.omitBy(_.mapValues(columns, colFilterSchema), _.isNil))
-                .allow(null),
-            order: Joi.array()
-                .items(
-                    Joi.array()
-                        .length(2)
-                        .items(
-                            Joi.string()
-                                .valid(...Object.keys(columns))
-                                .required(),
-                            Joi.string()
-                                .required()
-                                .valid('ascending', 'descending')
-                        )
-                )
-                .allow(null)
-                .default([]),
+            filter: schemaUtil.filter(columns),
+            order: schemaUtil.order(columns),
             limit: Joi.number().integer().default(100),
             offset: Joi.number().integer().default(0),
         })

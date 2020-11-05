@@ -427,6 +427,7 @@ function createGroup(plan, group) {
                 autoLoginMiddleware,
                 authMiddleware,
                 hashMiddleware,
+                // todo: custom fields
             ],
             handler: async function (request, response) {
                 const types = request.parameters.path.types;
@@ -487,6 +488,7 @@ function createGroup(plan, group) {
                 userMiddleware,
                 autoLoginMiddleware,
                 authMiddleware,
+                // todo: custom fields
             ],
             handler: async function (request, response) {
                 sendResponseFromResult(
@@ -515,6 +517,7 @@ function createGroup(plan, group) {
                 autoLoginMiddleware,
                 authMiddleware,
                 createDependentTypeMiddleware({plan, group}),
+                // todo: custom fields
             ],
             handler: async function (request, response) {
                 await db.transactional(async (client) => {

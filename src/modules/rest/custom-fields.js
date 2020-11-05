@@ -2,8 +2,17 @@ const Joi = require('../../joi');
 const qb = require('@imatic/pgqb');
 const _ = require('lodash/fp');
 const {SQL} = require('sql-template-strings');
+const set = require('../../set');
+const db = require('../../db');
+const schemaUtil = require('./schema-util');
 
 const mapWithKey = _.map.convert({cap: false});
+
+/**
+ * @typedef {{type: string}} CustomField
+ *
+ * @typedef {Object<string, CustomField>} CustomFields
+ */
 
 /**
  * @returns {object}
@@ -51,6 +60,19 @@ function validDataNames({plan, group, type}) {
                 ),
             ]
         )
+    );
+}
+
+/**
+ * @param {{plan: string, group: string}} context
+ *
+ * @returns {Set<string>}
+ */
+function validGroupDataNames({plan, group}) {
+    const types = Object.keys(plan[group]);
+
+    return new Set(
+        _.flatMap((type) => validDataNames({plan, group, type}), types)
     );
 }
 
@@ -108,6 +130,250 @@ function formatRow(row) {
     );
 }
 
+/**
+ * @param {object} record
+ *
+ * @returns {object[]}
+ */
+function extractRecordFieldMaps(record) {
+    const translations = _.getOr({}, 'translations', record);
+
+    return [
+        _.getOr({}, 'data', record),
+        ..._.map((fields) => fields, translations),
+    ];
+}
+
+/**
+ * @param {object} record
+ *
+ * @returns {Set<string>}
+ */
+function extractRecordFields(record) {
+    return _.flow(
+        extractRecordFieldMaps,
+        _.mergeAll,
+        Object.keys,
+        set.from
+    )(record);
+}
+
+/**
+ * @param {object} data
+ *
+ * @returns {Set<string>}
+ */
+function extractFields(data) {
+    return _.flow(
+        _.flatMap((records) => records),
+        _.reduce(
+            (fields, record) => set.union(fields, extractRecordFields(record)),
+            set.from()
+        )
+    )(data);
+}
+
+function mergeTypes(v1, v2) {
+    if (v1 == null) {
+        return v2;
+    }
+
+    if (v2 == null) {
+        return v1;
+    }
+
+    if (v1 === v2) {
+        return v1;
+    }
+
+    throw new Error(`Cannot merge type ${v1} with ${v2}.`);
+}
+
+/**
+ * @param {string[]} unknownCustomFields
+ * @param {object} record
+ *
+ * @return {CustomFields}
+ */
+function inferRecordFieldTypes(fields, record) {
+    return _.flow(
+        extractRecordFieldMaps,
+        _.map((m) => _.mapValues(inferType, _.pick(fields, m))),
+        _.mergeAllWith(mergeTypes)
+    )(record);
+}
+
+/**
+ * @param {Set<string>} unknownCustomFields
+ * @param {object} data
+ *
+ * @returns {CustomFields}
+ */
+function inferFieldTypes(unknownCustomFields, data) {
+    const fields = Array.from(unknownCustomFields);
+
+    return _.flow(
+        _.flatMap((records) =>
+            _.map((record) => inferRecordFieldTypes(fields, record), records)
+        ),
+        _.mergeAllWith(mergeTypes),
+        _.mapValues((type) => ({type}))
+    )(data);
+}
+
+/**
+ * @param {string} group
+ *
+ * @returns {Promise<CustomFields>}
+ */
+function fetchCustomFields(group) {
+    return db
+        .query(
+            'SELECT "fields" FROM "public"."customColumns" WHERE "resourceGroup" = $1',
+            [group]
+        )
+        .then((res) =>
+            _.getOr(
+                {},
+                0,
+                res.rows.map((r) => r.fields)
+            )
+        );
+}
+
+function inferType(val) {
+    if (val == null) {
+        return null;
+    }
+
+    switch (typeof val) {
+        case 'string':
+            return 'string';
+        case 'number':
+            return 'integer';
+        case 'boolean':
+            return 'boolean';
+        case 'object':
+            if (Array.isArray(val)) {
+                return 'string_array';
+            }
+
+            return 'object';
+    }
+
+    throw new Error(`Cannot infer value: ${JSON.stringify(val)}.`);
+}
+
+function typeToSchema(type) {
+    if (type == null) {
+        return Joi.any();
+    }
+
+    switch (type) {
+        case 'string':
+            return Joi.string();
+        case 'integer':
+            return Joi.number().integer();
+        case 'boolean':
+            return Joi.boolean();
+        case 'string_array':
+            return Joi.array().items(Joi.string());
+        case 'object':
+            return Joi.object();
+    }
+
+    throw new Error(`Cannot convert type ${type} into schema.`);
+}
+
+/**
+ * @param {CustomField} field
+ *
+ * @return {{type: import('joi').Root}}
+ */
+function customFieldToColumn(field) {
+    return {schema: typeToSchema(field.type)};
+}
+
+// todo
+function selectCustomFieldMiddleware({plan, group}) {
+    return async function (request, response, next) {
+        const definedCustomFields = await fetchCustomFields(group);
+        request.customFields = {
+            defined: definedCustomFields,
+        };
+
+        const columns = _.mapValues(definedCustomFields, customFieldToColumn);
+
+        const BodySchema = Object.keys({
+            filter: schemaUtil.filter(columns),
+            order: schemaUtil.order(columns),
+        });
+        const OriginalBodySchema = request.match.data.parameters;
+        const NewBodySchema = OriginalBodySchema.concat(BodySchema);
+
+        // validate
+
+        next();
+    };
+}
+
+// todo
+function modifyCustomFieldMiddleware({plan, group}) {
+    return async function (request, response, next) {
+        const definedCustomFields = await fetchCustomFields(group);
+        const definedCustomFieldNames = set.from(
+            Object.keys(definedCustomFields)
+        );
+
+        const validNames = validGroupDataNames({plan, group});
+
+        const data = request.parameters.body.data;
+        const customFields = set.difference(extractFields(data), validNames);
+
+        const unknownCustomFields = set.difference(
+            customFields,
+            definedCustomFieldNames
+        );
+
+        const newCustomFields =
+            unknownCustomFields.size() === 0
+                ? {}
+                : inferFieldTypes(unknownCustomFields, data);
+
+        const allCustomFields = _.mergeAll([
+            definedCustomFields,
+            newCustomFields,
+        ]);
+
+        request.customFields = {
+            defined: definedCustomFields,
+            new: newCustomFields,
+            all: allCustomFields,
+        };
+
+        const columns = _.mapValues(allCustomFields, customFieldToColumn);
+
+        const ColSchema = Joi.object()
+            .keys(_.mapValues((col) => col.schema, columns))
+            .unknown(false);
+        const TypeSchema = Joi.array().items(
+            Joi.object().keys({data: ColSchema})
+        );
+        const BodySchema = Joi.object.keys({
+            data: Joi.object().keys(_.mapValues(() => TypeSchema, plan[group])),
+        });
+
+        const OriginalBodySchema = request.match.data.parameters.body;
+        const NewBodySchema = OriginalBodySchema.concat(BodySchema);
+
+        // validate
+        // store new field types
+        // validate translations
+
+        next();
+    };
+}
+
 module.exports = {
     schema,
     listQuery,
@@ -115,4 +381,7 @@ module.exports = {
     update,
     formatRow,
     validDataNames,
+    validGroupDataNames,
+    extractFields,
+    inferFieldTypes,
 };
