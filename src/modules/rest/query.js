@@ -212,19 +212,20 @@ function filtersToSqlExpr(filters) {
 /**
  * Converts `requestSort` into sql map.
  *
+ * @param {{group: string, type: string, translations: string[]}} context
  * @param {[string, 'ascending'|'descending'][]} requestSort
  * @param {string} alias
  *
  * @return {import('@imatic/pgqb').Sql}
  */
-function sortToSqlExpr(requestSort, alias) {
+function sortToSqlExpr({group, type, translations}, requestSort, alias) {
     if (requestSort == null) {
         return {};
     }
 
     const exprs = requestSort.map(([field, order]) => {
         return qb.orderBy(
-            `${alias}.${field}`,
+            translation.sortExpr({group, type, translations}, {alias, field}),
             order === 'ascending' ? 'ASC' : 'DESC'
         );
     });
@@ -1027,14 +1028,22 @@ function list(
     const keysSqlMap = qb.merge(
         sqlMap,
         qb.select(['t.key']),
-        createSortQuery({group, table}, 't', sortToSqlExpr(sort, 't')),
+        createSortQuery(
+            {group, table},
+            't',
+            sortToSqlExpr({group, type, translations}, sort, 't')
+        ),
         pageToQuery(page)
     );
 
     const resultSqlMap = qb.merge(
         sqlMap,
         qb.where(qb.expr.in('t.key', keysSqlMap)),
-        createSortQuery({group, table}, 't', sortToSqlExpr(sort, 't')),
+        createSortQuery(
+            {group, table},
+            't',
+            sortToSqlExpr({group, type, translations}, sort, 't')
+        ),
         pageToQuery(page)
     );
 

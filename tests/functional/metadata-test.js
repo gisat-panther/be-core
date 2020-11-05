@@ -986,6 +986,190 @@ describe('/rest/metadata', function () {
             });
         });
 
+        describe('POST /rest/metadata/filtered/scope - sorting', async function () {
+            before(async function () {
+                await Promise.all([
+                    // 0
+                    h.createRecord('"metadata"."scope"', {
+                        key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                        nameDisplay: 'default0',
+                    }),
+                    h.createTranslation({
+                        resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                        locale: 'cs',
+                        field: 'nameDisplay',
+                        value: JSON.stringify('cs0'),
+                    }),
+                    h.createTranslation({
+                        resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                        locale: 'en',
+                        field: 'nameDisplay',
+                        value: JSON.stringify('en0'),
+                    }),
+                    // 1
+                    h.createRecord('"metadata"."scope"', {
+                        key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                        nameDisplay: 'default1',
+                    }),
+                    h.createTranslation({
+                        resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                        locale: 'cs',
+                        field: 'nameDisplay',
+                        value: JSON.stringify('cs1'),
+                    }),
+                    // nameDisplay: missing `en`
+                ]);
+            });
+
+            after(async function () {
+                await h.revertChanges();
+            });
+
+            const tests = [
+                {
+                    name: 'cs - asc',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        translations: ['cs'],
+                        order: [['nameDisplay', 'ascending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'cs - desc',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        translations: ['cs'],
+                        order: [['nameDisplay', 'descending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'en, default - asc',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        translations: ['en'],
+                        order: [['nameDisplay', 'ascending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'en, default - desc',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        translations: ['en'],
+                        order: [['nameDisplay', 'descending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                        ],
+                    },
+                },
+            ];
+
+            tests.forEach((test) => {
+                it(test.name, async function () {
+                    const response = await fetch(
+                        url('/rest/metadata/filtered/scope'),
+                        {
+                            method: 'POST',
+                            headers: new fetch.Headers({
+                                Authorization: createAdminToken(),
+                                'Content-Type': 'application/json',
+                            }),
+                            body: JSON.stringify(test.body),
+                        }
+                    );
+
+                    assert.strictEqual(
+                        response.status,
+                        test.expectedResult.status
+                    );
+                    const data = await response.json();
+
+                    const interestingData = _.map(
+                        _.pick(['key']),
+                        data.data.scope
+                    );
+                    assert.deepStrictEqual(
+                        interestingData,
+                        test.expectedResult.body
+                    );
+                });
+            });
+        });
+
         describe('PUT /rest/metadata', function () {
             it('make some changes', async function () {
                 const response = await fetch(url('/rest/metadata'), {
