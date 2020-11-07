@@ -118,8 +118,12 @@ async function getPopulatedRelationsByFilter(filter, user) {
 	return relations;
 }
 
+function convertRange( value, r1, r2 ) {
+	return ( value - r1[ 0 ] ) * ( r2[ 1 ] - r2[ 0 ] ) / ( r1[ 1 ] - r1[ 0 ] ) + r2[ 0 ];
+}
+
 function getGeometryTolerance(level) {
-	return (ptrTileGrid.constants.resolutions[level] * 111000) / 5;
+	return convertRange(level, [1, 20], [0.00001, 1]);
 }
 
 async function getDataForRelations(relations, filter) {
@@ -142,6 +146,11 @@ async function getDataForRelations(relations, filter) {
 	for (const spatialRelation of relations.spatial) {
 		const spatialDataSource = spatialRelation.spatialDataSource;
 
+		let hasTopo = await db.query(`SELECT count(*) AS "hasTopo" FROM "information_schema"."columns" WHERE "table_name" = '${spatialDataSource.tableName}' AND "column_name" = 'topo';`)
+			.then((pgResult) => {
+				return !!(pgResult.rows[0].hasTopo);
+			})
+
 		if (!allowedDataSourceTypes.includes(spatialDataSource.type)) {
 			continue;
 		}
@@ -153,7 +162,11 @@ async function getDataForRelations(relations, filter) {
 		columns.push(`"${spatialDataSource.key}"."${spatialDataSource.fidColumnName}"`);
 
 		if (filter.data.geometry) {
-			columns.push(`st_asgeojson(st_simplifypreservetopology("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}", ${geometryTolerance})) AS "${spatialDataSource.geometryColumnName}"`);
+			if (hasTopo) {
+				columns.push(`st_asgeojson(topology.st_simplify("${spatialDataSource.key}"."topo", ${geometryTolerance})) AS "${spatialDataSource.geometryColumnName}"`);
+			} else {
+				columns.push(`st_asgeojson(st_simplify("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}", ${geometryTolerance})) AS "${spatialDataSource.geometryColumnName}"`);
+			}
 		}
 
 		const relatedAttributeRelations = _.filter(relations.attribute, (attributeRelation) => {
