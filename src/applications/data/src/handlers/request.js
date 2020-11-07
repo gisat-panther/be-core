@@ -5,7 +5,7 @@ const pImport = require('../processors/import');
 module.exports = function (request, response, next) {
 	switch (request.url) {
 		case "/rest/data/import":
-			pImport(request.file, request.user)
+			pImport(request.file, request.user, request.body)
 				.then((responsePayload) => {
 					response.status(200).send(responsePayload);
 				})
