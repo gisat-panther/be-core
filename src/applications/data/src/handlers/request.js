@@ -1,10 +1,29 @@
 const filter = require('../processors/filter');
-const data = require('../processors/data');
+const pData = require('../processors/data');
+const pImport = require('../processors/import');
 
-module.exports = async function (request, response, next) {
-	let responsePayload = await data(
-		filter(request.body),
-		request.user
-	);
-	response.status(200).send(responsePayload);
+module.exports = function (request, response, next) {
+	switch (request.url) {
+		case "/rest/data/import":
+			pImport(request.file, request.user)
+				.then((responsePayload) => {
+					response.status(200).send(responsePayload);
+				})
+				.catch((error) => {
+					response.status(500).send({success: false, message: error.message});
+				})
+			break;
+		case "/rest/data/filtered":
+			pData(filter(request.body), request.user)
+				.then((responsePayload) => {
+					response.status(200).send(responsePayload);
+				})
+				.catch((error) => {
+					response.status(500).send({success: false, message: error.message});
+				})
+			break;
+		default:
+			response.status(500).send({success: false, message: "method not found"});
+			break;
+	}
 }
