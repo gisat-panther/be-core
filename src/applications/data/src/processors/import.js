@@ -306,7 +306,7 @@ const importFile = (file, user, options) => {
 	return Promise
 		.resolve({
 			importKey,
-			statusPath: `${config.url}/rest/data/status/${importKey}`
+			statusPath: `${config.url}/rest/data/import/status/${importKey}`
 		});
 }
 
