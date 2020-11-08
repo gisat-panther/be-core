@@ -150,10 +150,23 @@ const processShapefile = (importKey, name, files, options) => {
 }
 
 const clearLayerData = (layerName) => {
-	return Promise.allSettled([
-		db.query(`SELECT DropTopology('topo_${layerName}')`),
-		db.query(`DROP TABLE "${layerName}" CASCADE`)
-	])
+	return Promise
+		.resolve()
+		.then(() => {
+			return db.query(`SELECT DropTopology('topo_${layerName}')`)
+				.catch(() => {
+				});
+		})
+		.then(() => {
+			return db.query(`DROP TABLE "${layerName}" CASCADE`)
+				.catch(() => {
+				})
+		})
+		.then(() => {
+			return db.query(`DROP SCHEMA "topo_${layerName}" CASCADE`)
+				.catch(() => {
+				})
+		})
 }
 
 const createTopologyForLayer = (layerName, options) => {
@@ -184,8 +197,8 @@ const createTopologyForLayer = (layerName, options) => {
 		.then(() => {
 			return db.query(`SELECT * FROM  ValidateTopology('topo_${layerName}');`)
 				.then((pgResult) => {
-					if(pgResult.rows) {
-						throw new Error("unable to validate topology");
+					if (pgResult.rows && pgResult.rows.length) {
+						throw new Error(_.map(pgResult.rows, 'error').join(", "));
 					}
 				})
 		})
@@ -290,16 +303,14 @@ const importFile = (file, user, options) => {
 			return importVerifiedFiles(importKey, verifiedFiles, options);
 		})
 		.then(() => {
-			return cleanUp(importKey);
-		})
-		.then(() => {
+			log(importKey, `done`);
 			return cache.set(`import_${importKey}`, {status: "done"});
 		})
 		.catch((error) => {
 			log(importKey, `failed with error ${error.message}`);
 			return cache.set(`import_${importKey}`, {status: "failed", message: error.message});
 		})
-		.then(() => {
+		.finally(() => {
 			return cleanUp(importKey);
 		})
 
