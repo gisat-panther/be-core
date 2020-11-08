@@ -20,7 +20,7 @@ module.exports = [
             authMiddleware,
         ],
         responses: {200: {}},
-        handler: request,
+        handler: request.data,
     },
     {
         path: '/rest/data/import',
@@ -35,6 +35,20 @@ module.exports = [
             fileParseMiddleware
         ],
         responses: {200: {}},
-        handler: request
+        handler: request.import
+    },
+    {
+        path: '/rest/data/import/status/:key',
+        method: 'get',
+        swagger: {
+            tags: ["data", "status"]
+        },
+        middlewares: [
+            userMiddleware,
+            autoLoginMiddleware,
+            authMiddleware
+        ],
+        responses: {200: {}},
+        handler: request.status.import
     }
 ];
