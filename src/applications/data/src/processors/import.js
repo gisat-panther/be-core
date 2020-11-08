@@ -7,6 +7,7 @@ const chp = require('child_process');
 
 const config = require('../../../../../config');
 
+const cache = require('../../../../cache');
 const db = require('../../../../db');
 db.init();
 
@@ -15,20 +16,22 @@ const basePath = "/tmp/ptr_import_";
 const cleanUp = (importKey) => {
 	return new Promise((resolve, reject) => {
 		fs.rmdir(`${basePath}${importKey}`, {recursive: true}, () => {
-			console.log(`Import ${importKey} cleaned!`);
+			log(importKey, "cleaned up");
 			resolve();
 		})
 	});
 }
 
-const extractPackage = (file) => {
-	let importKey = crypto.randomBytes(16).toString("hex");
-
-	let zipFs = new admZip(file.buffer);
-
-	zipFs.extractAllTo(`${basePath}${importKey}`, true);
-
-	return Promise.resolve(importKey);
+const extractPackage = (file, importKey) => {
+	return Promise
+		.resolve()
+		.then(() => {
+			let zipFs = new admZip(file.buffer);
+			zipFs.extractAllTo(`${basePath}${importKey}`, true);
+		})
+		.then(() => {
+			log(importKey, "package extracted");
+		})
 }
 
 const getFiles = (importKey) => {
@@ -116,7 +119,10 @@ const processShapefile = (importKey, name, files, options) => {
 		.resolve()
 		.then(() => {
 			if (options && options.overwrite) {
-				return clearLayerData(name);
+				return clearLayerData(name)
+					.then(() => {
+						log(importKey, `existing data for layer ${name} cleared out`);
+					})
 			}
 		})
 		.then(() => {
@@ -128,11 +134,17 @@ const processShapefile = (importKey, name, files, options) => {
 			}
 		})
 		.then(() => {
-			return importSpatialDataToPostgres(importKey, path);
+			return importSpatialDataToPostgres(importKey, path)
+				.then(() => {
+					log(importKey, `layer ${name} created`);
+				})
 		})
 		.then(() => {
 			if (options && options.topology) {
-				return createTopologyForLayer(name, options);
+				return createTopologyForLayer(name, options)
+					.then(() => {
+						log(importKey, `topology for ${name} created and verified`);
+					})
 			}
 		})
 }
@@ -168,6 +180,14 @@ const createTopologyForLayer = (layerName, options) => {
 		.then((pgResult) => {
 			let topoLayerId = pgResult.rows[0].addtopogeometrycolumn;
 			return db.query(`UPDATE "${layerName}" SET "topo" = toTopoGeom("geom", 'topo_${layerName}', ${topoLayerId})`)
+		})
+		.then(() => {
+			return db.query(`SELECT * FROM  ValidateTopology('topo_${layerName}');`)
+				.then((pgResult) => {
+					if(pgResult.rows) {
+						throw new Error("unable to validate topology");
+					}
+				})
 		})
 }
 
@@ -237,22 +257,19 @@ const verifyFiles = (files) => {
 }
 
 const importFile = (file, user, options) => {
-	let importKey, files, verifiedFiles;
-	return Promise
-		.resolve()
+	let files, verifiedFiles;
+	let importKey = crypto.randomBytes(16).toString("hex");
+
+	log(importKey, "started");
+
+	cache.set(`import_${importKey}`, {status: "running"})
 		.then(() => {
 			if (file.mimetype !== "application/zip") {
 				throw new Error("unsupported package type, zip file expected")
 			}
 		})
 		.then(() => {
-			return extractPackage(file);
-		})
-		.then((key) => {
-			if (!key) {
-				throw new Error("unable to extract package")
-			}
-			importKey = key;
+			return extractPackage(file, importKey);
 		})
 		.then(() => {
 			return getFiles(importKey)
@@ -265,23 +282,36 @@ const importFile = (file, user, options) => {
 				.then((pVerifiedFiles) => {
 					verifiedFiles = pVerifiedFiles;
 				})
+				.then(() => {
+					log(importKey, "files verified");
+				})
 		})
 		.then(() => {
 			return importVerifiedFiles(importKey, verifiedFiles, options);
 		})
 		.then(() => {
-			return cleanUp(importKey)
+			return cleanUp(importKey);
+		})
+		.then(() => {
+			return cache.set(`import_${importKey}`, {status: "done"});
 		})
 		.catch((error) => {
-			if (importKey) {
-				return cleanUp(importKey)
-					.then(() => {
-						throw error;
-					})
-			} else {
-				throw error;
-			}
+			log(importKey, `failed with error ${error.message}`);
+			return cache.set(`import_${importKey}`, {status: "failed", message: error.message});
 		})
+		.then(() => {
+			return cleanUp(importKey);
+		})
+
+	return Promise
+		.resolve({
+			importKey,
+			statusPath: `${config.url}/rest/data/status/${importKey}`
+		});
+}
+
+const log = (importKey, message) => {
+	console.log(`#IMPORT# ${importKey} ${message}`);
 }
 
 module.exports = (file, user, options) => {
