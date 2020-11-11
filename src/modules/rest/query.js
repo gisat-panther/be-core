@@ -7,7 +7,7 @@ const {Client} = require('pg');
 const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
 const translation = require('./translation');
-const customFields = require('./custom-fields');
+const cf = require('./custom-fields');
 
 const mapWithKey = _fp.map.convert({cap: false});
 
@@ -218,14 +218,31 @@ function filtersToSqlExpr(filters) {
  *
  * @return {import('@imatic/pgqb').Sql}
  */
-function sortToSqlExpr({group, type, translations}, requestSort, alias) {
+function sortToSqlExpr(
+    {group, type, translations, customFields},
+    requestSort,
+    alias
+) {
     if (requestSort == null) {
         return {};
     }
 
     const exprs = requestSort.map(([field, order]) => {
+        const tSortExpr = translation.sortExpr(
+            {group, type, translations, customFields},
+            {alias, field, order}
+        );
+        if (tSortExpr != null) {
+            return tSortExpr;
+        }
+
+        const cfSortExpr = cf.sortExpr({customFields}, {alias, field, order});
+        if (cfSortExpr != null) {
+            return cfSortExpr;
+        }
+
         return qb.orderBy(
-            translation.sortExpr({group, type, translations}, {alias, field}),
+            `${alias}.${field}`,
             order === 'ascending' ? 'ASC' : 'DESC'
         );
     });
@@ -935,7 +952,7 @@ function createSortQuery({group, table}, alias, sortExpr) {
  * @returns {Promise<{rows: object[], count: number}>}
  */
 function list(
-    {plan, group, type, client, user},
+    {plan, group, type, client, user, customFields},
     {sort, filter, page, translations}
 ) {
     plan = getPlan(plan);
@@ -1015,7 +1032,7 @@ function list(
         ),
         relationsQuery({plan, group, type}, 't'),
         translation.listTranslationsQuery({group, type, translations}, 't'),
-        customFields.listQuery('t')
+        cf.listQuery('t')
     );
 
     const countSqlMap = qb.merge(
@@ -1025,25 +1042,23 @@ function list(
 
     const db = getDb(client);
 
+    const sortQuery = createSortQuery(
+        {group, table},
+        't',
+        sortToSqlExpr({group, type, translations, customFields}, sort, 't')
+    );
+
     const keysSqlMap = qb.merge(
         sqlMap,
         qb.select(['t.key']),
-        createSortQuery(
-            {group, table},
-            't',
-            sortToSqlExpr({group, type, translations}, sort, 't')
-        ),
+        sortQuery,
         pageToQuery(page)
     );
 
     const resultSqlMap = qb.merge(
         sqlMap,
         qb.where(qb.expr.in('t.key', keysSqlMap)),
-        createSortQuery(
-            {group, table},
-            't',
-            sortToSqlExpr({group, type, translations}, sort, 't')
-        ),
+        sortQuery,
         pageToQuery(page)
     );
 
@@ -1231,7 +1246,7 @@ async function create({plan, group, type, client}, records) {
                   qb.columns([typeKey]),
                   qb.values(dependentTypes.map((v) => [qb.val.inlineParam(v)]))
               ),
-        customFields.create({plan, group, type}, records)
+        cf.create({plan, group, type}, records)
     );
 
     const relationsByCol = _.mapKeys(typeSchema.relations, function (
@@ -1364,7 +1379,7 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
                       qb.expr.eq(typeKey, qb.val.inlineParam(dependentType)),
                   ])
               ),
-        customFields.update({plan, group, type}, record)
+        cf.update({plan, group, type}, record)
     );
 
     return client.query(qb.toSql(sqlMap));

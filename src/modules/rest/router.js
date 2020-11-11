@@ -223,7 +223,7 @@ function filterListParamsByType(plan, group, type, params) {
             case 'filter':
                 return _.pick(v, columnNames);
             case 'sort':
-                return _.filter(v, (s) => columnNamesSet.has(s[0]));
+                return v;
         }
 
         return v;
@@ -422,12 +422,12 @@ function createGroup(plan, group) {
             },
             responses: {200: {}},
             middlewares: [
+                customFields.selectCustomFieldMiddleware({group}),
                 parameters,
                 userMiddleware,
                 autoLoginMiddleware,
                 authMiddleware,
                 hashMiddleware,
-                // todo: custom fields
             ],
             handler: async function (request, response) {
                 const types = request.parameters.path.types;
@@ -440,7 +440,13 @@ function createGroup(plan, group) {
                 const records = await Promise.all(
                     _.map(types, async function (type) {
                         return await q.list(
-                            {plan, group, type, user: request.user},
+                            {
+                                plan,
+                                group,
+                                type,
+                                user: request.user,
+                                customFields: request.customFields,
+                            },
                             filterListParamsByType(plan, group, type, {
                                 sort: parameters.order,
                                 filter: parameters.filter,

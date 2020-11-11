@@ -2,6 +2,7 @@ const Joi = require('../../joi');
 const _ = require('lodash/fp');
 const qb = require('@imatic/pgqb');
 const SQL = require('sql-template-strings');
+const cf = require('./custom-fields');
 
 /**
  * @param {{group: string, type: string}} context
@@ -147,9 +148,12 @@ function listTranslationsQuery({group, type, translations}, alias) {
  * @param {{group: string, type: string, translations: string[]}} context
  * @param {{alias: string, field: string}} field
  */
-function sortExpr({group, type, translations}, {alias, field}) {
+function sortExpr(
+    {group, type, translations, customFields},
+    {alias, field, order}
+) {
     if (_.size(translations) === 0) {
-        return `${alias}.${field}`;
+        return null;
     }
 
     const orderBys = _.map(
@@ -183,13 +187,15 @@ function sortExpr({group, type, translations}, {alias, field}) {
         qb.limit(1)
     );
 
+    const fieldExpr =
+        cf.sortExpr({customFields}, {alias, field, order}) ||
+        `${alias}.${field}`;
+
     const sqlMap = qb.merge(
-        qb.select([
-            qb.expr.fn('COALESCE', translationSqlMap, `${alias}.${field}`),
-        ])
+        qb.select([qb.expr.fn('COALESCE', translationSqlMap, fieldExpr)])
     );
 
-    return sqlMap;
+    return qb.orderBy(sqlMap, order === 'ascending' ? 'ASC' : 'DESC');
 }
 
 const LocaleSchema = Joi.string().min(1);

@@ -34,6 +34,24 @@ function listQuery(alias) {
 }
 
 /**
+ * @param {{group: string, type: string, customFields: {defined: CustomFields}}} context
+ * @param {{alias: string, field: string}} field
+ *
+ * @returns {import('@imatic/pgqb').Expr | null}
+ */
+function sortExpr({customFields}, {alias, field, order}) {
+    const definedCustomFields = _.getOr({}, 'defined', customFields);
+    if (!_.has(field, definedCustomFields)) {
+        return null;
+    }
+
+    return qb.orderBy(
+        qb.val.raw(`"${alias}"."__customColumns" -> '${field}'`),
+        order === 'ascending' ? 'ASC' : 'DESC'
+    );
+}
+
+/**
  * @param {{plan: string, group: string, type: string}} context
  *
  * @returns {string[]}
@@ -326,36 +344,25 @@ DO UPDATE SET "fields" = EXCLUDED."fields" || "customColumns"."fields"
     );
 }
 
-function selectCustomFieldMiddleware({plan, group}) {
+function selectCustomFieldMiddleware({group}) {
     return async function (request, response, next) {
         const definedCustomFields = await fetchCustomFields(group);
         request.customFields = {
             defined: definedCustomFields,
         };
 
-        const columns = _.mapValues(definedCustomFields, customFieldToColumn);
+        const columns = _.mapValues(customFieldToColumn, definedCustomFields);
 
-        const BodySchema = Object.keys({
+        const BodySchema = Joi.object().keys({
             filter: schemaUtil.filter(columns),
             order: schemaUtil.order(columns),
         });
-        const OriginalBodySchema = request.match.data.parameters;
-        const NewBodySchema = OriginalBodySchema.concat(BodySchema);
 
-        const validationResult = NewBodySchema.validate(request.body, {
-            abortEarly: false,
-        });
-        if (validationResult.error) {
-            return next(
-                new HttpError(
-                    400,
-                    apiUtil.createDataErrorObject(validationResult.error)
-                )
-            );
-        }
-        request.parameters.body = validationResult.value;
-
-        // todo: disable unknown fields?
+        request.match = _.update(
+            ['data', 'parameters', 'body'],
+            (Schema) => Schema.concat(BodySchema),
+            request.match
+        );
 
         next();
     };
@@ -454,5 +461,7 @@ module.exports = {
     extractFields,
     inferFieldTypes,
     storeNew,
+    selectCustomFieldMiddleware,
     modifyCustomFieldMiddleware,
+    sortExpr,
 };

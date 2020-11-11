@@ -5,6 +5,7 @@ const config = require('../../config');
 const db = require('../../src/db');
 const h = require('../helper');
 const _ = require('lodash/fp');
+const cf = require('../../src/modules/rest/custom-fields');
 
 db.init();
 
@@ -1444,6 +1445,194 @@ describe('/rest/metadata', function () {
                         },
                     }),
                 });
+
+                assert.strictEqual(response.status, 400);
+            });
+        });
+
+        describe('POST /rest/metadata/filtered/scope - sorting', async function () {
+            before(async function () {
+                await Promise.all([
+                    cf.storeNew(
+                        {client: db, group: 'metadata'},
+                        {
+                            new: {
+                                stringField: {type: 'string'},
+                                integerField: {type: 'integer'},
+                            },
+                        }
+                    ),
+                    // 0
+                    h.createRecord('"metadata"."scope"', {
+                        key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                        __customColumns: JSON.stringify({
+                            stringField: '10',
+                            integerField: 2,
+                        }),
+                    }),
+                    // 1
+                    h.createRecord('"metadata"."scope"', {
+                        key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                        __customColumns: JSON.stringify({
+                            stringField: '2',
+                            integerField: 10,
+                        }),
+                    }),
+                ]);
+            });
+
+            after(async function () {
+                await h.revertChanges();
+            });
+
+            const tests = [
+                {
+                    name: 'string - asc',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        order: [['stringField', 'ascending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'string - desc',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        order: [['stringField', 'descending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'integer - asc',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        order: [['integerField', 'ascending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'integer - desc',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        order: [['integerField', 'descending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                        ],
+                    },
+                },
+            ];
+
+            tests.forEach((test) => {
+                it(test.name, async function () {
+                    const response = await fetch(
+                        url('/rest/metadata/filtered/scope'),
+                        {
+                            method: 'POST',
+                            headers: new fetch.Headers({
+                                Authorization: createAdminToken(),
+                                'Content-Type': 'application/json',
+                            }),
+                            body: JSON.stringify(test.body),
+                        }
+                    );
+
+                    assert.strictEqual(
+                        response.status,
+                        test.expectedResult.status
+                    );
+                    const data = await response.json();
+
+                    const interestingData = _.map(
+                        _.pick(['key']),
+                        data.data.scope
+                    );
+                    assert.deepStrictEqual(
+                        interestingData,
+                        test.expectedResult.body
+                    );
+                });
+            });
+
+            it('unknown field', async function () {
+                const response = await fetch(
+                    url('/rest/metadata/filtered/scope'),
+                    {
+                        method: 'POST',
+                        headers: new fetch.Headers({
+                            Authorization: createAdminToken(),
+                            'Content-Type': 'application/json',
+                        }),
+                        body: JSON.stringify({
+                            order: [['unknown', 'ascending']],
+                        }),
+                    }
+                );
 
                 assert.strictEqual(response.status, 400);
             });
