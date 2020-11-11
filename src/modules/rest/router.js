@@ -488,12 +488,16 @@ function createGroup(plan, group) {
                 userMiddleware,
                 autoLoginMiddleware,
                 authMiddleware,
-                // todo: custom fields
+                customFields.modifyCustomFieldMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
                 sendResponseFromResult(
                     await db.transactional(async (client) => {
                         await client.setUser(request.user.realKey);
+                        await customFields.storeNew(
+                            {client, group},
+                            request.customFields
+                        );
 
                         return await createData({plan, group, client}, request);
                     }),
@@ -517,11 +521,15 @@ function createGroup(plan, group) {
                 autoLoginMiddleware,
                 authMiddleware,
                 createDependentTypeMiddleware({plan, group}),
-                // todo: custom fields
+                customFields.modifyCustomFieldMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
                 await db.transactional(async (client) => {
                     await client.setUser(request.user.realKey);
+                    await customFields.storeNew(
+                        {client, group},
+                        request.customFields
+                    );
 
                     const updatedResult = await updateData(
                         {plan, group, client},

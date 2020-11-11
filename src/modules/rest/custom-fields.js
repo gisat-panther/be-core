@@ -5,8 +5,11 @@ const {SQL} = require('sql-template-strings');
 const set = require('../../set');
 const db = require('../../db');
 const schemaUtil = require('./schema-util');
+const {HttpError} = require('../error');
+const apiUtil = require('../../util/api');
 
 const mapWithKey = _.map.convert({cap: false});
+const mapValuesWithKey = _.mapValues.convert({cap: false});
 
 /**
  * @typedef {{type: string}} CustomField
@@ -294,7 +297,35 @@ function customFieldToColumn(field) {
     return {schema: typeToSchema(field.type)};
 }
 
-// todo
+/**
+ * Todo: what if since the new custom fields were computed somebody
+ * inserted different type of the same field? - It should probably fail
+ * instead of ignoring the new type.
+ *
+ * @param {{client: import('../../db').Client, group: string}} context
+ * @param {{new: CustomFields}} customFields
+ *
+ * @returns {Promise}
+ */
+async function storeNew({client, group}, customFields) {
+    const newCustomFields = customFields.new;
+    if (_.isEmpty(newCustomFields)) {
+        return;
+    }
+
+    await client.query(
+        `
+INSERT INTO "public"."customColumns"
+  ("resourceGroup", "fields")
+VALUES
+  ($1, $2)
+ON CONFLICT ("resourceGroup")
+DO UPDATE SET "fields" = EXCLUDED."fields" || "customColumns"."fields"
+`,
+        [group, JSON.stringify(newCustomFields)]
+    );
+}
+
 function selectCustomFieldMiddleware({plan, group}) {
     return async function (request, response, next) {
         const definedCustomFields = await fetchCustomFields(group);
@@ -311,13 +342,25 @@ function selectCustomFieldMiddleware({plan, group}) {
         const OriginalBodySchema = request.match.data.parameters;
         const NewBodySchema = OriginalBodySchema.concat(BodySchema);
 
-        // validate
+        const validationResult = NewBodySchema.validate(request.body, {
+            abortEarly: false,
+        });
+        if (validationResult.error) {
+            return next(
+                new HttpError(
+                    400,
+                    apiUtil.createDataErrorObject(validationResult.error)
+                )
+            );
+        }
+        request.parameters.body = validationResult.value;
+
+        // todo: disable unknown fields?
 
         next();
     };
 }
 
-// todo
 function modifyCustomFieldMiddleware({plan, group}) {
     return async function (request, response, next) {
         const definedCustomFields = await fetchCustomFields(group);
@@ -336,7 +379,7 @@ function modifyCustomFieldMiddleware({plan, group}) {
         );
 
         const newCustomFields =
-            unknownCustomFields.size() === 0
+            unknownCustomFields.size === 0
                 ? {}
                 : inferFieldTypes(unknownCustomFields, data);
 
@@ -351,24 +394,50 @@ function modifyCustomFieldMiddleware({plan, group}) {
             all: allCustomFields,
         };
 
-        const columns = _.mapValues(allCustomFields, customFieldToColumn);
+        const columns = _.mapValues(customFieldToColumn, allCustomFields);
 
-        const ColSchema = Joi.object()
-            .keys(_.mapValues((col) => col.schema, columns))
-            .unknown(false);
+        const ColSchema = Joi.object().keys(
+            _.mapValues((col) => col.schema, columns)
+        );
         const TypeSchema = Joi.array().items(
             Joi.object().keys({data: ColSchema})
         );
-        const BodySchema = Joi.object.keys({
+        const BodySchema = Joi.object().keys({
             data: Joi.object().keys(_.mapValues(() => TypeSchema, plan[group])),
         });
 
-        const OriginalBodySchema = request.match.data.parameters.body;
-        const NewBodySchema = OriginalBodySchema.concat(BodySchema);
+        const validationResult = BodySchema.validate(request.body, {
+            abortEarly: false,
+            stripUnknown: true,
+        });
+        if (validationResult.error) {
+            if (validationResult.error) {
+                return next(
+                    new HttpError(
+                        400,
+                        apiUtil.createDataErrorObject(validationResult.error)
+                    )
+                );
+            }
+        }
 
-        // validate
-        // store new field types
-        // validate translations
+        const resultData = validationResult.value.data;
+        const dataWithCustomFields = mapValuesWithKey((records, type) => {
+            return mapWithKey((record, index) => {
+                return _.update(
+                    'data',
+                    (val) => {
+                        return _.merge(
+                            val,
+                            _.getOr({}, [type, index, 'data'], resultData)
+                        );
+                    },
+                    record
+                );
+            }, records);
+        }, data);
+
+        request.parameters.body.data = dataWithCustomFields;
 
         next();
     };
@@ -384,4 +453,6 @@ module.exports = {
     validGroupDataNames,
     extractFields,
     inferFieldTypes,
+    storeNew,
+    modifyCustomFieldMiddleware,
 };

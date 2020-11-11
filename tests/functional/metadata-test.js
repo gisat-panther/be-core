@@ -1423,6 +1423,30 @@ describe('/rest/metadata', function () {
                     total: 1,
                 });
             });
+
+            it('make sure that type cannot be changed', async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'PUT',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: JSON.stringify({
+                        data: {
+                            scope: [
+                                {
+                                    key: 'bf866d9d-b20a-4518-87e5-caff38645886',
+                                    data: {
+                                        numberCustomField: 'should be number',
+                                    },
+                                },
+                            ],
+                        },
+                    }),
+                });
+
+                assert.strictEqual(response.status, 400);
+            });
         });
     });
 });
