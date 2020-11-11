@@ -190,47 +190,6 @@ function mergeListsWithoutPage(l1, l2) {
 }
 
 /**
- * @param {import('./compiler').Plan} plan
- * @param {string} group
- * @param {string} type
- * @param {object} params
- *
- * @returns {object}
- */
-function filterListParamsByType(plan, group, type, params) {
-    const typeSchema = plan[group][type];
-    const columnNames = _.concat(
-        _.keys(_.get(typeSchema, 'columns', {})),
-        _.flatMap(_.get(typeSchema, ['type', 'types'], {}), (type) =>
-            _.keys(_.get(type, 'columns', {}))
-        ),
-        _.map(plan[group][type].relations, (rel, name) => {
-            switch (rel.type) {
-                case 'manyToMany':
-                    return name + 'Keys';
-                case 'manyToOne':
-                    return name + 'Key';
-            }
-
-            throw new Error(`Unspported relation type: ${rel.type}`);
-        })
-    );
-
-    const columnNamesSet = new Set(columnNames);
-
-    return _.mapValues(params, function (v, name) {
-        switch (name) {
-            case 'filter':
-                return _.pick(v, columnNames);
-            case 'sort':
-                return v;
-        }
-
-        return v;
-    });
-}
-
-/**
  *
  * @param {{plan: import('./compiler').Plan, group: string, user: {realKey: string}}}
  * @param {object} data
@@ -447,12 +406,12 @@ function createGroup(plan, group) {
                                 user: request.user,
                                 customFields: request.customFields,
                             },
-                            filterListParamsByType(plan, group, type, {
+                            {
                                 sort: parameters.order,
                                 filter: parameters.filter,
                                 page: page,
                                 translations: parameters.translations,
-                            })
+                            }
                         );
                     })
                 );

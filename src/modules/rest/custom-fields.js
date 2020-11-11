@@ -344,6 +344,23 @@ DO UPDATE SET "fields" = EXCLUDED."fields" || "customColumns"."fields"
     );
 }
 
+function filterColumnsConfig(customFields) {
+    const definedCustomFields = _.getOr({}, 'defined', customFields);
+
+    return mapValuesWithKey(
+        (field, name) => ({
+            filter: ({alias, value, operator}) => ({
+                column: qb.val.raw(
+                    SQL``.append(`"${alias}"."__customColumns" ->> '${name}'`)
+                ),
+                value: value,
+                operator: operator,
+            }),
+        }),
+        definedCustomFields
+    );
+}
+
 function selectCustomFieldMiddleware({group}) {
     return async function (request, response, next) {
         const definedCustomFields = await fetchCustomFields(group);
@@ -464,4 +481,5 @@ module.exports = {
     selectCustomFieldMiddleware,
     modifyCustomFieldMiddleware,
     sortExpr,
+    filterColumnsConfig,
 };

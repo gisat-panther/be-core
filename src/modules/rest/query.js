@@ -959,11 +959,19 @@ function list(
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
     const table = _.get(typeSchema, 'table', type);
-    const columnsConfig = plan[group][type].columns;
+    const customColumnsConfig = cf.filterColumnsConfig(customFields);
+    const columnsConfig = _.merge(
+        plan[group][type].columns,
+        customColumnsConfig
+    );
 
     const columnToAliases = _.reduce(
         [
             _.zipObject(columns, _.fill(new Array(columns.length), ['t'])),
+            _.zipObject(
+                _.keys(customColumnsConfig),
+                _.fill(new Array(_.size(customColumnsConfig)), ['t'])
+            ),
             ..._.map(_.get(typeSchema, ['type', 'types'], {}), (t, name) => {
                 const columns = _.get(t, ['context', 'list', 'columns'], []);
 
