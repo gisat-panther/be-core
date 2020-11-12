@@ -356,18 +356,21 @@ async function updateData({plan, group, client}, request) {
     };
 }
 
-function sendResponseFromResult(result, response) {
+function resultToResponse(result) {
     switch (result.type) {
         case RESULT_CREATED:
-            return response.status(201).json(result.data);
+            return {status: 201, body: result.data};
         case RESULT_UPDATED:
-            return response.status(200).json(result.data);
+            return {status: 200, body: result.data};
         case RESULT_FORBIDDEN:
-            return response.status(403).json({success: false});
+            return {status: 403, body: {success: false}};
     }
 
-    response.status(500).json({});
     throw new Error(`unknown status: ${result.type}`);
+}
+
+function sendResponse(responseData, response) {
+    return response.status(responseData.status).json(responseData.body);
 }
 
 /**
@@ -466,7 +469,7 @@ function createGroup(plan, group) {
                 translation.modifyTranslationMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
-                sendResponseFromResult(
+                const responseData = resultToResponse(
                     await db.transactional(async (client) => {
                         await client.setUser(request.user.realKey);
                         await customFields.storeNew(
@@ -475,9 +478,10 @@ function createGroup(plan, group) {
                         );
 
                         return await createData({plan, group, client}, request);
-                    }),
-                    response
+                    })
                 );
+
+                sendResponse(responseData, response);
             },
         },
         {
@@ -500,7 +504,7 @@ function createGroup(plan, group) {
                 translation.modifyTranslationMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
-                await db.transactional(async (client) => {
+                const responseData = await db.transactional(async (client) => {
                     await client.setUser(request.user.realKey);
                     await customFields.storeNew(
                         {client, group},
@@ -512,7 +516,7 @@ function createGroup(plan, group) {
                         request
                     );
                     if (updatedResult.type !== RESULT_UPDATED) {
-                        return sendResponseFromResult(updatedResult, response);
+                        return resultToResponse(updatedResult);
                     }
 
                     const newData = _.pickBy(
@@ -538,7 +542,7 @@ function createGroup(plan, group) {
                     );
 
                     if (_.isEmpty(newData)) {
-                        return sendResponseFromResult(updatedResult, response);
+                        return resultToResponse(updatedResult);
                     }
 
                     request.body = {data: newData};
@@ -565,20 +569,19 @@ function createGroup(plan, group) {
                         request
                     );
                     if (createdResult.type !== RESULT_CREATED) {
-                        return sendResponseFromResult(createdResult, response);
+                        return resultToResponse(createdResult);
                     }
 
-                    return sendResponseFromResult(
-                        {
-                            type: RESULT_UPDATED,
-                            data: mergeListsWithoutPage(
-                                updatedResult.data,
-                                createdResult.data
-                            ),
-                        },
-                        response
-                    );
+                    return resultToResponse({
+                        type: RESULT_UPDATED,
+                        data: mergeListsWithoutPage(
+                            updatedResult.data,
+                            createdResult.data
+                        ),
+                    });
                 });
+
+                sendResponse(responseData, response);
             },
         },
         {
