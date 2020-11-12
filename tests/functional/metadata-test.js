@@ -990,6 +990,12 @@ describe('/rest/metadata', function () {
         describe('POST /rest/metadata/filtered/scope - sorting', async function () {
             before(async function () {
                 await Promise.all([
+                    cf.storeNew(
+                        {client: db, group: 'metadata'},
+                        {
+                            new: {tIntegerField: {type: 'integer'}},
+                        }
+                    ),
                     // 0
                     h.createRecord('"metadata"."scope"', {
                         key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
@@ -1002,6 +1008,14 @@ describe('/rest/metadata', function () {
                         locale: 'cs',
                         field: 'nameDisplay',
                         value: JSON.stringify('cs0'),
+                    }),
+                    h.createTranslation({
+                        resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                        locale: 'cs',
+                        field: 'tIntegerField',
+                        value: 2,
                     }),
                     h.createTranslation({
                         resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
@@ -1024,6 +1038,14 @@ describe('/rest/metadata', function () {
                         field: 'nameDisplay',
                         value: JSON.stringify('cs1'),
                     }),
+                    h.createTranslation({
+                        resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                        locale: 'cs',
+                        field: 'tIntegerField',
+                        value: 10,
+                    }),
                     // nameDisplay: missing `en`
                 ]);
             });
@@ -1034,7 +1056,7 @@ describe('/rest/metadata', function () {
 
             const tests = [
                 {
-                    name: 'cs - asc',
+                    name: 'cs - asc (string)',
                     body: {
                         filter: {
                             key: {
@@ -1060,7 +1082,7 @@ describe('/rest/metadata', function () {
                     },
                 },
                 {
-                    name: 'cs - desc',
+                    name: 'cs - desc (string)',
                     body: {
                         filter: {
                             key: {
@@ -1086,7 +1108,7 @@ describe('/rest/metadata', function () {
                     },
                 },
                 {
-                    name: 'en, default - asc',
+                    name: 'en, default - asc (string)',
                     body: {
                         filter: {
                             key: {
@@ -1112,7 +1134,7 @@ describe('/rest/metadata', function () {
                     },
                 },
                 {
-                    name: 'en, default - desc',
+                    name: 'en, default - desc (string)',
                     body: {
                         filter: {
                             key: {
@@ -1133,6 +1155,58 @@ describe('/rest/metadata', function () {
                             },
                             {
                                 key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'cs - asc (integer)',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        translations: ['cs'],
+                        order: [['tIntegerField', 'ascending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'cs - desc (integer)',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                        },
+                        translations: ['cs'],
+                        order: [['tIntegerField', 'descending']],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                            },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
                             },
                         ],
                     },

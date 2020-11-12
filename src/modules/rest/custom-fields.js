@@ -39,16 +39,32 @@ function listQuery(alias) {
  *
  * @returns {import('@imatic/pgqb').Expr | null}
  */
-function sortExpr({customFields}, {alias, field, order}) {
-    const definedCustomFields = _.getOr({}, 'defined', customFields);
-    if (!_.has(field, definedCustomFields)) {
+function sortFieldExpr({customFields}, {alias, field}) {
+    const f = _.get(['all', field], customFields);
+    if (f == null) {
         return null;
     }
 
-    return qb.orderBy(
-        qb.val.raw(`"${alias}"."__customColumns" -> '${field}'`),
-        order === 'ascending' ? 'ASC' : 'DESC'
+    const dbType = columnDbType(customFieldToColumn(f));
+
+    return qb.val.raw(
+        `("${alias}"."__customColumns" ->> '${field}')::${dbType}`
     );
+}
+
+/**
+ * @param {{group: string, type: string, customFields: {defined: CustomFields}}} context
+ * @param {{alias: string, field: string, order: string}} field
+ *
+ * @returns {import('@imatic/pgqb').Sql | null}
+ */
+function sortExpr({customFields}, {alias, field, order}) {
+    const fieldExpr = sortFieldExpr({customFields}, {alias, field});
+    if (fieldExpr == null) {
+        return null;
+    }
+
+    return qb.orderBy(fieldExpr, order === 'ascending' ? 'ASC' : 'DESC');
 }
 
 /**
@@ -285,6 +301,24 @@ function inferType(val) {
     throw new Error(`Cannot infer value: ${JSON.stringify(val)}.`);
 }
 
+function columnDbType(column) {
+    const type = _.get(['schema', 'type'], column);
+    switch (type) {
+        case 'string':
+            return 'text';
+        case 'number':
+            return 'int';
+        case 'boolean':
+            return 'bool';
+        case 'array':
+            return 'text[]';
+        case 'object':
+            return 'jsonb';
+    }
+
+    throw new Error(`Cannot convert schema type ${type} to db type.`);
+}
+
 function typeToSchema(type) {
     if (type == null) {
         return Joi.any();
@@ -366,6 +400,7 @@ function selectCustomFieldMiddleware({group}) {
         const definedCustomFields = await fetchCustomFields(group);
         request.customFields = {
             defined: definedCustomFields,
+            all: definedCustomFields,
         };
 
         const columns = _.mapValues(customFieldToColumn, definedCustomFields);
@@ -481,6 +516,8 @@ module.exports = {
     selectCustomFieldMiddleware,
     modifyCustomFieldMiddleware,
     sortExpr,
+    sortFieldExpr,
     filterColumnsConfig,
     customFieldToColumn,
+    columnDbType,
 };

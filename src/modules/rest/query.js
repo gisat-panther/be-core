@@ -7,6 +7,7 @@ const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
 const translation = require('./translation');
 const cf = require('./custom-fields');
+const debug = require('../../debug');
 
 const mapWithKey = _.map.convert({cap: false});
 const forEachWithKey = _.forEach.convert({cap: false});
@@ -221,7 +222,7 @@ function filtersToSqlExpr(filters) {
  * @return {import('@imatic/pgqb').Sql}
  */
 function sortToSqlExpr(
-    {group, type, translations, customFields},
+    {plan, group, type, translations, customFields},
     requestSort,
     alias
 ) {
@@ -231,7 +232,7 @@ function sortToSqlExpr(
 
     const exprs = requestSort.map(([field, order]) => {
         const tSortExpr = translation.sortExpr(
-            {group, type, translations, customFields},
+            {plan, group, type, translations, customFields},
             {alias, field, order}
         );
         if (tSortExpr != null) {
@@ -939,7 +940,7 @@ function createSortQuery({group, table}, alias, sortExpr) {
         return sortExpr;
     }
 
-    return qb.orderBy(createdAtQuery({group, table}, alias, sortExpr));
+    return qb.orderBy(createdAtQuery({group, table}, alias));
 }
 
 /**
@@ -1057,7 +1058,11 @@ function list(
     const sortQuery = createSortQuery(
         {group, table},
         't',
-        sortToSqlExpr({group, type, translations, customFields}, sort, 't')
+        sortToSqlExpr(
+            {plan, group, type, translations, customFields},
+            sort,
+            't'
+        )
     );
 
     const keysSqlMap = qb.merge(

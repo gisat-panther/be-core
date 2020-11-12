@@ -155,12 +155,14 @@ function listTranslationsQuery({group, type, translations}, alias) {
  * @param {{alias: string, field: string}} field
  */
 function sortExpr(
-    {group, type, translations, customFields},
+    {plan, group, type, translations, customFields},
     {alias, field, order}
 ) {
     if (_.size(translations) === 0) {
         return null;
     }
+
+    const columns = groupColumns({plan, group, customFields});
 
     const orderBys = _.map(
         (trans) =>
@@ -170,9 +172,12 @@ function sortExpr(
             ),
         translations
     );
+    const dbType = cf.columnDbType(_.get(field, columns));
 
     const translationSqlMap = qb.merge(
-        qb.select([qb.val.raw(SQL`"_ptrans"."value" #>> '{}'`)]),
+        qb.select([
+            qb.val.raw(SQL``.append(`("_ptrans"."value" #>> '{}')::${dbType}`)),
+        ]),
         qb.from('public.translations', '_ptrans'),
         qb.where(
             qb.expr.and(
@@ -194,8 +199,7 @@ function sortExpr(
     );
 
     const fieldExpr =
-        cf.sortExpr({customFields}, {alias, field, order}) ||
-        `${alias}.${field}`;
+        cf.sortFieldExpr({customFields}, {alias, field}) || `${alias}.${field}`;
 
     const sqlMap = qb.merge(
         qb.select([qb.expr.fn('COALESCE', translationSqlMap, fieldExpr)])
@@ -281,24 +285,29 @@ function lastChangeExprs({group, type}, ids) {
     ];
 }
 
+function groupColumns({plan, group, customFields}) {
+    return schemaUtil.mergeColumns([
+        ..._.flatMap((s) => {
+            const types = _.getOr({}, ['type', 'types'], 3);
+
+            return schemaUtil.mergeColumns(
+                _.concat(
+                    [s.columns],
+                    _.map((t) => t.columns, types)
+                )
+            );
+        }, plan[group]),
+        _.mapValues(cf.customFieldToColumn, _.getOr({}, 'all', customFields)),
+    ]);
+}
+
 function modifyTranslationMiddleware({plan, group}) {
     return async function (request, response, next) {
-        const columns = schemaUtil.mergeColumns([
-            ..._.flatMap((s) => {
-                const types = _.getOr({}, ['type', 'types'], 3);
-
-                return schemaUtil.mergeColumns(
-                    _.concat(
-                        [s.columns],
-                        _.map((t) => t.columns, types)
-                    )
-                );
-            }, plan[group]),
-            _.mapValues(
-                cf.customFieldToColumn,
-                _.getOr({}, ['customFields', 'all'], request)
-            ),
-        ]);
+        const columns = groupColumns({
+            plan,
+            group,
+            customFields: request.customFields,
+        });
 
         const TranslationSchema = Joi.object().keys(
             _.omitBy(
