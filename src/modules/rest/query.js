@@ -133,6 +133,7 @@ function getPlan(plan) {
  * @returns {Filter[]}
  */
 function createFilters(
+    {plan, group, type, translations, customFields},
     requestFilter,
     columnToAliases,
     columnToField,
@@ -145,9 +146,19 @@ function createFilters(
                 const createFilter = _.getOr(
                     ({value, operator}) => {
                         const aliasField = columnToField[field] || field;
+                        const column =
+                            translation.filterFieldExpr(
+                                {plan, group, type, translations, customFields},
+                                {alias, field: aliasField}
+                            ) ||
+                            cf.fieldExpr(
+                                {customFields},
+                                {alias, field: aliasField}
+                            ) ||
+                            `${alias}.${aliasField}`;
 
                         return {
-                            column: `${alias}.${aliasField}`,
+                            column: column,
                             value: value,
                             operator: operator,
                         };
@@ -1041,7 +1052,14 @@ function list(
         listUserPermissionsQuery({user, plan, group, type}, 't'),
         listDependentTypeQuery({plan, group, type}, 't'),
         filtersToSqlExpr(
-            createFilters(filter, columnToAliases, columnToField, columnsConfig)
+            createFilters(
+                {plan, group, type, translations, customFields},
+                filter,
+                columnToAliases,
+                columnToField,
+                columnsConfig,
+                translations
+            )
         ),
         relationsQuery({plan, group, type}, 't'),
         translation.listTranslationsQuery({group, type, translations}, 't'),

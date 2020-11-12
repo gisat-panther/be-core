@@ -39,7 +39,7 @@ function listQuery(alias) {
  *
  * @returns {import('@imatic/pgqb').Expr | null}
  */
-function sortFieldExpr({customFields}, {alias, field}) {
+function fieldExpr({customFields}, {alias, field}) {
     const f = _.get(['all', field], customFields);
     if (f == null) {
         return null;
@@ -59,12 +59,12 @@ function sortFieldExpr({customFields}, {alias, field}) {
  * @returns {import('@imatic/pgqb').Sql | null}
  */
 function sortExpr({customFields}, {alias, field, order}) {
-    const fieldExpr = sortFieldExpr({customFields}, {alias, field});
-    if (fieldExpr == null) {
+    const fe = fieldExpr({customFields}, {alias, field});
+    if (fe == null) {
         return null;
     }
 
-    return qb.orderBy(fieldExpr, order === 'ascending' ? 'ASC' : 'DESC');
+    return qb.orderBy(fe, order === 'ascending' ? 'ASC' : 'DESC');
 }
 
 /**
@@ -302,9 +302,13 @@ function inferType(val) {
 }
 
 function columnDbType(column) {
-    const type = _.get(['schema', 'type'], column);
-    switch (type) {
+    const Schema = _.getOr({}, 'schema', column);
+    switch (Schema.type) {
         case 'string':
+            if (_.some((rule) => rule.name === 'guid', Schema._rules)) {
+                return 'uuid';
+            }
+
             return 'text';
         case 'number':
             return 'int';
@@ -379,20 +383,9 @@ DO UPDATE SET "fields" = EXCLUDED."fields" || "customColumns"."fields"
 }
 
 function filterColumnsConfig(customFields) {
-    const definedCustomFields = _.getOr({}, 'defined', customFields);
+    const allCustomFields = _.getOr({}, 'all', customFields);
 
-    return mapValuesWithKey(
-        (field, name) => ({
-            filter: ({alias, value, operator}) => ({
-                column: qb.val.raw(
-                    SQL``.append(`"${alias}"."__customColumns" ->> '${name}'`)
-                ),
-                value: value,
-                operator: operator,
-            }),
-        }),
-        definedCustomFields
-    );
+    return _.mapValues(_.always({}), allCustomFields);
 }
 
 function selectCustomFieldMiddleware({group}) {
@@ -516,8 +509,8 @@ module.exports = {
     selectCustomFieldMiddleware,
     modifyCustomFieldMiddleware,
     sortExpr,
-    sortFieldExpr,
     filterColumnsConfig,
     customFieldToColumn,
     columnDbType,
+    fieldExpr,
 };

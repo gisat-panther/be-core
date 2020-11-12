@@ -199,13 +199,68 @@ function sortExpr(
     );
 
     const fieldExpr =
-        cf.sortFieldExpr({customFields}, {alias, field}) || `${alias}.${field}`;
+        cf.fieldExpr({customFields}, {alias, field}) || `${alias}.${field}`;
 
     const sqlMap = qb.merge(
         qb.select([qb.expr.fn('COALESCE', translationSqlMap, fieldExpr)])
     );
 
     return qb.orderBy(sqlMap, order === 'ascending' ? 'ASC' : 'DESC');
+}
+
+function filterFieldExpr(
+    {plan, group, type, translations, customFields},
+    {alias, field}
+) {
+    if (_.size(translations) === 0) {
+        return null;
+    }
+
+    const columns = groupColumns({plan, group, customFields});
+
+    const orderBys = _.map(
+        (trans) =>
+            qb.orderBy(
+                qb.val.raw(SQL`("_ptrans"."locale" = ${trans})::int`),
+                'DESC'
+            ),
+        translations
+    );
+
+    const dbType = cf.columnDbType(_.get(field, columns));
+
+    const translationSqlMap = qb.merge(
+        qb.select([
+            qb.val.raw(SQL``.append(`("_ptrans"."value" #>> '{}')::${dbType}`)),
+        ]),
+        qb.from('public.translations', '_ptrans'),
+        qb.where(
+            qb.expr.and(
+                qb.expr.eq(
+                    qb.val.raw('"t"."key"::text'),
+                    '_ptrans.resourceKey'
+                ),
+                qb.expr.eq('_ptrans.resourceGroup', qb.val.inlineParam(group)),
+                qb.expr.eq('_ptrans.resourceType', qb.val.inlineParam(type)),
+                qb.expr.eq('_ptrans.field', qb.val.inlineParam(field)),
+                qb.expr.in(
+                    '_ptrans.locale',
+                    translations.map(qb.val.inlineParam)
+                )
+            )
+        ),
+        qb.append(...orderBys),
+        qb.limit(1)
+    );
+
+    const fieldExpr =
+        cf.fieldExpr({customFields}, {alias, field}) || `${alias}.${field}`;
+
+    const sqlMap = qb.merge(
+        qb.select([qb.expr.fn('COALESCE', translationSqlMap, fieldExpr)])
+    );
+
+    return sqlMap;
 }
 
 const LocaleSchema = Joi.string().min(1);
@@ -369,4 +424,5 @@ module.exports = {
     lastChangeExprs,
     sortExpr,
     modifyTranslationMiddleware,
+    filterFieldExpr,
 };

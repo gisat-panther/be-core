@@ -1245,6 +1245,144 @@ describe('/rest/metadata', function () {
             });
         });
 
+        describe('POST /rest/metadata/filtered/scope - filtering', async function () {
+            before(async function () {
+                await Promise.all([
+                    cf.storeNew(
+                        {client: db, group: 'metadata'},
+                        {
+                            new: {tIntegerField: {type: 'integer'}},
+                        }
+                    ),
+                    // 0
+                    h.createRecord('"metadata"."scope"', {
+                        key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                    }),
+                    h.createTranslation({
+                        resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                        locale: 'cs',
+                        field: 'nameDisplay',
+                        value: JSON.stringify('10'),
+                    }),
+                    h.createTranslation({
+                        resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                        locale: 'cs',
+                        field: 'tIntegerField',
+                        value: 2,
+                    }),
+                    // 1
+                    h.createRecord('"metadata"."scope"', {
+                        key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                        nameDisplay: 'default1',
+                    }),
+                    h.createTranslation({
+                        resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                        locale: 'cs',
+                        field: 'nameDisplay',
+                        value: JSON.stringify('2'),
+                    }),
+                    h.createTranslation({
+                        resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                        resourceGroup: 'metadata',
+                        resourceType: 'scope',
+                        locale: 'cs',
+                        field: 'tIntegerField',
+                        value: 10,
+                    }),
+                ]);
+            });
+
+            after(async function () {
+                await h.revertChanges();
+            });
+
+            const tests = [
+                {
+                    name: 'string - eq',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                            nameDisplay: '10',
+                        },
+                        translations: ['cs'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                        ],
+                    },
+                },
+                {
+                    name: 'integer - eq',
+                    body: {
+                        filter: {
+                            key: {
+                                in: [
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                    'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                ],
+                            },
+                            tIntegerField: 2,
+                        },
+                        translations: ['cs'],
+                    },
+                    expectedResult: {
+                        status: 200,
+                        body: [
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            },
+                        ],
+                    },
+                },
+            ];
+
+            tests.forEach((test) => {
+                it(test.name, async function () {
+                    const response = await fetch(
+                        url('/rest/metadata/filtered/scope'),
+                        {
+                            method: 'POST',
+                            headers: new fetch.Headers({
+                                Authorization: createAdminToken(),
+                                'Content-Type': 'application/json',
+                            }),
+                            body: JSON.stringify(test.body),
+                        }
+                    );
+
+                    assert.strictEqual(
+                        response.status,
+                        test.expectedResult.status
+                    );
+                    const data = await response.json();
+
+                    const interestingData = _.map(
+                        _.pick(['key']),
+                        data.data.scope
+                    );
+                    assert.deepStrictEqual(
+                        interestingData,
+                        test.expectedResult.body
+                    );
+                });
+            });
+        });
+
         describe('PUT /rest/metadata', function () {
             it('make some changes', async function () {
                 const response = await fetch(url('/rest/metadata'), {
