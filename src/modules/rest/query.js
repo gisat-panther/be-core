@@ -960,7 +960,7 @@ function list(
     const columns = typeSchema.context.list.columns;
     const table = _.get(typeSchema, 'table', type);
     const customColumnsConfig = cf.filterColumnsConfig(customFields);
-    const columnsConfig = _.merge(
+    const columnsConfig = _fp.merge(
         plan[group][type].columns,
         customColumnsConfig
     );

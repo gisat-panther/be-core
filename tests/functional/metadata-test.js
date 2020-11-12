@@ -1203,6 +1203,33 @@ describe('/rest/metadata', function () {
 
                 assert.strictEqual(response.status, 200);
             });
+
+            it('make sure that type cannot be changed', async function () {
+                const response = await fetch(url('/rest/metadata'), {
+                    method: 'PUT',
+                    headers: new fetch.Headers({
+                        Authorization: createAdminToken(),
+                        'Content-Type': 'application/json',
+                    }),
+                    body: JSON.stringify({
+                        data: {
+                            scope: [
+                                {
+                                    key: '1e675bdd-c92c-4150-a067-c49ff239b380',
+                                    data: {},
+                                    translations: {
+                                        cs: {
+                                            nameDisplay: 1,
+                                        },
+                                    },
+                                },
+                            ],
+                        },
+                    }),
+                });
+
+                assert.strictEqual(response.status, 400);
+            });
         });
 
         describe('POST /rest/metadata/filtered/scope after changes', async function () {

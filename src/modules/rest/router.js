@@ -454,6 +454,7 @@ function createGroup(plan, group) {
                 autoLoginMiddleware,
                 authMiddleware,
                 customFields.modifyCustomFieldMiddleware({plan, group}),
+                translation.modifyTranslationMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
                 sendResponseFromResult(
@@ -487,6 +488,7 @@ function createGroup(plan, group) {
                 authMiddleware,
                 createDependentTypeMiddleware({plan, group}),
                 customFields.modifyCustomFieldMiddleware({plan, group}),
+                translation.modifyTranslationMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
                 await db.transactional(async (client) => {

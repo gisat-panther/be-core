@@ -24,42 +24,19 @@ function listPath(plan, group) {
 }
 
 /**
- * Since we can use one filter for many types and many types can have same columns,
- * we need to make sure that given filter is valid for all types.
- */
-function mergeColumns(columns) {
-    const merged = {};
-
-    _.forEach(columns, function (cols) {
-        _.forEach(cols, function (col, name) {
-            const existing = merged[name];
-            if (existing) {
-                col = Object.assign({}, existing, {
-                    schema: existing.schema.concat(col.schema),
-                });
-            }
-
-            merged[name] = col;
-        });
-    });
-
-    return merged;
-}
-
-/**
  * @param {import('./compiler').Plan} plan
  * @param {string} group
  *
  * @returns {object}
  */
 function listBody(plan, group) {
-    const columns = mergeColumns(
+    const columns = schemaUtil.mergeColumns(
         _.flatMap(plan[group], (s) => {
             const types = _.get(s, ['type', 'types'], {});
 
-            return mergeColumns(
+            return schemaUtil.mergeColumns(
                 _.concat(
-                    s.columns,
+                    [s.columns],
                     _.map(types, (t) => t.columns),
                     _.reduce(
                         _.keys(s.relations),

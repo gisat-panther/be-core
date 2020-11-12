@@ -3,6 +3,12 @@ const _ = require('lodash/fp');
 const qb = require('@imatic/pgqb');
 const SQL = require('sql-template-strings');
 const cf = require('./custom-fields');
+const schemaUtil = require('./schema-util');
+const {HttpError} = require('../error');
+const apiUtil = require('../../util/api');
+
+const mapWithKey = _.map.convert({cap: false});
+const mapValuesWithKey = _.mapValues.convert({cap: false});
 
 /**
  * @param {{group: string, type: string}} context
@@ -275,6 +281,89 @@ function lastChangeExprs({group, type}, ids) {
     ];
 }
 
+function selectTranslationMiddleware({plan, group, type}) {
+    return async function (request, response, next) {
+        const typeSchema = plan[group][type];
+        const types = _.get(typeSchema, ['type', 'types'], {});
+
+        const TranslationSchema = schemaUtil.mergeColumns(
+            [s.columns],
+            _.map(types, (t) => t.columns)
+            // customColumns
+        );
+    };
+}
+
+function modifyTranslationMiddleware({plan, group}) {
+    return async function (request, response, next) {
+        const columns = schemaUtil.mergeColumns([
+            ..._.flatMap((s) => {
+                const types = _.getOr({}, ['type', 'types'], 3);
+
+                return schemaUtil.mergeColumns(
+                    _.concat(
+                        [s.columns],
+                        _.map((t) => t.columns, types)
+                    )
+                );
+            }, plan[group]),
+            _.mapValues(
+                cf.customFieldToColumn,
+                _.getOr({}, ['customFields', 'all'], request)
+            ),
+        ]);
+
+        const TranslationSchema = Joi.object().keys(
+            _.omitBy(
+                _.isNil,
+                _.mapValues((col) => col.schema, columns)
+            )
+        );
+
+        const RecordSchema = Joi.object().keys({
+            translations: Joi.object().pattern(LocaleSchema, TranslationSchema),
+        });
+        const TypeSchema = Joi.array().items(RecordSchema);
+        const BodySchema = Joi.object().keys({
+            data: Joi.object().keys(_.mapValues(() => TypeSchema, plan[group])),
+        });
+
+        const validationResult = BodySchema.validate(request.body, {
+            abortEarly: false,
+            stripUnknown: true,
+        });
+        if (validationResult.error) {
+            if (validationResult.error) {
+                return next(
+                    new HttpError(
+                        400,
+                        apiUtil.createDataErrorObject(validationResult.error)
+                    )
+                );
+            }
+        }
+
+        const data = request.parameters.body.data;
+        const resultData = validationResult.value.data;
+
+        const dataWithTranslations = mapValuesWithKey((records, type) => {
+            return mapWithKey((record, index) => {
+                const translations = _.getOr(
+                    {},
+                    [type, index, 'translations'],
+                    resultData
+                );
+
+                return _.set('translations', translations, record);
+            }, records);
+        }, data);
+
+        request.parameters.body.data = dataWithTranslations;
+
+        next();
+    };
+}
+
 module.exports = {
     schema,
     listSchema,
@@ -283,4 +372,5 @@ module.exports = {
     formatRow,
     lastChangeExprs,
     sortExpr,
+    modifyTranslationMiddleware,
 };

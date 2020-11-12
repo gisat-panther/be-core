@@ -482,4 +482,5 @@ module.exports = {
     modifyCustomFieldMiddleware,
     sortExpr,
     filterColumnsConfig,
+    customFieldToColumn,
 };

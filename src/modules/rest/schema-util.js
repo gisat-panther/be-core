@@ -1,6 +1,33 @@
 const _ = require('lodash/fp');
 const Joi = require('../../joi');
 
+const foreachWithKey = _.forEach.convert({cap: false});
+
+/**
+ * Since we can use one filter for many types and many types can have same columns,
+ * we need to make sure that given filter is valid for all types.
+ *
+ * @param {Object<string, {schema: import('../../joi').Root}>[]} columns
+ */
+function mergeColumns(columns) {
+    const merged = {};
+
+    _.forEach(function (cols) {
+        foreachWithKey(function (col, name) {
+            const existing = merged[name];
+            if (existing) {
+                col = Object.assign({}, existing, {
+                    schema: existing.schema.concat(col.schema),
+                });
+            }
+
+            merged[name] = col;
+        }, cols);
+    }, columns);
+
+    return merged;
+}
+
 /**
  * @param {import('./compiler').Column} col
  *
@@ -106,6 +133,7 @@ function order(columns) {
 }
 
 module.exports = {
+    mergeColumns,
     filter,
     order,
 };
