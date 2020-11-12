@@ -281,19 +281,6 @@ function lastChangeExprs({group, type}, ids) {
     ];
 }
 
-function selectTranslationMiddleware({plan, group, type}) {
-    return async function (request, response, next) {
-        const typeSchema = plan[group][type];
-        const types = _.get(typeSchema, ['type', 'types'], {});
-
-        const TranslationSchema = schemaUtil.mergeColumns(
-            [s.columns],
-            _.map(types, (t) => t.columns)
-            // customColumns
-        );
-    };
-}
-
 function modifyTranslationMiddleware({plan, group}) {
     return async function (request, response, next) {
         const columns = schemaUtil.mergeColumns([
