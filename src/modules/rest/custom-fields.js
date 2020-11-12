@@ -34,7 +34,7 @@ function listQuery(alias) {
 }
 
 /**
- * @param {{group: string, type: string, customFields: {defined: CustomFields}}} context
+ * @param {{customFields: {all: CustomFields}}} context
  * @param {{alias: string, field: string}} field
  *
  * @returns {import('@imatic/pgqb').Expr | null}
@@ -53,7 +53,7 @@ function fieldExpr({customFields}, {alias, field}) {
 }
 
 /**
- * @param {{group: string, type: string, customFields: {defined: CustomFields}}} context
+ * @param {{customFields: {all: CustomFields}}} context
  * @param {{alias: string, field: string, order: string}} field
  *
  * @returns {import('@imatic/pgqb').Sql | null}
@@ -210,6 +210,12 @@ function extractFields(data) {
     )(data);
 }
 
+/**
+ * @param {string} v1
+ * @param {string} v2
+ *
+ * @returns {string}
+ */
 function mergeTypes(v1, v2) {
     if (v1 == null) {
         return v2;
@@ -227,7 +233,7 @@ function mergeTypes(v1, v2) {
 }
 
 /**
- * @param {string[]} unknownCustomFields
+ * @param {string[]} fields
  * @param {object} record
  *
  * @return {CustomFields}
@@ -278,6 +284,11 @@ function fetchCustomFields(group) {
         );
 }
 
+/**
+ * @param {any} val
+ *
+ * @returns {string|null}
+ */
 function inferType(val) {
     if (val == null) {
         return null;
@@ -301,6 +312,11 @@ function inferType(val) {
     throw new Error(`Cannot infer value: ${JSON.stringify(val)}.`);
 }
 
+/**
+ * @param {object} column
+ *
+ * @returns {string}
+ */
 function columnDbType(column) {
     const Schema = _.getOr({}, 'schema', column);
     switch (Schema.type) {
@@ -323,6 +339,11 @@ function columnDbType(column) {
     throw new Error(`Cannot convert schema type ${type} to db type.`);
 }
 
+/**
+ * @param {string|null} type
+ *
+ * @returns {import('../../joi').Root}
+ */
 function typeToSchema(type) {
     if (type == null) {
         return Joi.any();
@@ -354,10 +375,6 @@ function customFieldToColumn(field) {
 }
 
 /**
- * Todo: what if since the new custom fields were computed somebody
- * inserted different type of the same field? - It should probably fail
- * instead of ignoring the new type.
- *
  * @param {{client: import('../../db').Client, group: string}} context
  * @param {{new: CustomFields}} customFields
  *
@@ -382,12 +399,20 @@ DO UPDATE SET "fields" = EXCLUDED."fields" || "customColumns"."fields"
     );
 }
 
+/**
+ * @param {CustomField} customFields
+ *
+ * @returns {object}
+ */
 function filterColumnsConfig(customFields) {
     const allCustomFields = _.getOr({}, 'all', customFields);
 
     return _.mapValues(_.always({}), allCustomFields);
 }
 
+/**
+ * @param {{group: string}} context
+ */
 function selectCustomFieldMiddleware({group}) {
     return async function (request, response, next) {
         const definedCustomFields = await fetchCustomFields(group);
@@ -413,6 +438,9 @@ function selectCustomFieldMiddleware({group}) {
     };
 }
 
+/**
+ * @param {{plan: import('./compiler').Plan, group: string}} context
+ */
 function modifyCustomFieldMiddleware({plan, group}) {
     return async function (request, response, next) {
         const definedCustomFields = await fetchCustomFields(group);

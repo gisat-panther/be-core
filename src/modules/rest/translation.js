@@ -340,6 +340,11 @@ function lastChangeExprs({group, type}, ids) {
     ];
 }
 
+/**
+ * @param {{plan: import('./compiler').Plan, group: string, customFields: {all: import('./custom-fields').CustomFields}}} param0
+ *
+ * @returns {Object<string, import('./compiler').Column>}
+ */
 function groupColumns({plan, group, customFields}) {
     return schemaUtil.mergeColumns([
         ..._.flatMap((s) => {
@@ -356,6 +361,9 @@ function groupColumns({plan, group, customFields}) {
     ]);
 }
 
+/**
+ * @param {{plan: import('./compiler').Plan, group: string}} context
+ */
 function modifyTranslationMiddleware({plan, group}) {
     return async function (request, response, next) {
         const columns = groupColumns({

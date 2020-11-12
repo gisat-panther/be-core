@@ -1,5 +1,12 @@
 const {assert, expect} = require('chai');
 
+/**
+ * @template T
+ *
+ * @param {Set<T>} s
+ *
+ * @returns {Array<T>}
+ */
 function convertSet(s) {
     s = Array.from(s);
     s.sort();
