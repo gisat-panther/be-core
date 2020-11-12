@@ -1,7 +1,6 @@
 const db = require('../../db');
 const qb = require('@imatic/pgqb');
-const _ = require('lodash');
-const _fp = require('lodash/fp');
+const _ = require('lodash/fp');
 const {SQL} = require('sql-template-strings');
 const {Client} = require('pg');
 const _getPlan = require('../../applications/plan').get;
@@ -9,7 +8,10 @@ const util = require('./util');
 const translation = require('./translation');
 const cf = require('./custom-fields');
 
-const mapWithKey = _fp.map.convert({cap: false});
+const mapWithKey = _.map.convert({cap: false});
+const forEachWithKey = _.forEach.convert({cap: false});
+const mapKeysWithKey = _.mapKeys.convert({cap: false});
+const fill = (value, array) => _.fill(0, array.length, value, array);
 
 /**
  * @typedef {Object} Filter
@@ -136,10 +138,10 @@ function createFilters(
     columnsConfig
 ) {
     const filters = [];
-    _.forEach(requestFilter, (filterData, field) => {
+    forEachWithKey((filterData, field) => {
         filters.push(
-            _.map(columnToAliases[field], (alias) => {
-                const createFilter = _fp.getOr(
+            _.map((alias) => {
+                const createFilter = _.getOr(
                     ({value, operator}) => {
                         const aliasField = columnToField[field] || field;
 
@@ -168,9 +170,9 @@ function createFilters(
                     value: filterData,
                     operator: 'eq',
                 });
-            })
+            }, columnToAliases[field])
         );
-    });
+    }, requestFilter);
 
     return filters;
 }
@@ -187,12 +189,12 @@ function filtersToSqlExpr(filters) {
         .map((filter) => {
             const filters = _.isArray(filter) ? filter : [filter];
 
-            const exprs = _.map(filters, (filter) => {
+            const exprs = _.map((filter) => {
                 const createExpr = filterOperatorToSqlExpr[filter.operator];
                 if (createExpr) {
                     return createExpr(filter);
                 }
-            }).filter((f) => f != null);
+            }, filters).filter((f) => f != null);
 
             if (exprs.length === 1) {
                 return exprs[0];
@@ -291,7 +293,7 @@ function listRelationAlias(name) {
 function relationsQuery({plan, group, type}, alias) {
     const relations = plan[group][type].relations;
 
-    const queries = _.map(relations, (rel, name) => {
+    const queries = mapWithKey((rel, name) => {
         switch (rel.type) {
             case 'manyToMany': {
                 const relAlias = listRelationAlias(name);
@@ -339,7 +341,7 @@ function relationsQuery({plan, group, type}, alias) {
         }
 
         throw new Error(`Unspported relation type: ${rel.type}`);
-    });
+    }, relations);
 
     if (queries.length === 0) {
         return {};
@@ -437,7 +439,7 @@ function listPermissionRelationQuery({user, plan, group, type}, alias) {
     }
 
     return qb.append(
-        ..._.map(restrictedColumns, (col, name) => {
+        ...mapWithKey((col, name) => {
             const joinAlias = 'tp_' + name;
             const userQuery = qb.merge(
                 qb.joins(
@@ -529,7 +531,7 @@ function listPermissionRelationQuery({user, plan, group, type}, alias) {
                 hashQuery,
                 qb.where(qb.expr.or(userCondition, hashCondition))
             );
-        })
+        }, restrictedColumns)
     );
 }
 
@@ -557,10 +559,7 @@ function specificUserPermissionsQuery(
     const restrictedColumns = util.restrictedColumns(plan, group, type);
     const restrictedColumnAlias = (name) => joinAlias + name;
 
-    const restrictedColumnSqlMaps = _.map(restrictedColumns, function (
-        col,
-        name
-    ) {
+    const restrictedColumnSqlMaps = mapWithKey(function (col, name) {
         const restrictedAlias = restrictedColumnAlias(name);
         const joinAlias = restrictedColumnAlias(name);
 
@@ -596,7 +595,7 @@ function specificUserPermissionsQuery(
                 permissionsAlias + '__' + name
             ),
         ]);
-    });
+    }, restrictedColumns);
 
     const sqlMap = qb.select([
         qb.expr.as(
@@ -679,8 +678,8 @@ function listUserPermissionsQuery({user, plan, group, type}, alias) {
 function relationData({plan, group, type}) {
     const typeSchema = plan[group][type];
 
-    return _fp.flow(
-        _fp.map((rel) => {
+    return _.flow(
+        _.map((rel) => {
             const [schema, table] = rel.relationTable.split('.');
 
             return {
@@ -689,7 +688,7 @@ function relationData({plan, group, type}) {
                 ownKey: rel.ownKey,
             };
         }),
-        _fp.uniqBy((m) => m.schema + m.table + m.ownKey)
+        _.uniqBy((m) => m.schema + m.table + m.ownKey)
     )(typeSchema.relations);
 }
 
@@ -700,7 +699,7 @@ function relationData({plan, group, type}) {
  * @returns {import('@imatic/pgqb').Expr[]}
  */
 function lastChangeRelationsExprs({plan, group, type}, ids) {
-    return _fp.map(
+    return _.map(
         (rd) =>
             qb.expr.and(
                 qb.expr.eq('a.schema_name', qb.val.inlineParam(rd.schema)),
@@ -724,7 +723,7 @@ function lastChangeRelationsExprs({plan, group, type}, ids) {
  */
 function lastChangeDependentTypesExprs({plan, group, type}, ids) {
     const typeSchema = plan[group][type];
-    const typeKey = _fp.get(['type', 'key'], typeSchema);
+    const typeKey = _.get(['type', 'key'], typeSchema);
 
     return mapWithKey(
         (type, typeTable) =>
@@ -742,7 +741,7 @@ function lastChangeDependentTypesExprs({plan, group, type}, ids) {
                     )
                 )
             ),
-        _fp.get(['type', 'types'], typeSchema)
+        _.get(['type', 'types'], typeSchema)
     );
 }
 
@@ -788,7 +787,7 @@ async function lastChange({plan, group, type}, ids) {
 
     const res = await db.query(qb.toSql(sqlMap));
 
-    return _.first(_.map(res.rows, (row) => row.change));
+    return _.first(_.map((row) => row.change, res.rows));
 }
 
 /**
@@ -822,18 +821,18 @@ function listDependentTypeQuery({plan, group, type}, alias) {
     const selectByColumn = {};
 
     const joins = qb.append(
-        ..._fp.map((table) => {
+        ..._.map((table) => {
             const al = listDependentTypeAlias(table);
-            const columns = _fp.getOr(
+            const columns = _.getOr(
                 {},
                 ['type', 'types', table, 'columns'],
                 typeSchema
             );
 
-            _.forEach(columns, (c, name) => {
+            forEachWithKey((c, name) => {
                 selectByColumn[name] = selectByColumn[name] || [];
                 selectByColumn[name].push(c.selectExpr({alias: al}));
-            });
+            }, columns);
 
             return qb.merge(
                 qb.joins(
@@ -856,9 +855,9 @@ function listDependentTypeQuery({plan, group, type}, alias) {
 
     return qb.merge(
         qb.select(
-            _.map(selectByColumn, (selects, name) => {
+            mapWithKey((selects, name) => {
                 return qb.expr.as(qb.expr.fn('COALESCE', ...selects), name);
-            })
+            }, selectByColumn)
         ),
         joins
     );
@@ -878,21 +877,21 @@ function cleanDependentTypeCols({plan, group, type}, rows) {
         return rows;
     }
 
-    const allTypeCols = _fp.uniq(
-        _fp.flatMap((t) => _fp.keys(t.columns), typeSchema.type.types)
+    const allTypeCols = _.uniq(
+        _.flatMap((t) => _.keys(t.columns), typeSchema.type.types)
     );
 
-    const omitColByType = _fp.mapValues(function (type) {
-        return _fp.difference(allTypeCols, _fp.keys(type.columns));
+    const omitColByType = _.mapValues(function (type) {
+        return _.difference(allTypeCols, _.keys(type.columns));
     }, typeSchema.type.types);
     omitColByType[null] = allTypeCols;
 
     const dispatchColumn = typeSchema.type.dispatchColumn;
 
-    return _fp.map((row) => {
+    return _.map((row) => {
         const currentType = row[dispatchColumn];
 
-        return _fp.omit(omitColByType[currentType], row);
+        return _.omit(omitColByType[currentType], row);
     }, rows);
 }
 
@@ -958,31 +957,46 @@ function list(
     plan = getPlan(plan);
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
-    const table = _.get(typeSchema, 'table', type);
+    const table = _.getOr(type, 'table', typeSchema);
     const customColumnsConfig = cf.filterColumnsConfig(customFields);
-    const columnsConfig = _fp.merge(
+    const columnsConfig = _.merge(
         plan[group][type].columns,
         customColumnsConfig
     );
 
     const columnToAliases = _.reduce(
+        function (res, next) {
+            return _.mergeWith(
+                function (x, y) {
+                    if (x === undefined) {
+                        return y;
+                    }
+
+                    return _.concat(x, y);
+                },
+                res,
+                next
+            );
+        },
+        {},
         [
-            _.zipObject(columns, _.fill(new Array(columns.length), ['t'])),
+            _.zipObject(columns, fill(['t'], new Array(columns.length))),
             _.zipObject(
                 _.keys(customColumnsConfig),
-                _.fill(new Array(_.size(customColumnsConfig)), ['t'])
+                fill(['t'], new Array(_.size(customColumnsConfig)))
             ),
-            ..._.map(_.get(typeSchema, ['type', 'types'], {}), (t, name) => {
-                const columns = _.get(t, ['context', 'list', 'columns'], []);
+            ...mapWithKey((t, name) => {
+                const columns = _.getOr([], ['context', 'list', 'columns'], t);
 
                 return _.zipObject(
                     columns,
-                    _.fill(new Array(columns.length), [
-                        listDependentTypeAlias(name),
-                    ])
+                    fill(
+                        [listDependentTypeAlias(name)],
+                        new Array(columns.length)
+                    )
                 );
-            }),
-            ..._.map(plan[group][type].relations, (rel, name) => {
+            }, _.getOr({}, ['type', 'types'], typeSchema)),
+            ...mapWithKey((rel, name) => {
                 switch (rel.type) {
                     case 'manyToMany':
                         return {[name + 'Keys']: [listRelationAlias(name)]};
@@ -991,22 +1005,11 @@ function list(
                 }
 
                 throw new Error(`Unspported relation type: ${rel.type}`);
-            }),
-        ],
-        function (res, next) {
-            return _.mergeWith(res, next, function (x, y) {
-                if (x === undefined) {
-                    return y;
-                }
-
-                return _.concat(x, y);
-            });
-        },
-        {}
+            }, plan[group][type].relations),
+        ]
     );
 
     const columnToField = _.reduce(
-        _.keys(plan[group][type].relations),
         (res, name) => {
             const rel = plan[group][type].relations[name];
             switch (rel.type) {
@@ -1020,7 +1023,8 @@ function list(
 
             throw new Error(`Unspported relation type: ${rel.type}`);
         },
-        {}
+        {},
+        _.keys(plan[group][type].relations)
     );
 
     const sqlMap = qb.append(
@@ -1074,7 +1078,7 @@ function list(
         db.query(qb.toSql(resultSqlMap)).then((res) => res.rows),
         db
             .query(qb.toSql(countSqlMap))
-            .then((res) => _.get(res.rows[0], 'count', 0)),
+            .then((res) => _.getOr(0, 'count', res.rows[0])),
     ]).then(([rows, count]) => ({
         rows: cleanDependentTypeCols({plan, group, type}, rows),
         count: Number(count),
@@ -1113,7 +1117,7 @@ function createDependentType({plan, group, type, client}, record) {
     }
 
     const dispatchColumn = typeSchema.type.dispatchColumn;
-    const dispatchValue = _fp.get(['data', dispatchColumn], record);
+    const dispatchValue = _.get(['data', dispatchColumn], record);
     if (dispatchValue == null) {
         return Promise.resolve(null);
     }
@@ -1149,13 +1153,13 @@ function updateDependentType({plan, group, type, client}, record) {
     }
 
     const dispatchColumn = typeSchema.type.dispatchColumn;
-    const dispatchValue = _fp.get(['type', dispatchColumn], record);
+    const dispatchValue = _.get(['type', dispatchColumn], record);
     if (dispatchValue == null) {
         return Promise.resolve(null);
     }
 
     const relationKey = typeSchema.type.key;
-    const relationKeyValue = _fp.get(['type', relationKey], record);
+    const relationKeyValue = _.get(['type', relationKey], record);
     if (relationKeyValue == null) {
         return Promise.resolve(null);
     }
@@ -1163,7 +1167,7 @@ function updateDependentType({plan, group, type, client}, record) {
     const columnsConfig = typeSchema.type.types[dispatchValue].columns;
     const validColumns = new Set(Object.keys(columnsConfig));
     const columns = _.keys(record.data).filter((c) => validColumns.has(c));
-    const data = _.pick(record.data, columns);
+    const data = _.pick(columns, record.data);
 
     const sqlMap = qb.merge(
         qb.update(`${group}.${dispatchValue}`),
@@ -1190,13 +1194,13 @@ function deleteDependentType({plan, group, type, client}, record) {
     }
 
     const dispatchColumn = typeSchema.type.dispatchColumn;
-    const dispatchValue = _fp.get(['type', dispatchColumn], record);
+    const dispatchValue = _.get(['type', dispatchColumn], record);
     if (dispatchValue == null) {
         return Promise.resolve();
     }
 
     const relationKey = typeSchema.type.key;
-    const relationKeyValue = _fp.get(['type', relationKey], record);
+    const relationKeyValue = _.get(['type', relationKey], record);
     if (relationKeyValue == null) {
         return Promise.resolve();
     }
@@ -1218,7 +1222,7 @@ function deleteDependentType({plan, group, type, client}, record) {
 async function create({plan, group, type, client}, records) {
     plan = getPlan(plan);
     const typeSchema = plan[group][type];
-    const typeKey = _fp.get(['type', 'key'], typeSchema);
+    const typeKey = _.get(['type', 'key'], typeSchema);
 
     const dependentTypes =
         typeKey == null
@@ -1235,9 +1239,9 @@ async function create({plan, group, type, client}, records) {
         ['key', ...Object.keys(records[0].data)].filter((c) =>
             validColumns.has(c)
         ),
-        _fp.getOr([], ['context', 'create', 'queryColumns'], typeSchema)
+        _.getOr([], ['context', 'create', 'queryColumns'], typeSchema)
     );
-    const table = _.get(typeSchema, 'table', type);
+    const table = _.getOr(type, 'table', typeSchema);
 
     const sqlMap = qb.append(
         qb.merge(
@@ -1257,10 +1261,7 @@ async function create({plan, group, type, client}, records) {
         cf.create({plan, group, type}, records)
     );
 
-    const relationsByCol = _.mapKeys(typeSchema.relations, function (
-        rel,
-        name
-    ) {
+    const relationsByCol = mapKeysWithKey(function (rel, name) {
         switch (rel.type) {
             case 'manyToMany':
                 return name + 'Keys';
@@ -1269,14 +1270,14 @@ async function create({plan, group, type, client}, records) {
         }
 
         throw new Error(`Unspported relation type: ${rel.type}`);
-    });
+    }, typeSchema.relations);
     const validRelationCols = _.keys(relationsByCol);
     const relationQueryMaps = _.reduce(
-        validRelationCols,
         function (acc, relCol) {
             const rel = relationsByCol[relCol];
             const values = _.filter(
-                _.flatMap(records, function (record) {
+                (v) => v != null,
+                _.flatMap(function (record) {
                     const relKey = ensureArray(record.data[relCol]);
                     if (relKey == null) {
                         return;
@@ -1289,15 +1290,17 @@ async function create({plan, group, type, client}, records) {
                                 return;
                             }
 
-                            return _.map(relKey, (rk) => [
-                                qb.val.inlineParam(record.key),
-                                qb.val.inlineParam(rk),
-                            ]);
+                            return _.map(
+                                (rk) => [
+                                    qb.val.inlineParam(record.key),
+                                    qb.val.inlineParam(rk),
+                                ],
+                                relKey
+                            );
                     }
 
                     throw new Error(`Unspported relation type: ${rel.type}`);
-                }),
-                (v) => v != null
+                }, records)
             );
 
             if (values.length === 0) {
@@ -1314,7 +1317,8 @@ async function create({plan, group, type, client}, records) {
 
             return acc;
         },
-        []
+        [],
+        validRelationCols
     );
 
     return client.transactional(async (client) => {
@@ -1323,7 +1327,7 @@ async function create({plan, group, type, client}, records) {
             .then((res) => res.rows.map((r) => r.key));
 
         await Promise.all(
-            _.map(relationQueryMaps, (sqlMap) => client.query(qb.toSql(sqlMap)))
+            _.map((sqlMap) => client.query(qb.toSql(sqlMap)), relationQueryMaps)
         );
 
         return res;
@@ -1359,19 +1363,19 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
     const columnsConfig = typeSchema.columns;
     const validColumns = new Set(Object.keys(columnsConfig));
     const columns = _.keys(record.data).filter((c) => validColumns.has(c));
-    const table = _.get(typeSchema, 'table', type);
-    const typeKey = _.get(typeSchema, ['type', 'key']);
+    const table = _.getOr(type, 'table', typeSchema);
+    const typeKey = _.get(['type', 'key'], typeSchema);
 
-    const data = _.pick(record.data, columns);
+    const data = _.pick(columns, record.data);
 
-    const queryColumns = _fp.filter(
+    const queryColumns = _.filter(
         (col) =>
-            _fp.some((input) => _.has(data, input), columnsConfig[col].inputs),
-        _fp.getOr([], ['context', 'create', 'queryColumns'], typeSchema)
+            _.some((input) => _.has(input, data), columnsConfig[col].inputs),
+        _.getOr([], ['context', 'create', 'queryColumns'], typeSchema)
     );
-    const enrichedData = _fp.merge(
+    const enrichedData = _.merge(
         data,
-        _fp.zipObject(queryColumns, new Array(queryColumns.length))
+        _.zipObject(queryColumns, new Array(queryColumns.length))
     );
 
     const sqlMap = qb.append(
@@ -1427,10 +1431,7 @@ function ensureArray(v) {
  * @param {object} record
  */
 async function updateRecordRelation({plan, group, type, client}, record) {
-    const relationsByCol = _.mapKeys(plan[group][type].relations, function (
-        rel,
-        name
-    ) {
+    const relationsByCol = mapKeysWithKey(function (rel, name) {
         switch (rel.type) {
             case 'manyToMany':
                 return name + 'Keys';
@@ -1439,10 +1440,9 @@ async function updateRecordRelation({plan, group, type, client}, record) {
         }
 
         throw new Error(`Unspported relation type: ${rel.type}`);
-    });
+    }, plan[group][type].relations);
     const validRelationCols = _.keys(relationsByCol);
     const relationQueries = _.reduce(
-        validRelationCols,
         function (acc, relCol) {
             if (!record.data.hasOwnProperty(relCol)) {
                 return acc;
@@ -1480,12 +1480,12 @@ async function updateRecordRelation({plan, group, type, client}, record) {
                             .append(SQL` = ANY(${relKey}))`)
                     );
 
-                    const values = _.map(relKey, (rk) => {
+                    const values = _.map((rk) => {
                         return [
                             qb.val.inlineParam(record.key),
                             qb.val.inlineParam(rk),
                         ];
-                    });
+                    }, relKey);
 
                     acc.push(
                         qb.toSql(
@@ -1504,10 +1504,11 @@ async function updateRecordRelation({plan, group, type, client}, record) {
 
             throw new Error(`Unspported relation type: ${rel.type}`);
         },
-        []
+        [],
+        validRelationCols
     );
 
-    await Promise.all(_.map(relationQueries, (sql) => client.query(sql)));
+    await Promise.all(_.map((sql) => client.query(sql), relationQueries));
 }
 
 /**
@@ -1572,7 +1573,7 @@ async function update({plan, group, type, client}, records) {
 async function deleteRecords({plan, group, type, client}, records) {
     plan = getPlan(plan);
     const typeSchema = plan[group][type];
-    const table = _.get(typeSchema, 'table', type);
+    const table = _.getOr(type, 'table', typeSchema);
     const keys = records.map((r) => r.key);
     if (keys.length === 0) {
         return;
@@ -1583,14 +1584,11 @@ async function deleteRecords({plan, group, type, client}, records) {
         const dispatchColumn = typeSchema.type.dispatchColumn;
         const relationKey = typeSchema.type.key;
 
-        const byDispatch = _fp.groupBy(
-            (r) => _fp.get(dispatchColumn, r),
-            typeInfo
-        );
+        const byDispatch = _.groupBy((r) => _.get(dispatchColumn, r), typeInfo);
         delete byDispatch[null];
 
         await Promise.all(
-            _.map(byDispatch, (info, table) => {
+            mapWithKey((info, table) => {
                 const keys = info.map((r) => r[relationKey]);
                 if (keys.length === 0) {
                     return;
@@ -1600,7 +1598,7 @@ async function deleteRecords({plan, group, type, client}, records) {
                     `DELETE FROM "${group}"."${table}" WHERE "key" = ANY($1)`,
                     [keys]
                 );
-            })
+            }, byDispatch)
         );
     }
 
@@ -1621,8 +1619,8 @@ async function deleteRecords({plan, group, type, client}, records) {
 function typeColumns({plan, group, type}, records) {
     plan = getPlan(plan);
     const typeSchema = plan[group][type];
-    const table = _.get(typeSchema, 'table', type);
-    const keys = _.map(records, (r) => r.key);
+    const table = _.getOr(type, 'table', typeSchema);
+    const keys = _.map((r) => r.key, records);
     if (keys.length === 0) {
         return Promise.resolve();
     }
@@ -1637,7 +1635,7 @@ function typeColumns({plan, group, type}, records) {
             typeSchema.columns[dispatchColummn].selectExpr({alias: 't'}),
         ]),
         qb.from(`${group}.${table}`, 't'),
-        qb.where(qb.expr.in('t.key', _.map(keys, qb.val.inlineParam)))
+        qb.where(qb.expr.in('t.key', _.map(qb.val.inlineParam, keys)))
     );
 
     return db.query(qb.toSql(sqlMap)).then((res) => res.rows);

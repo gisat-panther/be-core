@@ -5,14 +5,17 @@ const autoLoginMiddleware = require('../../middlewares/auto-login');
 const createDependentTypeMiddleware = require('./middlewares/dependentType');
 const hashMiddleware = require('../../middlewares/hash');
 const permission = require('../../permission');
-const _ = require('lodash');
-const _fp = require('lodash/fp');
+const _ = require('lodash/fp');
 const schema = require('./schema');
 const q = require('./query');
 const db = require('../../db');
 const util = require('./util');
 const translation = require('./translation');
 const customFields = require('./custom-fields');
+
+const mapWithKey = _.map.convert({cap: false});
+const mapValuesWithKey = _.mapValues.convert({cap: false});
+const forEachWithKey = _.forEach.convert({cap: false});
 
 /**
  * @typedef {Object} Permissions
@@ -45,8 +48,8 @@ function formatPermissions(row, key) {
         {},
         defaultPermissions,
         _.pick(
-            _.fromPairs(_.map(_.get(row, key, {}), (v) => [v, true])),
-            _.keys(defaultPermissions)
+            _.keys(defaultPermissions),
+            _.fromPairs(_.map((v) => [v, true], _.getOr({}, key, row)))
         )
     );
 }
@@ -66,30 +69,30 @@ function updatePermissionWithRestrictedColumns(
     restrictedColumns
 ) {
     const interestingColumns = _.filter(
-        restrictedColumns,
-        (c) => data[c] != null
+        (c) => data[c] != null,
+        restrictedColumns
     );
-    const props = _.map(interestingColumns, (c) => key + '__' + c);
+    const props = _.map((c) => key + '__' + c, interestingColumns);
 
-    return _.mapValues(permissions, (permission, name) => {
+    return mapValuesWithKey((permission, name) => {
         if (permission === false) {
             return permission;
         }
 
         switch (name) {
             case 'view':
-                return _.every(props, (p) => {
+                return _.every((p) => {
                     return new Set(data[p]).has('view');
-                });
+                }, props);
             case 'update':
             case 'delete':
-                return _.every(props, (p) => {
+                return _.every((p) => {
                     return new Set(data[p]).has('update');
-                });
+                }, props);
         }
 
         return permission;
-    });
+    }, permissions);
 }
 
 /**
@@ -99,20 +102,26 @@ function updatePermissionWithRestrictedColumns(
  * @returns {Row}
  */
 function formatRow(row, restrictedColumns) {
-    return _fp.flow(
+    return _.flow(
         translation.formatRow,
         customFields.formatRow
     )({
         key: row.key,
-        data: _.omit(row, [
-            'key',
-            'guest_user_p',
-            'active_user_p',
-            ..._.flatMap(restrictedColumns, (name) => [
-                'guest_user_p__' + name,
-                'active_user_p__' + name,
-            ]),
-        ]),
+        data: _.omit(
+            [
+                'key',
+                'guest_user_p',
+                'active_user_p',
+                ..._.flatMap(
+                    (name) => [
+                        'guest_user_p__' + name,
+                        'active_user_p__' + name,
+                    ],
+                    restrictedColumns
+                ),
+            ],
+            row
+        ),
         permissions: {
             guest: updatePermissionWithRestrictedColumns(
                 formatPermissions(row, 'guest_user_p'),
@@ -139,18 +148,18 @@ function formatRow(row, restrictedColumns) {
  */
 function formatList({plan, group}, recordsByType, page) {
     const data = {
-        data: _.mapValues(recordsByType, (r, type) => {
+        data: mapValuesWithKey((r, type) => {
             const restrictedColumns = _.keys(
                 util.restrictedColumns(plan, group, type)
             );
 
             return r.rows.map((row) => formatRow(row, restrictedColumns));
-        }),
+        }, recordsByType),
         success: true,
         total: _.reduce(
-            recordsByType,
             (res, next) => Math.max(res, next.count),
-            0
+            0,
+            recordsByType
         ),
     };
 
@@ -168,13 +177,13 @@ function mergeListsWithoutPage(l1, l2) {
     const conflictingKeys = _.intersection(l1Keys, l2Keys);
 
     const newData = _.reduce(
-        conflictingKeys,
         (acc, k) => {
             acc[k] = _.concat(l1.data[k], l2.data[k]);
 
             return acc;
         },
-        Object.assign({}, l1.data, l2.data)
+        Object.assign({}, l1.data, l2.data),
+        conflictingKeys
     );
 
     const data = {
@@ -202,7 +211,7 @@ async function fetchOldData({plan, group, user}, data) {
         _.zipObject(
             _.keys(data),
             await Promise.all(
-                _.map(data, function (records, type) {
+                mapWithKey(function (records, type) {
                     return q.list(
                         {plan, group, type, user: user},
                         {
@@ -213,7 +222,7 @@ async function fetchOldData({plan, group, user}, data) {
                             },
                         }
                     );
-                })
+                }, data)
             )
         )
     ).data;
@@ -254,7 +263,7 @@ async function createData({plan, group, client}, request) {
     }
 
     const records = await Promise.all(
-        _.map(data, async function (records, type) {
+        mapWithKey(async function (records, type) {
             const [createdKeys] = await Promise.all([
                 q.create({plan, group, type, client}, records),
                 translation.updateTranslations({client, group, type}, records),
@@ -268,7 +277,7 @@ async function createData({plan, group, client}, request) {
             );
 
             return createdRecords;
-        })
+        }, data)
     );
     const recordsByType = _.zipObject(_.keys(data), records);
 
@@ -303,11 +312,11 @@ async function updateData({plan, group, client}, request) {
         'update'
     );
 
-    const requiredPermissions = _.concat(
-        requiredResourcePermissions,
-        requiredOldColumnPermissions,
-        requiredColumnPermissions
-    );
+    const requiredPermissions = [
+        ...requiredResourcePermissions,
+        ...requiredOldColumnPermissions,
+        ...requiredColumnPermissions,
+    ];
 
     if (
         !(await permission.userHasAllPermissions(
@@ -319,7 +328,7 @@ async function updateData({plan, group, client}, request) {
     }
 
     const records = await Promise.all(
-        _.map(data, async function (records, type) {
+        mapWithKey(async function (records, type) {
             await Promise.all([
                 q.update({plan, group, type, client}, records),
                 translation.updateTranslations({client, group, type}, records),
@@ -335,7 +344,7 @@ async function updateData({plan, group, client}, request) {
             );
 
             return updatedRecords;
-        })
+        }, data)
     );
 
     const recordsByType = _.zipObject(_.keys(data), records);
@@ -397,7 +406,7 @@ function createGroup(plan, group) {
                 };
 
                 const records = await Promise.all(
-                    _.map(types, async function (type) {
+                    _.map(async function (type) {
                         return await q.list(
                             {
                                 plan,
@@ -413,17 +422,17 @@ function createGroup(plan, group) {
                                 translations: parameters.translations,
                             }
                         );
-                    })
+                    }, types)
                 );
                 const recordsByType = _.zipObject(types, records);
 
                 const changes = await Promise.all(
-                    _.map(recordsByType, async function (res, type) {
+                    mapWithKey(async function (res, type) {
                         return await q.lastChange(
                             {plan, group, type},
-                            _.map(res.rows, (record) => record.key)
+                            _.map((record) => record.key, res.rows)
                         );
-                    })
+                    }, recordsByType)
                 );
                 const changeByType = _.zipObject(types, changes);
 
@@ -507,28 +516,25 @@ function createGroup(plan, group) {
                     }
 
                     const newData = _.pickBy(
-                        _.mapValues(
-                            request.parameters.body.data,
-                            (records, type) => {
-                                const updatedKeys = _.map(
-                                    updatedResult.data.data[type],
-                                    (record) => record.key
-                                );
-                                const requestedKeys = _.map(
-                                    request.parameters.body.data[type],
-                                    (record) => record.key
-                                );
-                                const missingKeys = new Set(
-                                    _.difference(requestedKeys, updatedKeys)
-                                );
+                        (records) => !_.isEmpty(records),
+                        mapValuesWithKey((records, type) => {
+                            const updatedKeys = _.map(
+                                (record) => record.key,
+                                updatedResult.data.data[type]
+                            );
+                            const requestedKeys = _.map(
+                                (record) => record.key,
+                                request.parameters.body.data[type]
+                            );
+                            const missingKeys = new Set(
+                                _.difference(requestedKeys, updatedKeys)
+                            );
 
-                                return _.filter(
-                                    request.body.data[type],
-                                    (record) => missingKeys.has(record.key)
-                                );
-                            }
-                        ),
-                        (records) => !_.isEmpty(records)
+                            return _.filter(
+                                (record) => missingKeys.has(record.key),
+                                request.body.data[type]
+                            );
+                        }, request.parameters.body.data)
                     );
 
                     if (_.isEmpty(newData)) {
@@ -536,7 +542,7 @@ function createGroup(plan, group) {
                     }
 
                     request.body = {data: newData};
-                    request.match = _fp.set(
+                    request.match = _.set(
                         ['data', 'parameters'],
                         {
                             body: schema.createBody(plan, group),
@@ -629,12 +635,12 @@ function createGroup(plan, group) {
                 await db.transactional(async function (client) {
                     await client.setUser(request.user.realKey);
                     await Promise.all(
-                        _.map(data, async function (records, type) {
+                        mapWithKey(async function (records, type) {
                             await q.deleteRecords(
                                 {plan, group, type, client},
                                 records
                             );
-                        })
+                        }, data)
                     );
                 });
 
@@ -652,9 +658,9 @@ function createGroup(plan, group) {
 function createAll(plan) {
     const handlers = [];
 
-    _.forEach(plan, function (g, group) {
+    forEachWithKey(function (g, group) {
         handlers.push(...createGroup(plan, group));
-    });
+    }, plan);
 
     return handlers;
 }
