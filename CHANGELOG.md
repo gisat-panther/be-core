@@ -1,3 +1,15 @@
+# v0.0.18 (Wed Nov 18 2020)
+
+#### 🐾 Patch
+
+- Filter, order in translations and custom fields [#26](https://github.com/gisat-panther/be-core/pull/26) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.17 (Thu Nov 05 2020)
 
 #### 🐾 Patch
