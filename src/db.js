@@ -1,8 +1,27 @@
-const {Pool} = require('pg');
-const {Client} = require('pg');
+const {Pool, Client, types} = require('pg');
+const hstore = require('pg-hstore')();
 const config = require('../config');
 
+const TYPE_HSTORE = 1520031;
+
+const ADVISORY_LOCK_PERMISSIONS = 1;
+
 let pool;
+
+types.setTypeParser(TYPE_HSTORE, (res) => {
+    let r = null;
+    hstore.parse(res, (parsed) => {
+        r = parsed;
+    });
+
+    return r;
+});
+
+async function obtainPermissionsLock(client) {
+    await client.query(`SELECT pg_advisory_lock($1)`, [
+        ADVISORY_LOCK_PERMISSIONS,
+    ]);
+}
 
 /**
  * @callback Transactional
@@ -38,6 +57,13 @@ function query(queryTextOrConfig, values) {
  */
 async function setUser(client, user) {
     await client.query("SELECT SET_CONFIG('app.user', $1, true)", [user]);
+}
+
+/**
+ * @returns {import('pg')}
+ */
+function connect() {
+    return pool.connect();
 }
 
 /**
@@ -87,6 +113,8 @@ function init() {
 module.exports = {
     init,
     query,
+    connect,
+    obtainPermissionsLock,
     transactional,
     getSuperUserClient,
 };

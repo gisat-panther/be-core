@@ -1,0 +1,16 @@
+#!/usr/bin/env node
+
+require('../src/applications/index');
+const plan = require('../src/applications/plan').get();
+const db = require('../src/db');
+const permissions = require('../src/modules/permissions/index');
+
+db.init();
+
+async function main() {
+    return permissions
+        .process({plan, client: await db.connect()})
+        .then(() => process.exit());
+}
+
+main();
