@@ -9,3 +9,13 @@ CREATE TABLE "public"."generatedPermissions"(
 
 ALTER TABLE "user"."permissions"
   ADD CONSTRAINT "permissions_uniq" UNIQUE("resourceGroup", "resourceType", "resourceKey", "permission");
+
+CREATE FUNCTION "audit"."notify_audit_action"() RETURNS TRIGGER AS $body$
+    BEGIN
+        PERFORM pg_notify('audit_action', '');
+        RETURN NULL;
+    END;
+$body$ LANGUAGE plpgsql;
+
+CREATE TRIGGER "audit_action" AFTER INSERT ON "audit"."logged_actions"
+    EXECUTE PROCEDURE "audit"."notify_audit_action"();

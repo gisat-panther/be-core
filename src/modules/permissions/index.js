@@ -2,6 +2,7 @@ const {SQL} = require('sql-template-strings');
 const qb = require('@imatic/pgqb');
 const db = require('../../db');
 const _ = require('lodash/fp');
+const fn = require('../../fn');
 
 /**
  * @typedef {Object<string, Object<string, {table: string, columns: string[]}>>} Targets
@@ -366,6 +367,17 @@ async function ensureGroups(client, groups) {
 
 /**
  * @param {import('pg').Client} client
+ */
+async function clearGroupPermissions(client) {
+    const sql = `DELETE FROM "user"."groupPermissions"
+WHERE
+  ARRAY_LENGTH("permissionSources", 1) IS NULL`;
+
+    await client.query(sql);
+}
+
+/**
+ * @param {import('pg').Client} client
  * @param {string[]} groupKeys
  * @param {Promise<string[]>} permissionKeys
  * @param {string} permissionSource
@@ -445,7 +457,7 @@ WHERE
 /**
  * @param {string} permissionSource
  */
-async function deleteAllGroupPermissions(permissionSource) {
+async function deleteAllGroupPermissions(client, permissionSource) {
     const sqlMap = qb.merge(
         qb.update('user.groupPermissions'),
         qb.set([
@@ -753,7 +765,7 @@ async function manageGroups2({client}, {permission, name}) {
                 }
                 break;
             case 'T':
-                deleteAllGroupPermissions(permissionSource);
+                deleteAllGroupPermissions(client, permissionSource);
                 break;
         }
         await updatePermissionProgress(client, name, action.event_id);
@@ -780,16 +792,18 @@ async function process({plan, client}) {
         ) {
             await manageGroups2({client}, {permission, name});
         }
+        await clearGroupPermissions(client);
     }
 }
 
 async function run({plan}) {
     const client = db.connect();
     await db.obtainPermissionsLock(client);
-    client.on('notification', function (msg) {
-        // process();
+    const queuedProcess = fn.queued(process);
+    client.on('notification', function () {
+        queuedProcess({plan, client});
     });
-    client.query('LISTEN audit_action'); // todo: write trigger
+    client.query('LISTEN audit_action');
 }
 
 module.exports = {
