@@ -24,7 +24,7 @@ const mapValuesWithKey = _.mapValues.convert({cap: false});
  * - targets - types to which `targetPermissions` will be assignled
  * - targetPermissions - permissions to assign to `targets`
  * - groupName - permission will be assigned to returned specified group
- * - userKey - returned user will be assigned to the returned group
+ * - assignGroup - if true, target has to be user type. Target will be assigned to group given by `groupName`
  */
 const generatedPermissions = {
     target_group: {
@@ -56,7 +56,10 @@ const generatedPermissions = {
             },
         },
         groupName: ({applicationKey}) => {
-            return `generated:application:${applicationKey}`;
+            return (
+                'generated:application:' +
+                (applicationKey == null ? '' : applicationKey)
+            );
         },
         targetPermissions: ['view', 'create', 'update', 'delete'],
     },
@@ -112,7 +115,7 @@ function groupChangesSinceQuery(eventId) {
             qb.expr.and(
                 qb.expr.gt('la.event_id', qb.val.inlineParam(eventId)),
                 qb.expr.eq('la.schema_name', qb.val.inlineParam('user')),
-                qb.expr.eq('la.table_name', qb.val.inlineParam('groups'))
+                qb.expr.eq('la.table_name', qb.val.inlineParam('userGroups'))
             )
         ),
         qb.orderBy('la.event_id')
@@ -155,12 +158,12 @@ function columnChangesSinceQuery(eventId, targets) {
     );
 }
 
-async function* runAuditQuery(sqlMap) {
+async function* runAuditQuery(client, sqlMap) {
     const limit = 100;
     let offset = 0;
 
     while (true) {
-        const rows = await db
+        const rows = await client
             .query(
                 qb.toSql(qb.merge(sqlMap, qb.limit(limit), qb.offset(offset)))
             )
@@ -476,6 +479,7 @@ function createTableToTypeMapping(plan) {
 async function manageGroups({client, tableToType}, {permission, name}) {
     const eventId = await lastPermissionEvent(client, name);
     for await (let action of runAuditQuery(
+        client,
         columnChangesSinceQuery(eventId, permission.targets)
     )) {
         const shouldAssigngroup = permission.assignGroup === true;
@@ -574,6 +578,125 @@ async function manageGroups({client, tableToType}, {permission, name}) {
     }
 }
 
+/**
+ * @param {import('pg').Client} client
+ * @param {string[]} names
+ *
+ * @returns {Promise<{key: string, name: string}>}
+ */
+function groups(client, names) {
+    if (names.length === 0) {
+        return [];
+    }
+
+    const sqlMap = qb.merge(
+        qb.select(['key', 'name']),
+        qb.from('user.groups'),
+        qb.where(qb.expr.in('name', _.map(qb.val.inlineParam, names)))
+    );
+
+    return client.query(qb.toSql(sqlMap)).then(_.get('rows'));
+}
+
+async function permissionGroups(client, permission) {
+    const groupRows = await groups(
+        client,
+        _.uniq(_.concat(permission.sourceGroups, permission.targetGroups))
+    );
+    const groupIdByName = _.zipObj(
+        _.map(_.prop('name'), groupRows),
+        _.map(_.prop('key'), groupRows)
+    );
+
+    const convertGroups = _.flow(
+        _.map((name) => groupIdByName[name]),
+        _.filter((id) => id != null)
+    );
+
+    return {
+        sourceGroups: convertGroups(permission.sourceGroups),
+        targetGroups: convertGroups(permission.targetGroups),
+    };
+}
+
+async function manageGroups2({client}, {permission, name}) {
+    const {sourceGroups, targetGroups} = await permissionGroups(
+        client,
+        permission
+    );
+    if (sourceGroups.length === 0 || targetGroups.length === 0) {
+        return;
+    }
+
+    const eventId = await lastPermissionEvent(client, name);
+    for await (let action of runAuditQuery(
+        client,
+        groupChangesSinceQuery(eventId)
+    )) {
+        switch (action.action) {
+            case 'I':
+                {
+                    const currentData = action.row_data;
+                    if (_.includes(currentData.groupKey, targetGroups)) {
+                        const requiredPermissions =
+                            permission.targetPermissions;
+                        const permissions = _.map(
+                            (perm) => ({
+                                permission: perm,
+                                resourceKey: currentData.userKey,
+                                resourceType: 'user',
+                                resourceGroup: 'user',
+                            }),
+                            requiredPermissions
+                        );
+
+                        const permissionKeys = await ensurePermissions(
+                            client,
+                            permissions
+                        );
+                        await ensureGroupsPermissions(
+                            client,
+                            sourceGroups,
+                            permissionKeys
+                        );
+                    }
+                }
+                break;
+            case 'D':
+                {
+                    const oldData = action.row_data;
+                    if (_.includes(oldData.groupKey, targetGroups)) {
+                        const requiredPermissions =
+                            permission.targetPermissions;
+                        const permissions = _.map(
+                            (perm) => ({
+                                permission: perm,
+                                resourceKey: currentData.userKey,
+                                resourceType: 'user',
+                                resourceGroup: 'user',
+                            }),
+                            requiredPermissions
+                        );
+                        const permissionKeys = await permissionKeys(
+                            client,
+                            permissions
+                        );
+                        await deleteGroupsPermissions(
+                            client,
+                            sourceGroups,
+                            permissionKeys
+                        );
+                    }
+                }
+                break;
+            case 'T':
+                // todo?
+                break;
+        }
+        await updatePermissionProgress(client, name, action.event_id);
+    }
+}
+
 async function process({plan, client}) {
     const tableToType = createTableToTypeMapping(plan);
     const permissions = compilePermissions({plan}, generatedPermissions);
@@ -588,10 +711,11 @@ async function process({plan, client}) {
         }
 
         if (
-            permission.sourceGroup != null &&
+            permission.sourceGroups != null &&
             permission.targetGroups != null &&
             permission.targetPermissions != null
         ) {
+            await manageGroups2({client}, {permission, name});
         }
     }
 }
