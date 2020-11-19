@@ -223,6 +223,52 @@ function lastPermissionEvent(client, name) {
  *
  * @returns {Promise<string[]>}
  */
+function permissionKeys(client, permissions) {
+    if (permissions.length === 0) {
+        return [];
+    }
+
+    const columns = [
+        'resourceGroup',
+        'resourceType',
+        'resourceKey',
+        'permission',
+    ];
+
+    const selectSqlMap = qb.merge(
+        qb.select(['key']),
+        qb.from('user.permissions'),
+        qb.where(
+            qb.expr.and(
+                ..._.map(
+                    (p) =>
+                        qb.expr.or(
+                            ..._.map(
+                                (c) =>
+                                    qb.expr.eq(
+                                        c,
+                                        qb.val.inlineParam(_.get(c, p))
+                                    ),
+                                columns
+                            )
+                        ),
+                    permissions
+                )
+            )
+        )
+    );
+
+    return client
+        .query(qb.toSql(selectSqlMap))
+        .then((res) => _.map(_.get('key'), res.rows));
+}
+
+/**
+ * @param {import('pg').Client} client
+ * @param {{resourceKey: string, resourceType: string, resourceGroup: string, permission: string}[]} permissions
+ *
+ * @returns {Promise<string[]>}
+ */
 async function ensurePermissions(client, permissions) {
     if (permissions.length === 0) {
         return [];
@@ -248,30 +294,27 @@ async function ensurePermissions(client, permissions) {
         qb.doNothing()
     );
 
+    await client.query(qb.toSql(insertSqlMap));
+
+    return permissionKeys(client, permissions);
+}
+
+/**
+ * @param {import('pg').Client} client
+ * @param {string[]} groups
+ *
+ * @returns {string[]}
+ */
+function groupKeys(client, groups) {
+    if (groups.length === 0) {
+        return [];
+    }
+
     const selectSqlMap = qb.merge(
         qb.select(['key']),
-        qb.from('user.permissions'),
-        qb.where(
-            qb.expr.and(
-                ..._.map(
-                    (p) =>
-                        qb.expr.or(
-                            ..._.map(
-                                (c) =>
-                                    qb.expr.eq(
-                                        c,
-                                        qb.val.inlineParam(_.get(c, p))
-                                    ),
-                                columns
-                            )
-                        ),
-                    permissions
-                )
-            )
-        )
+        qb.from('user.groups'),
+        qb.where(qb.expr.in('name', _.map(qb.val.inlineParam, groups)))
     );
-
-    await client.query(qb.toSql(insertSqlMap));
 
     return client
         .query(qb.toSql(selectSqlMap))
@@ -297,17 +340,9 @@ async function ensureGroups(client, groups) {
         qb.doNothing()
     );
 
-    const selectSqlMap = qb.merge(
-        qb.select(['key']),
-        qb.from('user.groups'),
-        qb.where(qb.expr.in('name', _.map(qb.val.inlineParam, groups)))
-    );
-
     await client.query(qb.toSql(insertSqlMap));
 
-    return client
-        .query(qb.toSql(selectSqlMap))
-        .then((res) => _.map(_.get('key'), res.rows));
+    return groupKeys(client, groups);
 }
 
 /**
@@ -316,6 +351,10 @@ async function ensureGroups(client, groups) {
  * @param {string[]} permissionKeys
  */
 async function ensureGroupsPermissions(client, groupKeys, permissionKeys) {
+    if (groupKeys.length === 0 || permissionKeys.length === 0) {
+        return;
+    }
+
     const values = _.flatMap(
         (gk) =>
             _.map(
@@ -334,6 +373,38 @@ async function ensureGroupsPermissions(client, groupKeys, permissionKeys) {
     );
 
     await client.query(qb.toSql(sqlMap));
+}
+
+/**
+ * @param {import('pg').Client} client
+ * @param {string[]} groupKeys
+ * @param {string[]} permissionKeys
+ */
+async function deleteGroupsPermissions(client, groupKeys, permissionKeys) {
+    if (groupKeys.length === 0 || permissionKeys.length === 0) {
+        return;
+    }
+
+    const condition = qb.expr.or(
+        ..._.flatMap(
+            (gk) =>
+                _.map(
+                    (pk) =>
+                        qb.expr.and(
+                            qb.expr.eq('groupKey', qb.val.inlineParam(gk)),
+                            qb.expr.eq('permissionKey', qb.val.inlineParam(pk))
+                        ),
+                    permissionKeys
+                ),
+            groupKeys
+        )
+    );
+
+    const whereClause = qb.toSql(qb.where(condition));
+
+    await client.query(
+        SQL`DELETE FROM "user"."groupPermissions `.append(whereClause)
+    );
 }
 
 /**
@@ -365,7 +436,7 @@ async function process({plan, client}) {
                 case 'I':
                     {
                         const currentData = action.row_data;
-                        const groups = [permission.groupName(currentData)];
+                        const newGroup = permission.groupName(currentData);
                         const requiredPermissions =
                             permission.targetPermissions;
                         const permissions = _.map(
@@ -379,7 +450,7 @@ async function process({plan, client}) {
                         );
 
                         const [groupKeys, permissionKeys] = await Promise.all([
-                            ensureGroups(client, groups),
+                            ensureGroups(client, [newGroup]),
                             ensurePermissions(client, permissions),
                         ]);
 
@@ -392,12 +463,49 @@ async function process({plan, client}) {
                     break;
                 case 'U':
                     {
+                        const oldData = action.row_data;
                         const currentData = _.merge(
                             action.row_data,
                             action.changed_fields
                         );
 
-                        // like insert, but remove previous group membership
+                        const oldGroup = permission.groupName(oldData);
+                        const newGroup = permission.groupName(currentData);
+                        if (oldGroup !== newGroup) {
+                            const permissions = _.map(
+                                (perm) => ({
+                                    permission: perm,
+                                    resourceKey: currentData.key,
+                                    resourceType:
+                                        tableToType[action.table_name],
+                                    resourceGroup: action.schema_name,
+                                }),
+                                requiredPermissions
+                            );
+
+                            const [
+                                groupKeys,
+                                permissionKeys,
+                                oldGroupKeys,
+                            ] = await Promise.all([
+                                ensureGroups(client, [newGroup]),
+                                ensurePermissions(client, permissions),
+                                groupKeys(client, [oldGroup]),
+                            ]);
+
+                            await Promise.all([
+                                deleteGroupsPermissions(
+                                    client,
+                                    oldGroupKeys,
+                                    permissionKeys
+                                ),
+                                ensureGroupsPermissions(
+                                    client,
+                                    groupKeys,
+                                    permissionKeys
+                                ),
+                            ]);
+                        }
                     }
                     break;
             }
