@@ -19,12 +19,19 @@ const _ = require('lodash/fp');
 const flatMapWithKey = _.flatMap.convert({cap: false});
 const mapValuesWithKey = _.mapValues.convert({cap: false});
 
+/**
+ * Permission
+ * - targets - types to which `targetPermissions` will be assignled
+ * - targetPermissions - permissions to assign to `targets`
+ * - groupName - permission will be assigned to returned specified group
+ * - userKey - returned user will be assigned to the returned group
+ */
 const generatedPermissions = {
-    // target_group: {
-    //     sourceGroups: ['group1'], // this group will have permissions to users in target groups
-    //     targetGroups: ['targetGroup'],
-    //     targetPermissions: ['view'], // assigned permissions
-    // },
+    target_group: {
+        sourceGroups: ['group1'],
+        targetGroups: ['targetGroup'],
+        targetPermissions: ['view'],
+    },
     email_domain: {
         targets: {
             user: {
@@ -466,23 +473,57 @@ function createTableToTypeMapping(plan) {
     );
 }
 
-async function process({plan, client}) {
-    const tableToType = createTableToTypeMapping(plan);
-    const permissions = compilePermissions({plan}, generatedPermissions);
-    await initPermissions(client, permissions);
-    for (let [name, permission] of Object.entries(permissions)) {
-        const eventId = await lastPermissionEvent(client, name);
-        for await (let action of runAuditQuery(
-            columnChangesSinceQuery(eventId, permission.targets)
-        )) {
-            const shouldAssigngroup = permission.assignGroup === true;
-            switch (action.action) {
-                case 'I':
-                    {
-                        const currentData = action.row_data;
-                        const newGroup = permission.groupName(currentData);
-                        const requiredPermissions =
-                            permission.targetPermissions;
+async function manageGroups({client, tableToType}, {permission, name}) {
+    const eventId = await lastPermissionEvent(client, name);
+    for await (let action of runAuditQuery(
+        columnChangesSinceQuery(eventId, permission.targets)
+    )) {
+        const shouldAssigngroup = permission.assignGroup === true;
+        switch (action.action) {
+            case 'I':
+                {
+                    const currentData = action.row_data;
+                    const newGroup = permission.groupName(currentData);
+                    const requiredPermissions = permission.targetPermissions;
+                    const permissions = _.map(
+                        (perm) => ({
+                            permission: perm,
+                            resourceKey: currentData.key,
+                            resourceType: tableToType[action.table_name],
+                            resourceGroup: action.schema_name,
+                        }),
+                        requiredPermissions
+                    );
+
+                    const [groupKeys, permissionKeys] = await Promise.all([
+                        ensureGroups(client, [newGroup]),
+                        ensurePermissions(client, permissions),
+                    ]);
+
+                    await Promise.all([
+                        ensureGroupsPermissions(
+                            client,
+                            groupKeys,
+                            permissionKeys
+                        ),
+                        ..._.map(
+                            (k) => assignGroup(client, currentData.key, k),
+                            shouldAssigngroup ? groupKeys : []
+                        ),
+                    ]);
+                }
+                break;
+            case 'U':
+                {
+                    const oldData = action.row_data;
+                    const currentData = _.merge(
+                        action.row_data,
+                        action.changed_fields
+                    );
+
+                    const oldGroup = permission.groupName(oldData);
+                    const newGroup = permission.groupName(currentData);
+                    if (oldGroup !== newGroup) {
                         const permissions = _.map(
                             (perm) => ({
                                 permission: perm,
@@ -493,16 +534,31 @@ async function process({plan, client}) {
                             requiredPermissions
                         );
 
-                        const [groupKeys, permissionKeys] = await Promise.all([
+                        const [
+                            groupKeys,
+                            permissionKeys,
+                            oldGroupKeys,
+                        ] = await Promise.all([
                             ensureGroups(client, [newGroup]),
                             ensurePermissions(client, permissions),
+                            groupKeys(client, [oldGroup]),
                         ]);
 
                         await Promise.all([
+                            deleteGroupsPermissions(
+                                client,
+                                oldGroupKeys,
+                                permissionKeys
+                            ),
                             ensureGroupsPermissions(
                                 client,
                                 groupKeys,
                                 permissionKeys
+                            ),
+                            ..._.map(
+                                (k) =>
+                                    unassignGroup(client, currentData.key, k),
+                                shouldAssigngroup ? oldGroupKeys : []
                             ),
                             ..._.map(
                                 (k) => assignGroup(client, currentData.key, k),
@@ -510,71 +566,32 @@ async function process({plan, client}) {
                             ),
                         ]);
                     }
-                    break;
-                case 'U':
-                    {
-                        const oldData = action.row_data;
-                        const currentData = _.merge(
-                            action.row_data,
-                            action.changed_fields
-                        );
+                }
+                break;
+        }
 
-                        const oldGroup = permission.groupName(oldData);
-                        const newGroup = permission.groupName(currentData);
-                        if (oldGroup !== newGroup) {
-                            const permissions = _.map(
-                                (perm) => ({
-                                    permission: perm,
-                                    resourceKey: currentData.key,
-                                    resourceType:
-                                        tableToType[action.table_name],
-                                    resourceGroup: action.schema_name,
-                                }),
-                                requiredPermissions
-                            );
+        await updatePermissionProgress(client, name, action.event_id);
+    }
+}
 
-                            const [
-                                groupKeys,
-                                permissionKeys,
-                                oldGroupKeys,
-                            ] = await Promise.all([
-                                ensureGroups(client, [newGroup]),
-                                ensurePermissions(client, permissions),
-                                groupKeys(client, [oldGroup]),
-                            ]);
+async function process({plan, client}) {
+    const tableToType = createTableToTypeMapping(plan);
+    const permissions = compilePermissions({plan}, generatedPermissions);
+    await initPermissions(client, permissions);
+    for (let [name, permission] of Object.entries(permissions)) {
+        if (
+            permission.targets != null &&
+            permission.groupName != null &&
+            permission.targetPermissions != null
+        ) {
+            await manageGroups({client, tableToType}, {permission, name});
+        }
 
-                            await Promise.all([
-                                deleteGroupsPermissions(
-                                    client,
-                                    oldGroupKeys,
-                                    permissionKeys
-                                ),
-                                ensureGroupsPermissions(
-                                    client,
-                                    groupKeys,
-                                    permissionKeys
-                                ),
-                                ..._.map(
-                                    (k) =>
-                                        unassignGroup(
-                                            client,
-                                            currentData.key,
-                                            k
-                                        ),
-                                    shouldAssigngroup ? oldGroupKeys : []
-                                ),
-                                ..._.map(
-                                    (k) =>
-                                        assignGroup(client, currentData.key, k),
-                                    shouldAssigngroup ? groupKeys : []
-                                ),
-                            ]);
-                        }
-                    }
-                    break;
-            }
-
-            await updatePermissionProgress(client, name, action.event_id);
+        if (
+            permission.sourceGroup != null &&
+            permission.targetGroups != null &&
+            permission.targetPermissions != null
+        ) {
         }
     }
 }
