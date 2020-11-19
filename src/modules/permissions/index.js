@@ -221,9 +221,9 @@ function lastPermissionEvent(client, name) {
  * @param {import('pg').Client} client
  * @param {{resourceKey: string, resourceType: string, resourceGroup: string, permission: string}[]} permissions
  *
- * @returns {string[]}
+ * @returns {Promise<string[]>}
  */
-function ensurePermissions(client, permissions) {
+async function ensurePermissions(client, permissions) {
     if (permissions.length === 0) {
         return [];
     }
@@ -235,7 +235,7 @@ function ensurePermissions(client, permissions) {
         'permission',
     ];
 
-    const sqlMap = qb.merge(
+    const insertSqlMap = qb.merge(
         qb.insertInto('user.permissions'),
         qb.columns(columns),
         qb.values(
@@ -244,16 +244,103 @@ function ensurePermissions(client, permissions) {
                 permissions
             )
         ),
-        qb.onConflict(['resourceGroup', 'resourceType', 'resourceKey']),
-        qb.doNothing(),
-        qb.returning(['key'])
+        qb.onConflict(columns),
+        qb.doNothing()
     );
 
+    const selectSqlMap = qb.merge(
+        qb.select(['key']),
+        qb.from('user.permissions'),
+        qb.where(
+            qb.expr.and(
+                ..._.map(
+                    (p) =>
+                        qb.expr.or(
+                            ..._.map(
+                                (c) =>
+                                    qb.expr.eq(
+                                        c,
+                                        qb.val.inlineParam(_.get(c, p))
+                                    ),
+                                columns
+                            )
+                        ),
+                    permissions
+                )
+            )
+        )
+    );
+
+    await client.query(qb.toSql(insertSqlMap));
+
     return client
-        .query(qb.toSql(sqlMap))
+        .query(qb.toSql(selectSqlMap))
         .then((res) => _.map(_.get('key'), res.rows));
 }
 
+/**
+ * @param {import('pg').Client} client
+ * @param {string[]} groups
+ *
+ * @returns {string[]}
+ */
+async function ensureGroups(client, groups) {
+    if (groups.length === 0) {
+        return [];
+    }
+
+    const insertSqlMap = qb.merge(
+        qb.insertInto('user.groups'),
+        qb.columns(['name']),
+        qb.values(_.map((g) => [qb.val.inlineParam(g)], groups)),
+        qb.onConflict(['name']),
+        qb.doNothing()
+    );
+
+    const selectSqlMap = qb.merge(
+        qb.select(['key']),
+        qb.from('user.groups'),
+        qb.where(qb.expr.in('name', _.map(qb.val.inlineParam, groups)))
+    );
+
+    await client.query(qb.toSql(insertSqlMap));
+
+    return client
+        .query(qb.toSql(selectSqlMap))
+        .then((res) => _.map(_.get('key'), res.rows));
+}
+
+/**
+ * @param {import('pg').Client} client
+ * @param {string[]} groupKeys
+ * @param {string[]} permissionKeys
+ */
+async function ensureGroupsPermissions(client, groupKeys, permissionKeys) {
+    const values = _.flatMap(
+        (gk) =>
+            _.map(
+                (pk) => [qb.val.inlineParam(gk), qb.val.inlineParam(pk)],
+                permissionKeys
+            ),
+        groupKeys
+    );
+
+    const sqlMap = qb.merge(
+        qb.insertInto('user.groupPermissions'),
+        qb.columns(['groupKey', 'permissionKey']),
+        qb.values(values),
+        qb.onConflict(['groupKey', 'permissionKey']),
+        qb.doNothing()
+    );
+
+    await client.query(qb.toSql(sqlMap));
+}
+
+/**
+ * @param {import('../rest/compiler').Plan} plan
+ *
+ * @returns {Object<string, string>}
+ */
 function createTableToTypeMapping(plan) {
     return _.mergeAll(
         _.map((groupData) => {
@@ -278,9 +365,7 @@ async function process({plan, client}) {
                 case 'I':
                     {
                         const currentData = action.row_data;
-                        const requiredGroupMembership = permission.groupName(
-                            currentData
-                        );
+                        const groups = [permission.groupName(currentData)];
                         const requiredPermissions =
                             permission.targetPermissions;
                         const permissions = _.map(
@@ -293,12 +378,16 @@ async function process({plan, client}) {
                             requiredPermissions
                         );
 
-                        const permissionKeys = await ensurePermissions(
+                        const [groupKeys, permissionKeys] = await Promise.all([
+                            ensureGroups(client, groups),
+                            ensurePermissions(client, permissions),
+                        ]);
+
+                        await ensureGroupsPermissions(
                             client,
-                            permissions
+                            groupKeys,
+                            permissionKeys
                         );
-                        console.log('permissionKeys', permissionKeys);
-                        // make sure group exists with specified permissions
                     }
                     break;
                 case 'U':

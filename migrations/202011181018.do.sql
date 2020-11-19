@@ -9,3 +9,6 @@ CREATE TABLE "public"."generatedPermissions"(
   "last_event" BIGINT NOT NULL,
   PRIMARY KEY("name")
 );
+
+ALTER TABLE "user"."permissions"
+  ADD CONSTRAINT "permissions_uniq" UNIQUE("resourceGroup", "resourceType", "resourceKey", "permission");
