@@ -1,3 +1,4 @@
+const {SQL} = require('sql-template-strings');
 const qb = require('@imatic/pgqb');
 const db = require('../../db');
 const _ = require('lodash/fp');
@@ -24,13 +25,21 @@ const generatedPermissions = {
     //     targetGroups: ['targetGroup'],
     //     targetPermissions: ['view'], // assigned permissions
     // },
-    // email_domain: {
-    //     targets: [{group: 'user', type: 'user', columns: ['email']}],
-    //     groupName: ({email}) => {
-    //         return (email == null ? '' : email).match(/[^@]*$/);
-    //     },
-    //     targetPermissions: ['view'],
-    // },
+    email_domain: {
+        targets: {
+            user: {
+                user: {columns: ['email']},
+            },
+        },
+        groupName: ({email}) => {
+            return (
+                'generated:email_domain:' +
+                (email == null ? '' : email).match(/[^@]*$/)
+            );
+        },
+        assignGroup: true, // target needs to be user type
+        targetPermissions: ['view'],
+    },
     application: {
         targets: {
             // todo: generate targets from plan
@@ -40,7 +49,7 @@ const generatedPermissions = {
             },
         },
         groupName: ({applicationKey}) => {
-            return `generated_application:${applicationKey}`;
+            return `generated:application:${applicationKey}`;
         },
         targetPermissions: ['view', 'create', 'update', 'delete'],
     },
@@ -348,7 +357,7 @@ async function ensureGroups(client, groups) {
 /**
  * @param {import('pg').Client} client
  * @param {string[]} groupKeys
- * @param {string[]} permissionKeys
+ * @param {Promise<string[]>} permissionKeys
  */
 async function ensureGroupsPermissions(client, groupKeys, permissionKeys) {
     if (groupKeys.length === 0 || permissionKeys.length === 0) {
@@ -373,6 +382,40 @@ async function ensureGroupsPermissions(client, groupKeys, permissionKeys) {
     );
 
     await client.query(qb.toSql(sqlMap));
+}
+
+/**
+ * @param {import('pg').Client} client
+ * @param {string} userKey
+ * @param {string} groupKey
+ */
+async function assignGroup(client, userKey, groupKey) {
+    const sql = SQL`INSERT INTO "user"."userGroups"
+  ("userKey", "groupKey")
+    (
+SELECT
+  "u"."key", ${groupKey}
+FROM
+  "user"."users" "u"
+WHERE
+  "u"."key" = ${userKey}
+)
+ON CONFLICT DO NOTHING`;
+
+    await client.query(sql);
+}
+
+/**
+ * @param {import('pg').Client} client
+ * @param {string} userKey
+ * @param {string} groupKey
+ */
+async function unassignGroup(client, userKey, groupKey) {
+    await client.query(SQL`DELETE FROM
+  "user"."userGroups"
+WHERE
+  "userKey" = ${userKey}
+  AND "groupKey" = ${groupKey}`);
 }
 
 /**
@@ -432,6 +475,7 @@ async function process({plan, client}) {
         for await (let action of runAuditQuery(
             columnChangesSinceQuery(eventId, permission.targets)
         )) {
+            const shouldAssigngroup = permission.assignGroup === true;
             switch (action.action) {
                 case 'I':
                     {
@@ -454,11 +498,17 @@ async function process({plan, client}) {
                             ensurePermissions(client, permissions),
                         ]);
 
-                        await ensureGroupsPermissions(
-                            client,
-                            groupKeys,
-                            permissionKeys
-                        );
+                        await Promise.all([
+                            ensureGroupsPermissions(
+                                client,
+                                groupKeys,
+                                permissionKeys
+                            ),
+                            ..._.map(
+                                (k) => assignGroup(client, currentData.key, k),
+                                shouldAssigngroup ? groupKeys : []
+                            ),
+                        ]);
                     }
                     break;
                 case 'U':
@@ -503,6 +553,20 @@ async function process({plan, client}) {
                                     client,
                                     groupKeys,
                                     permissionKeys
+                                ),
+                                ..._.map(
+                                    (k) =>
+                                        unassignGroup(
+                                            client,
+                                            currentData.key,
+                                            k
+                                        ),
+                                    shouldAssigngroup ? oldGroupKeys : []
+                                ),
+                                ..._.map(
+                                    (k) =>
+                                        assignGroup(client, currentData.key, k),
+                                    shouldAssigngroup ? groupKeys : []
                                 ),
                             ]);
                         }
