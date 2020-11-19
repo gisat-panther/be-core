@@ -368,8 +368,14 @@ async function ensureGroups(client, groups) {
  * @param {import('pg').Client} client
  * @param {string[]} groupKeys
  * @param {Promise<string[]>} permissionKeys
+ * @param {string} permissionSource
  */
-async function ensureGroupsPermissions(client, groupKeys, permissionKeys) {
+async function ensureGroupsPermissions(
+    client,
+    groupKeys,
+    permissionKeys,
+    permissionSource
+) {
     if (groupKeys.length === 0 || permissionKeys.length === 0) {
         return;
     }
@@ -377,7 +383,11 @@ async function ensureGroupsPermissions(client, groupKeys, permissionKeys) {
     const values = _.flatMap(
         (gk) =>
             _.map(
-                (pk) => [qb.val.inlineParam(gk), qb.val.inlineParam(pk)],
+                (pk) => [
+                    qb.val.inlineParam(gk),
+                    qb.val.inlineParam(pk),
+                    qb.val.inlineParam([permissionSource]),
+                ],
                 permissionKeys
             ),
         groupKeys
@@ -385,10 +395,14 @@ async function ensureGroupsPermissions(client, groupKeys, permissionKeys) {
 
     const sqlMap = qb.merge(
         qb.insertInto('user.groupPermissions'),
-        qb.columns(['groupKey', 'permissionKey']),
+        qb.columns(['groupKey', 'permissionKey', 'permissionSources']),
         qb.values(values),
         qb.onConflict(['groupKey', 'permissionKey']),
-        qb.doNothing()
+        qb.doUpdate([
+            qb.val.raw(
+                SQL`"permissionSources" = (SELECT ARRAY(SELECT DISTINCT "e" FROM UNNEST(ARRAY_APPEND("user"."groupPermissions"."permissionSources", ${permissionSource})) "e"))`
+            ),
+        ])
     );
 
     await client.query(qb.toSql(sqlMap));
@@ -429,11 +443,38 @@ WHERE
 }
 
 /**
+ * @param {string} permissionSource
+ */
+async function deleteAllGroupPermissions(permissionSource) {
+    const sqlMap = qb.merge(
+        qb.update('user.groupPermissions'),
+        qb.set([
+            qb.expr.eq(
+                'permissionSources',
+                qb.expr.fn(
+                    'ARRAY_REMOVE',
+                    'permissionSources',
+                    qb.val.inlineParam(permissionSource)
+                )
+            ),
+        ])
+    );
+
+    await client.query(qb.toSql(sqlMap));
+}
+
+/**
  * @param {import('pg').Client} client
  * @param {string[]} groupKeys
  * @param {string[]} permissionKeys
+ * @param {string} permissionSource
  */
-async function deleteGroupsPermissions(client, groupKeys, permissionKeys) {
+async function deleteGroupsPermissions(
+    client,
+    groupKeys,
+    permissionKeys,
+    permissionSource
+) {
     if (groupKeys.length === 0 || permissionKeys.length === 0) {
         return;
     }
@@ -453,11 +494,22 @@ async function deleteGroupsPermissions(client, groupKeys, permissionKeys) {
         )
     );
 
-    const whereClause = qb.toSql(qb.where(condition));
-
-    await client.query(
-        SQL`DELETE FROM "user"."groupPermissions `.append(whereClause)
+    const sqlMap = qb.merge(
+        qb.update('user.groupPermissions'),
+        qb.set([
+            qb.expr.eq(
+                'permissionSources',
+                qb.expr.fn(
+                    'ARRAY_REMOVE',
+                    'permissionSources',
+                    qb.val.inlineParam(permissionSource)
+                )
+            ),
+        ]),
+        qb.where(condition)
     );
+
+    await client.query(qb.toSql(sqlMap));
 }
 
 /**
@@ -476,7 +528,12 @@ function createTableToTypeMapping(plan) {
     );
 }
 
+function createPermissionSource(name) {
+    return 'generated:' + name;
+}
+
 async function manageGroups({client, tableToType}, {permission, name}) {
+    const permissionSource = createPermissionSource(name);
     const eventId = await lastPermissionEvent(client, name);
     for await (let action of runAuditQuery(
         client,
@@ -508,7 +565,8 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                         ensureGroupsPermissions(
                             client,
                             groupKeys,
-                            permissionKeys
+                            permissionKeys,
+                            permissionSource
                         ),
                         ..._.map(
                             (k) => assignGroup(client, currentData.key, k),
@@ -552,12 +610,14 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                             deleteGroupsPermissions(
                                 client,
                                 oldGroupKeys,
-                                permissionKeys
+                                permissionKeys,
+                                permissionSource
                             ),
                             ensureGroupsPermissions(
                                 client,
                                 groupKeys,
-                                permissionKeys
+                                permissionKeys,
+                                permissionSource
                             ),
                             ..._.map(
                                 (k) =>
@@ -620,6 +680,7 @@ async function permissionGroups(client, permission) {
 }
 
 async function manageGroups2({client}, {permission, name}) {
+    const permissionSource = createPermissionSource(name);
     const {sourceGroups, targetGroups} = await permissionGroups(
         client,
         permission
@@ -657,7 +718,8 @@ async function manageGroups2({client}, {permission, name}) {
                         await ensureGroupsPermissions(
                             client,
                             sourceGroups,
-                            permissionKeys
+                            permissionKeys,
+                            permissionSource
                         );
                     }
                 }
@@ -684,13 +746,14 @@ async function manageGroups2({client}, {permission, name}) {
                         await deleteGroupsPermissions(
                             client,
                             sourceGroups,
-                            permissionKeys
+                            permissionKeys,
+                            permissionSource
                         );
                     }
                 }
                 break;
             case 'T':
-                // todo?
+                deleteAllGroupPermissions(permissionSource);
                 break;
         }
         await updatePermissionProgress(client, name, action.event_id);
@@ -720,7 +783,7 @@ async function process({plan, client}) {
     }
 }
 
-async function run() {
+async function run({plan}) {
     const client = db.connect();
     await db.obtainPermissionsLock(client);
     client.on('notification', function (msg) {

@@ -1,8 +1,5 @@
 ALTER TABLE "user"."groupPermissions"
-  ADD COLUMN "permissionSources" TEXT[];
-
-ALTER TABLE "user"."userPermissions"
-  ADD COLUMN "permissionSources" TEXT[];
+  ADD COLUMN "permissionSources" TEXT[] NOT NULL DEFAULT '{manual}';
 
 CREATE TABLE "public"."generatedPermissions"(
   "name" TEXT NOT NULL,
