@@ -17,8 +17,24 @@ types.setTypeParser(TYPE_HSTORE, (res) => {
     return r;
 });
 
+/**
+ * @param {import('pg').Client} client
+ *
+ * @returns {Promise}
+ */
 async function obtainPermissionsLock(client) {
-    await client.query(`SELECT pg_advisory_lock($1)`, [
+    await client.query('SELECT pg_advisory_lock($1)', [
+        ADVISORY_LOCK_PERMISSIONS,
+    ]);
+}
+
+/**
+ * @param {import('pg').Client} client
+ *
+ * @returns {Promise}
+ */
+async function releasePermissionsLock(client) {
+    await client.query('SELECT pg_advisory_unlock($1)', [
         ADVISORY_LOCK_PERMISSIONS,
     ]);
 }
@@ -64,6 +80,33 @@ async function setUser(client, user) {
  */
 function connect() {
     return pool.connect();
+}
+
+/**
+ * @callback TransactionCallback
+ * @param {import('pg').Client} client
+ * @returns {Promise}
+ */
+
+/**
+ * Executes callback within transaction started at given client.
+ *
+ * @param {import('pg').Client} client
+ * @param {TransactionCallback} cb
+ *
+ * @returns {Promise}
+ */
+async function transaction(client, cb) {
+    try {
+        await client.query('BEGIN');
+        const result = await cb(client);
+        await client.query('COMMIT');
+
+        return result;
+    } catch (err) {
+        await client.query('ROLLBACK');
+        throw err;
+    }
 }
 
 /**
@@ -115,6 +158,8 @@ module.exports = {
     query,
     connect,
     obtainPermissionsLock,
+    releasePermissionsLock,
+    transaction,
     transactional,
     getSuperUserClient,
 };

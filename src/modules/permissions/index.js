@@ -159,6 +159,12 @@ function columnChangesSinceQuery(eventId, targets) {
     );
 }
 
+/**
+ * @param {import('pg').Client} client
+ * @param {import('@imatic/pgqb').Sql} sqlMap
+ *
+ * @returns {AsyncGenerator}
+ */
 async function* runAuditQuery(client, sqlMap) {
     const limit = 100;
     let offset = 0;
@@ -183,9 +189,10 @@ async function* runAuditQuery(client, sqlMap) {
 }
 
 /**
- *
  * @param {import('pg').Client} client
  * @param {Permissions} permissions
+ *
+ * @returns {Promise}
  */
 async function initPermissions(client, permissions) {
     const names = _.keys(permissions);
@@ -209,6 +216,13 @@ async function initPermissions(client, permissions) {
     await client.query(qb.toSql(sqlMap));
 }
 
+/**
+ * @param {Client} client
+ * @param {string} name
+ * @param {number} lastEvent
+ *
+ * @returns {Promise}
+ */
 async function updatePermissionProgress(client, name, lastEvent) {
     const sqlMap = qb.merge(
         qb.update('public.generatedPermissions'),
@@ -456,6 +470,8 @@ WHERE
 
 /**
  * @param {string} permissionSource
+ *
+ * @returns {Promise}
  */
 async function deleteAllGroupPermissions(client, permissionSource) {
     const sqlMap = qb.merge(
@@ -480,6 +496,8 @@ async function deleteAllGroupPermissions(client, permissionSource) {
  * @param {string[]} groupKeys
  * @param {string[]} permissionKeys
  * @param {string} permissionSource
+ *
+ * @returns {Promise}
  */
 async function deleteGroupsPermissions(
     client,
@@ -540,10 +558,21 @@ function createTableToTypeMapping(plan) {
     );
 }
 
+/**
+ * @param {string} name
+ *
+ * @returns {string}
+ */
 function createPermissionSource(name) {
     return 'generated:' + name;
 }
 
+/**
+ * @param {{client: import('pg').Client,  tableToType: Object<string, string>}} context
+ * @param {{permission: ColumnsPermission, name: string}} params
+ *
+ * @returns {Promise}
+ */
 async function manageGroups({client, tableToType}, {permission, name}) {
     const permissionSource = createPermissionSource(name);
     const eventId = await lastPermissionEvent(client, name);
@@ -670,6 +699,12 @@ function groups(client, names) {
     return client.query(qb.toSql(sqlMap)).then(_.get('rows'));
 }
 
+/**
+ * @param {import('pg').Client} client
+ * @param {ColumnsPermission} permission
+ *
+ * @returns {Promise<{{sourceGroups: string[], targetGroups: []}}>}
+ */
 async function permissionGroups(client, permission) {
     const groupRows = await groups(
         client,
@@ -691,6 +726,12 @@ async function permissionGroups(client, permission) {
     };
 }
 
+/**
+ * @param {{client: import('pg').Client}} context
+ * @param {{permission: ColumnsPermission, name: string}} params
+ *
+ * @returns {Promise}
+ */
 async function manageGroups2({client}, {permission, name}) {
     const permissionSource = createPermissionSource(name);
     const {sourceGroups, targetGroups} = await permissionGroups(
@@ -772,30 +813,56 @@ async function manageGroups2({client}, {permission, name}) {
     }
 }
 
+/**
+ * @param {{plan: import('../rest/compiler').Plan, client: import('pg').Client}} context
+ *
+ * @returns {Promise}
+ */
 async function process({plan, client}) {
     const tableToType = createTableToTypeMapping(plan);
     const permissions = compilePermissions({plan}, generatedPermissions);
     await initPermissions(client, permissions);
     for (let [name, permission] of Object.entries(permissions)) {
-        if (
-            permission.targets != null &&
-            permission.groupName != null &&
-            permission.targetPermissions != null
-        ) {
-            await manageGroups({client, tableToType}, {permission, name});
-        }
+        await db.transaction(client, async function (client) {
+            if (
+                permission.targets != null &&
+                permission.groupName != null &&
+                permission.targetPermissions != null
+            ) {
+                await manageGroups({client, tableToType}, {permission, name});
+            }
 
-        if (
-            permission.sourceGroups != null &&
-            permission.targetGroups != null &&
-            permission.targetPermissions != null
-        ) {
-            await manageGroups2({client}, {permission, name});
-        }
-        await clearGroupPermissions(client);
+            if (
+                permission.sourceGroups != null &&
+                permission.targetGroups != null &&
+                permission.targetPermissions != null
+            ) {
+                await manageGroups2({client}, {permission, name});
+            }
+
+            await clearGroupPermissions(client);
+        });
     }
 }
 
+/**
+ * Generates permissions based on current db state.
+ */
+async function runOnce({plan}) {
+    const client = await db.connect();
+    try {
+        await db.obtainPermissionsLock(client);
+        await process({plan, client});
+    } finally {
+        await db.releasePermissionsLock(client);
+        client.release();
+    }
+}
+
+/**
+ * Generates permissions based on current db state as `runOnce` does
+ * + reruns the generation on db changes.
+ */
 async function run({plan}) {
     const client = db.connect();
     await db.obtainPermissionsLock(client);
@@ -804,9 +871,10 @@ async function run({plan}) {
         queuedProcess({plan, client});
     });
     client.query('LISTEN audit_action');
+    await queuedProcess({plan, client});
 }
 
 module.exports = {
     run,
-    process,
+    runOnce,
 };
