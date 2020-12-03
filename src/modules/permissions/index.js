@@ -8,9 +8,12 @@ const fn = require('../../fn');
  * @typedef {Object<string, Object<string, {table: string, columns: string[]}>>} Targets
  *
  * @typedef ColumnsPermission
- * @property {Targets} targets
- * @property {(data: object) => string} groupName
- * @property {string[]} targetPermissions
+ * @property {Targets} targets Types to which `targetPermissions` will be assignled
+ * @property {(data: object) => string} groupName Permission will be assigned to returned specified group.
+ * @property {string[]} targetPermissions Permissions to assign to `targets` or `targetGroups`
+ * @property {boolean} assignGroup If true, target has to be user type. Target will be assigned to group given by `groupName`
+ * @property {string[]} sourceGroups Groups that will have `targetPermissions` on `targetGroups`
+ * @property {string[]} targetGroups Groups that will be accessible with `targetPermissions` by `sourceGroups`
  *
  * @typedef {ColumnsPermission} Permission
  *
@@ -18,83 +21,6 @@ const fn = require('../../fn');
  */
 
 const flatMapWithKey = _.flatMap.convert({cap: false});
-const mapValuesWithKey = _.mapValues.convert({cap: false});
-
-/**
- * Permission
- * - targets - types to which `targetPermissions` will be assignled
- * - targetPermissions - permissions to assign to `targets`
- * - groupName - permission will be assigned to returned specified group
- * - assignGroup - if true, target has to be user type. Target will be assigned to group given by `groupName`
- */
-const generatedPermissions = {
-    target_group: {
-        sourceGroups: ['group1'],
-        targetGroups: ['targetGroup'],
-        targetPermissions: ['view'],
-    },
-    email_domain: {
-        targets: {
-            user: {
-                user: {columns: ['email']},
-            },
-        },
-        groupName: ({email}) => {
-            return (
-                'generated:email_domain:' +
-                (email == null ? '' : email).match(/[^@]*$/)
-            );
-        },
-        assignGroup: true, // target needs to be user type
-        targetPermissions: ['view'],
-    },
-    application: {
-        targets: {
-            // todo: generate targets from plan
-            relations: {
-                spatial: {columns: ['applicationKey']},
-                attribute: {columns: ['applicationKey']},
-            },
-        },
-        groupName: ({applicationKey}) => {
-            return (
-                'generated:application:' +
-                (applicationKey == null ? '' : applicationKey)
-            );
-        },
-        targetPermissions: ['view', 'create', 'update', 'delete'],
-    },
-};
-
-/**
- * @param {{plan: import('../rest/compiler').Plan}} context
- * @param {Permissions} permissions
- *
- * @returns {Permissions}
- */
-function compilePermissions({plan}, permissions) {
-    return _.mapValues((permission) => {
-        if (permission.targets == null) {
-            return permission;
-        }
-
-        return _.update(
-            'targets',
-            (targets) =>
-                mapValuesWithKey((groupData, group) => {
-                    return mapValuesWithKey((typeData, type) => {
-                        return _.set(
-                            'table',
-                            plan[group][type].table,
-                            typeData
-                        );
-                        return typeData;
-                    }, groupData);
-                }, targets),
-            permission
-        );
-    }, permissions);
-}
 
 /**
  * @param {number} eventId
@@ -818,11 +744,10 @@ async function manageGroups2({client}, {permission, name}) {
  *
  * @returns {Promise}
  */
-async function process({plan, client}) {
+async function process({plan, generatedPermissions, client}) {
     const tableToType = createTableToTypeMapping(plan);
-    const permissions = compilePermissions({plan}, generatedPermissions);
-    await initPermissions(client, permissions);
-    for (let [name, permission] of Object.entries(permissions)) {
+    await initPermissions(client, generatedPermissions);
+    for (let [name, permission] of Object.entries(generatedPermissions)) {
         await db.transaction(client, async function (client) {
             if (
                 permission.targets != null &&
@@ -848,11 +773,11 @@ async function process({plan, client}) {
 /**
  * Generates permissions based on current db state.
  */
-async function runOnce({plan}) {
+async function runOnce({plan, generatedPermissions}) {
     const client = await db.connect();
     try {
         await db.obtainPermissionsLock(client);
-        await process({plan, client});
+        await process({plan, generatedPermissions, client});
     } finally {
         await db.releasePermissionsLock(client);
         client.release();
@@ -863,15 +788,17 @@ async function runOnce({plan}) {
  * Generates permissions based on current db state as `runOnce` does
  * + reruns the generation on db changes.
  */
-async function run({plan}) {
+async function run({plan, generatedPermissions}) {
     const client = db.connect();
     await db.obtainPermissionsLock(client);
-    const queuedProcess = fn.queued(process);
+    const queuedProcess = fn.queued(() =>
+        process({plan, generatedPermissions, client})
+    );
     client.on('notification', function () {
-        queuedProcess({plan, client});
+        queuedProcess();
     });
     client.query('LISTEN audit_action');
-    await queuedProcess({plan, client});
+    await queuedProcess();
 }
 
 module.exports = {

@@ -1,14 +1,19 @@
 #!/usr/bin/env node
 
-require('../src/applications/index');
-const plan = require('../src/applications/plan').get();
+const getAppConfig = require('../src/applications/config').get;
 const db = require('../src/db');
 const permissions = require('../src/modules/permissions/index');
 
 db.init();
 
 async function main() {
-    return permissions.runOnce({plan}).then(() => process.exit());
+    const appConfig = getAppConfig();
+    return permissions
+        .runOnce({
+            plan: appConfig.plan,
+            generatedPermissions: appConfig.generatedPermissions,
+        })
+        .then(() => process.exit());
 }
 
 main();
