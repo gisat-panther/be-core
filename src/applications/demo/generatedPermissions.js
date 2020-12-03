@@ -1,3 +1,28 @@
+const _ = require('lodash/fp');
+
+function pickByNotNil(obj) {
+    return _.pickBy((v) => v != null, obj);
+}
+
+function pickByNonEmpty(obj) {
+    return _.pickBy(_.complement(_.isEmpty), obj);
+}
+
+function typeApplicationKey(type) {
+    return _.hasIn(['columns', 'applicationKey'], type)
+        ? {columns: ['applicationKey']}
+        : null;
+}
+
+function applicationKeyTargets(plan) {
+    return pickByNonEmpty(
+        _.mapValues(
+            (group) => pickByNotNil(_.mapValues(typeApplicationKey, group)),
+            plan
+        )
+    );
+}
+
 module.exports = function ({plan}) {
     return {
         demo__target_group: {
@@ -32,13 +57,7 @@ module.exports = function ({plan}) {
              * Targets will be part of group based on application key.
              * Permissions of the group will be `targetPermissions`.
              */
-            targets: {
-                // todo: generate targets from plan
-                relations: {
-                    spatial: {columns: ['applicationKey']},
-                    attribute: {columns: ['applicationKey']},
-                },
-            },
+            targets: applicationKeyTargets(plan),
             groupName: ({applicationKey}) => {
                 return (
                     'generated:demo:application:' +
