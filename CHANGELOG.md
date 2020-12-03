@@ -1,3 +1,15 @@
+# v0.0.19 (Thu Dec 03 2020)
+
+#### 🐾 Patch
+
+- Dockerfile [#28](https://github.com/gisat-panther/be-core/pull/28) ([@mbabic84](https://github.com/mbabic84))
+
+#### Authors: 1
+
+- [@mbabic84](https://github.com/mbabic84)
+
+---
+
 # v0.0.18 (Wed Nov 18 2020)
 
 #### 🐾 Patch
