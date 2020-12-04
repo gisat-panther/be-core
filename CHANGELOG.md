@@ -1,3 +1,15 @@
+# v0.0.20 (Fri Dec 04 2020)
+
+#### 🐾 Patch
+
+- Docker build and push workflow [#29](https://github.com/gisat-panther/be-core/pull/29) ([@mbabic84](https://github.com/mbabic84))
+
+#### Authors: 1
+
+- [@mbabic84](https://github.com/mbabic84)
+
+---
+
 # v0.0.19 (Thu Dec 03 2020)
 
 #### 🐾 Patch
