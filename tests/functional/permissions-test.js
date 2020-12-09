@@ -18,14 +18,14 @@ async function loadFixtures(fixtures) {
 }
 
 describe('modules/permissions', function () {
-    describe('demo__target_group', function () {
-        const appConfig = getAppConfig();
-        const ensurePermissionsAreGenerated = () =>
-            permissions.runOnce({
-                plan: appConfig.plan,
-                generatedPermissions: appConfig.generatedPermissions,
-            });
+    const appConfig = getAppConfig();
+    const ensurePermissionsAreGenerated = () =>
+        permissions.runOnce({
+            plan: appConfig.plan,
+            generatedPermissions: appConfig.generatedPermissions,
+        });
 
+    describe('demo__target_group', function () {
         const SOURCE_GROUP_KEY = '3c0cb4ed-2a9c-4f7c-b220-6603815f0800';
         const TARGET_GROUP_KEY = '3c0cb4ed-2a9c-4f7c-b220-6603815f0801';
 
@@ -54,6 +54,7 @@ describe('modules/permissions', function () {
                 },
             ],
         };
+
         before(async function () {
             await loadFixtures(fixtures);
             h.newScope();
@@ -118,7 +119,58 @@ describe('modules/permissions', function () {
         });
     });
 
-    // describe('demo__email_domain', function () {});
+    describe('demo__email_domain', function () {
+        const USER1_KEY = 'f0c16b4c-0a0f-4b5f-8e66-33b1c1fce0b1';
+        const USER2_KEY = 'f0c16b4c-0a0f-4b5f-8e66-33b1c1fce0b2';
+        const USER3_KEY = 'f0c16b4c-0a0f-4b5f-8e66-33b1c1fce0b3';
+
+        const fixtures = {
+            '"user"."users"': [
+                {
+                    key: USER1_KEY,
+                    email: 'demo1@matchingDomain.com',
+                },
+                {
+                    key: USER2_KEY,
+                    email: 'demo2@matchingDomain.com',
+                },
+                {
+                    key: USER3_KEY,
+                    email: 'demo3@nonMatchingDomain.com',
+                },
+            ],
+        };
+
+        before(async function () {
+            await loadFixtures(fixtures);
+            h.newScope();
+        });
+
+        after(async function () {
+            h.prevScope();
+            await h.revertChanges();
+        });
+
+        it('works', async function () {
+            const userHasPermissionTo = (sourceUser, targetUser) =>
+                permission.userHasAllPermissions({realKey: sourceUser}, [
+                    {
+                        resourceGroup: 'user',
+                        resourceType: 'user',
+                        resourceKey: [targetUser],
+                        permission: 'view',
+                    },
+                ]);
+
+            await ensurePermissionsAreGenerated();
+            assert.isTrue(await userHasPermissionTo(USER1_KEY, USER2_KEY));
+            assert.isTrue(await userHasPermissionTo(USER2_KEY, USER1_KEY));
+            assert.isFalse(await userHasPermissionTo(USER1_KEY, USER3_KEY));
+            assert.isFalse(await userHasPermissionTo(USER2_KEY, USER3_KEY));
+            assert.isFalse(await userHasPermissionTo(USER3_KEY, USER1_KEY));
+            assert.isFalse(await userHasPermissionTo(USER3_KEY, USER2_KEY));
+        });
+    });
 
     // describe('demo__application', function () {});
 });
