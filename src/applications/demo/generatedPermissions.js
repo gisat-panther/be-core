@@ -29,8 +29,8 @@ module.exports = function ({plan}) {
             /*
              * Users in `sourceGroups` have `view` permission on users from `targetGroups`.
              */
-            sourceGroups: ['group1'],
-            targetGroups: ['targetGroup'],
+            sourceGroups: ['demo_sourceGroup'],
+            targetGroups: ['demo_targetGroup'],
             targetPermissions: ['view'],
         },
         demo__email_domain: {

@@ -3,12 +3,19 @@ const applicationsRouter = require('./applications/index').router;
 const config = require('../config');
 const db = require('./db');
 const migrations = require('./migrations');
+const permissions = require('./modules/permissions/index');
+const getAppConfig = require('./applications/config').get;
 
 const initMaster = async () => {
 	try {
 		await migrations.migrate();
-
-		return initWorkers()
+		initWorkers()
+		db.init();
+		const appConfig = getAppConfig();
+		permissions.run({
+			plan: appConfig.plan,
+			generatedPermissions: appConfig.generatedPermissions
+		});
 	} catch (error) {
 		console.log(`#ERROR#`, error)
 	}
@@ -57,4 +64,3 @@ if(cluster.isMaster) {
 } else {
 	initWorker();
 }
-

@@ -2,20 +2,9 @@ const {Pool, Client, types} = require('pg');
 const hstore = require('pg-hstore')();
 const config = require('../config');
 
-const TYPE_HSTORE = 1520031;
-
 const ADVISORY_LOCK_PERMISSIONS = 1;
 
 let pool;
-
-types.setTypeParser(TYPE_HSTORE, (res) => {
-    let r = null;
-    hstore.parse(res, (parsed) => {
-        r = parsed;
-    });
-
-    return r;
-});
 
 /**
  * @param {import('pg').Client} client
@@ -145,12 +134,28 @@ function getSuperUserClient() {
     return new Client(config.pgConfig.superuser || config.pgConfig.normal);
 }
 
-function init() {
+function hstoreOid() {
+    return query(`SELECT oid FROM "pg_type" WHERE "typname" = 'hstore'`).then(
+        (res) => res.rows[0].oid
+    );
+}
+
+function parseHstore(res) {
+    let r = null;
+    hstore.parse(res, (parsed) => {
+        r = parsed;
+    });
+
+    return r;
+}
+
+async function init() {
     if (pool != null) {
         return;
     }
 
     pool = new Pool(config.pgConfig.normal);
+    types.setTypeParser(await hstoreOid(), parseHstore);
 }
 
 module.exports = {

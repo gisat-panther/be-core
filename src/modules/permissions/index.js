@@ -199,10 +199,10 @@ function permissionKeys(client, permissions) {
         qb.select(['key']),
         qb.from('user.permissions'),
         qb.where(
-            qb.expr.and(
+            qb.expr.or(
                 ..._.map(
                     (p) =>
-                        qb.expr.or(
+                        qb.expr.and(
                             ..._.map(
                                 (c) =>
                                     qb.expr.eq(
@@ -712,20 +712,17 @@ async function manageGroups2({client}, {permission, name}) {
                         const permissions = _.map(
                             (perm) => ({
                                 permission: perm,
-                                resourceKey: currentData.userKey,
+                                resourceKey: oldData.userKey,
                                 resourceType: 'user',
                                 resourceGroup: 'user',
                             }),
                             requiredPermissions
                         );
-                        const permissionKeys = await permissionKeys(
-                            client,
-                            permissions
-                        );
+                        const pKeys = await permissionKeys(client, permissions);
                         await deleteGroupsPermissions(
                             client,
                             sourceGroups,
-                            permissionKeys,
+                            pKeys,
                             permissionSource
                         );
                     }
@@ -745,28 +742,36 @@ async function manageGroups2({client}, {permission, name}) {
  * @returns {Promise}
  */
 async function process({plan, generatedPermissions, client}) {
-    const tableToType = createTableToTypeMapping(plan);
-    await initPermissions(client, generatedPermissions);
-    for (let [name, permission] of Object.entries(generatedPermissions)) {
-        await db.transaction(client, async function (client) {
-            if (
-                permission.targets != null &&
-                permission.groupName != null &&
-                permission.targetPermissions != null
-            ) {
-                await manageGroups({client, tableToType}, {permission, name});
-            }
+    await db.obtainPermissionsLock(client);
+    try {
+        const tableToType = createTableToTypeMapping(plan);
+        await initPermissions(client, generatedPermissions);
+        for (let [name, permission] of Object.entries(generatedPermissions)) {
+            await db.transaction(client, async function (client) {
+                if (
+                    permission.targets != null &&
+                    permission.groupName != null &&
+                    permission.targetPermissions != null
+                ) {
+                    await manageGroups(
+                        {client, tableToType},
+                        {permission, name}
+                    );
+                }
 
-            if (
-                permission.sourceGroups != null &&
-                permission.targetGroups != null &&
-                permission.targetPermissions != null
-            ) {
-                await manageGroups2({client}, {permission, name});
-            }
+                if (
+                    permission.sourceGroups != null &&
+                    permission.targetGroups != null &&
+                    permission.targetPermissions != null
+                ) {
+                    await manageGroups2({client}, {permission, name});
+                }
 
-            await clearGroupPermissions(client);
-        });
+                await clearGroupPermissions(client);
+            });
+        }
+    } finally {
+        await db.releasePermissionsLock(client);
     }
 }
 
@@ -776,10 +781,8 @@ async function process({plan, generatedPermissions, client}) {
 async function runOnce({plan, generatedPermissions}) {
     const client = await db.connect();
     try {
-        await db.obtainPermissionsLock(client);
         await process({plan, generatedPermissions, client});
     } finally {
-        await db.releasePermissionsLock(client);
         client.release();
     }
 }
@@ -789,8 +792,7 @@ async function runOnce({plan, generatedPermissions}) {
  * + reruns the generation on db changes.
  */
 async function run({plan, generatedPermissions}) {
-    const client = db.connect();
-    await db.obtainPermissionsLock(client);
+    const client = await db.connect();
     const queuedProcess = fn.queued(() =>
         process({plan, generatedPermissions, client})
     );

@@ -1,5 +1,4 @@
 const express = require('express');
-const planCompiler = require('../modules/rest/compiler');
 const restRouter = require('../modules/rest/router');
 const createLoginApi = require('../modules/login/router');
 const routing = require('../modules/routing/index');
