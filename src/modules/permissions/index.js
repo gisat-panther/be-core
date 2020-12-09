@@ -471,17 +471,15 @@ async function deleteGroupsPermissions(
 /**
  * @param {import('../rest/compiler').Plan} plan
  *
- * @returns {Object<string, string>}
+ * @returns {Object<string, Object<string, string>>}
  */
 function createTableToTypeMapping(plan) {
-    return _.mergeAll(
-        _.map((groupData) => {
-            return _.zipObj(
-                _.map((type) => type.table, groupData),
-                _.keys(groupData)
-            );
-        }, plan)
-    );
+    return _.mapValues((groupData) => {
+        return _.zipObj(
+            _.map((type) => type.table, groupData),
+            _.keys(groupData)
+        );
+    }, plan);
 }
 
 /**
@@ -493,8 +491,38 @@ function createPermissionSource(name) {
     return 'generated:' + name;
 }
 
+function permissionTarget({data, permission, action, tableToType}) {
+    const actionType = _.getOr(
+        action.table_name,
+        [action.schema_name, action.table_name],
+        tableToType
+    );
+    const currentTarget = permission.targets[action.schema_name][actionType];
+
+    if (currentTarget.targetType == null) {
+        return {
+            resourceGroup: action.schema_name,
+            resourceType: actionType,
+            resourceKey: data.key,
+        };
+    }
+
+    const targetType = currentTarget.targetType;
+    const targetKey = _.get(targetType.resourceKeyPath, data);
+
+    if (targetKey == null) {
+        return null;
+    }
+
+    return {
+        resourceGroup: targetType.resourceGroup,
+        resourceType: targetType.resourceType,
+        resourceKey: targetKey,
+    };
+}
+
 /**
- * @param {{client: import('pg').Client,  tableToType: Object<string, string>}} context
+ * @param {{client: import('pg').Client,  tableToType: Object<string, Object<string, string>>}} context
  * @param {{permission: ColumnsPermission, name: string}} params
  *
  * @returns {Promise}
@@ -512,14 +540,27 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                 {
                     const currentData = action.row_data;
                     const newGroup = permission.groupName(currentData);
+                    if (newGroup == null) {
+                        continue;
+                    }
+
+                    const permissionType = permissionTarget({
+                        tableToType,
+                        data: currentData,
+                        permission,
+                        action,
+                    });
+
+                    if (permissionType == null) {
+                        continue;
+                    }
+
                     const requiredPermissions = permission.targetPermissions;
                     const permissions = _.map(
-                        (perm) => ({
-                            permission: perm,
-                            resourceKey: currentData.key,
-                            resourceType: tableToType[action.table_name],
-                            resourceGroup: action.schema_name,
-                        }),
+                        (perm) =>
+                            _.merge(permissionType, {
+                                permission: perm,
+                            }),
                         requiredPermissions
                     );
 
@@ -553,13 +594,26 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                     const oldGroup = permission.groupName(oldData);
                     const newGroup = permission.groupName(currentData);
                     if (oldGroup !== newGroup) {
+                        const permissionType = permissionTarget({
+                            tableToType,
+                            data: currentData,
+                            permission,
+                            action,
+                        });
+
+                        if (permissionType == null) {
+                            throw new Error(
+                                `It is not supported to remove relation data by update. Action: ${JSON.stringify(
+                                    action
+                                )}`
+                            );
+                        }
+
                         const permissions = _.map(
-                            (perm) => ({
-                                permission: perm,
-                                resourceKey: currentData.key,
-                                resourceType: tableToType[action.table_name],
-                                resourceGroup: action.schema_name,
-                            }),
+                            (perm) =>
+                                _.merge(permissionType, {
+                                    permission: perm,
+                                }),
                             requiredPermissions
                         );
 

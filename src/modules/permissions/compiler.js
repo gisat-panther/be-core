@@ -21,7 +21,7 @@ function compile({plan}, permissions) {
                     return mapValuesWithKey((typeData, type) => {
                         return _.set(
                             'table',
-                            plan[group][type].table,
+                            _.getOr(type, [group, type, 'table'], plan),
                             typeData
                         );
                     }, groupData);

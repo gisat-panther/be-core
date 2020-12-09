@@ -25,6 +25,12 @@ describe('modules/permissions', function () {
             generatedPermissions: appConfig.generatedPermissions,
         });
 
+    const assingGroup = (user, group) =>
+        db.query(
+            'INSERT INTO "user"."userGroups"("userKey", "groupKey") VALUES($1, $2)',
+            [user, group]
+        );
+
     describe('demo__target_group', function () {
         const SOURCE_GROUP_KEY = '3c0cb4ed-2a9c-4f7c-b220-6603815f0800';
         const TARGET_GROUP_KEY = '3c0cb4ed-2a9c-4f7c-b220-6603815f0801';
@@ -75,12 +81,6 @@ describe('modules/permissions', function () {
                         permission: 'view',
                     },
                 ]);
-
-            const assingGroup = (user, group) =>
-                db.query(
-                    'INSERT INTO "user"."userGroups"("userKey", "groupKey") VALUES($1, $2)',
-                    [user, group]
-                );
 
             const unassignGroup = (user, group) =>
                 db.query(
@@ -172,5 +172,90 @@ describe('modules/permissions', function () {
         });
     });
 
-    // describe('demo__application', function () {});
+    describe('demo__application', function () {
+        const USER_KEY = 'f0c16b4c-0a0f-4b5f-8e66-33b1c1fce0b1';
+        const APPLICATION_GROUP = 'df424e7d-edd3-400d-8641-ad70e655af01';
+        const APPLICATION_KEY = '27004996-f21b-4571-b5f1-5083a9b85ad1';
+        const CASE_KEY = '315b5e2d-1bff-4093-ab30-6089f111b8f2';
+
+        const fixtures = {
+            '"user"."users"': [
+                {
+                    key: USER_KEY,
+                },
+            ],
+            '"user"."groups"': [
+                {
+                    key: APPLICATION_GROUP,
+                    name: `generated:demo:application:${APPLICATION_KEY}`,
+                },
+            ],
+            '"application"."application"': [
+                {
+                    key: APPLICATION_KEY,
+                },
+            ],
+            '"metadata"."case"': [
+                {
+                    key: CASE_KEY,
+                },
+            ],
+        };
+
+        before(async function () {
+            await loadFixtures(fixtures);
+            h.newScope();
+        });
+
+        after(async function () {
+            h.prevScope();
+            await h.revertChanges();
+        });
+
+        it('works', async function () {
+            const hasPermission = () =>
+                permission.userHasAllPermissions({realKey: USER_KEY}, [
+                    {
+                        resourceGroup: 'metadata',
+                        resourceType: 'case',
+                        resourceKey: [CASE_KEY],
+                        permission: 'view',
+                    },
+                    {
+                        resourceGroup: 'metadata',
+                        resourceType: 'case',
+                        resourceKey: [CASE_KEY],
+                        permission: 'create',
+                    },
+                    {
+                        resourceGroup: 'metadata',
+                        resourceType: 'case',
+                        resourceKey: [CASE_KEY],
+                        permission: 'update',
+                    },
+                    {
+                        resourceGroup: 'metadata',
+                        resourceType: 'case',
+                        resourceKey: [CASE_KEY],
+                        permission: 'delete',
+                    },
+                ]);
+
+            await assingGroup(USER_KEY, APPLICATION_GROUP);
+            await ensurePermissionsAreGenerated();
+
+            // guard
+            assert.isFalse(await hasPermission());
+
+            await h.createRecord('"relations"."caseRelation"', {
+                key: '73493df1-6890-46bb-bbd2-e8b907753917',
+                parentCaseKey: CASE_KEY,
+                applicationKey: APPLICATION_KEY,
+            });
+            await ensurePermissionsAreGenerated();
+            assert.isTrue(await hasPermission());
+
+            // todo: more tests
+        });
+    });
 });

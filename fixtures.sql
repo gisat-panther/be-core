@@ -4,6 +4,7 @@ BEGIN;
 -- user: e56f3545-57f5-44f9-9094-2750a69ef67e
 
 TRUNCATE
+  "application"."application",
   "user"."users",
   "user"."groups",
   "user"."permissions",
@@ -15,6 +16,7 @@ TRUNCATE
   "metadata"."place",
   "metadata"."scope",
   "metadata"."period",
+  "metadata"."case",
   "relations"."attributeDataSourceRelation",
   "specific"."lpisChangeCase",
   "public"."cache",

@@ -53,16 +53,29 @@ module.exports = function ({plan}) {
             targetPermissions: ['view'],
         },
         demo__application: {
+            // todo: generate application targets
+            targets: {
+                relations: {
+                    caseRelation: {
+                        columns: ['applicationKey'],
+                        targetType: {
+                            resourceGroup: 'metadata',
+                            resourceType: 'case',
+                            resourceKeyPath: 'parentCaseKey',
+                        },
+                    },
+                },
+            },
             /*
              * Targets will be part of group based on application key.
              * Permissions of the group will be `targetPermissions`.
              */
-            targets: applicationKeyTargets(plan),
             groupName: ({applicationKey}) => {
-                return (
-                    'generated:demo:application:' +
-                    (applicationKey == null ? '' : applicationKey)
-                );
+                if (applicationKey === null) {
+                    return null;
+                }
+
+                return 'generated:demo:application:' + applicationKey;
             },
             targetPermissions: ['view', 'create', 'update', 'delete'],
         },
