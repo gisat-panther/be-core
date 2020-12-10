@@ -4,22 +4,6 @@ const db = require('../../db');
 const _ = require('lodash/fp');
 const fn = require('../../fn');
 
-/**
- * @typedef {Object<string, Object<string, {table: string, columns: string[]}>>} Targets
- *
- * @typedef ColumnsPermission
- * @property {Targets} targets Types to which `targetPermissions` will be assignled
- * @property {(data: object) => string} groupName Permission will be assigned to returned specified group.
- * @property {string[]} targetPermissions Permissions to assign to `targets` or `targetGroups`
- * @property {boolean} assignGroup If true, target has to be user type. Target will be assigned to group given by `groupName`
- * @property {string[]} sourceGroups Groups that will have `targetPermissions` on `targetGroups`
- * @property {string[]} targetGroups Groups that will be accessible with `targetPermissions` by `sourceGroups`
- *
- * @typedef {ColumnsPermission} Permission
- *
- * @typedef {Object<string, Permission>} Permissions
- */
-
 const flatMapWithKey = _.flatMap.convert({cap: false});
 
 /**
@@ -51,7 +35,7 @@ function groupChangesSinceQuery(eventId) {
 
 /**
  * @param {number} eventId
- * @param {Targets} opts
+ * @param {import('./compiler').Targets} opts
  */
 function columnChangesSinceQuery(eventId, targets) {
     const targetExpr = qb.expr.or(
@@ -116,7 +100,7 @@ async function* runAuditQuery(client, sqlMap) {
 
 /**
  * @param {import('pg').Client} client
- * @param {Permissions} permissions
+ * @param {import('./compiler').Permission} permissions
  *
  * @returns {Promise}
  */
@@ -733,7 +717,7 @@ function groups(client, names) {
 
 /**
  * @param {import('pg').Client} client
- * @param {ColumnsPermission} permission
+ * @param {import('./compiler').ColumnsPermission} permission
  *
  * @returns {Promise<{{sourceGroups: string[], targetGroups: []}}>}
  */
