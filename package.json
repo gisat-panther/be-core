@@ -37,8 +37,8 @@
     "uuid": "^8.3.2"
   },
   "devDependencies": {
-    "@auto-it/git-tag": "^9.61.0",
-    "auto": "^9.61.0",
+    "@auto-it/git-tag": "^10.4.2",
+    "auto": "^10.4.2",
     "chai": "^4.2.0",
     "faker": "^5.1.0",
     "mocha": "^8.2.1",
