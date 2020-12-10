@@ -10,7 +10,7 @@ const initMaster = async () => {
 	try {
 		await migrations.migrate();
 		initWorkers()
-		db.init();
+		await db.init();
 		const appConfig = getAppConfig();
 		permissions.run({
 			plan: appConfig.plan,
@@ -32,10 +32,10 @@ const initWorkers = () => {
 	}
 }
 
-const initWorker = () => {
+const initWorker = async () => {
 	const express = require('express');
 
-	db.init();
+	await db.init();
 	const app = express();
 	app.use(applicationsRouter);
 	app.listen(process.env.port, () => {

@@ -4,16 +4,14 @@ const getAppConfig = require('../src/applications/config').get;
 const db = require('../src/db');
 const permissions = require('../src/modules/permissions/index');
 
-db.init();
-
 async function main() {
+    await db.init();
+
     const appConfig = getAppConfig();
-    return permissions
-        .runOnce({
-            plan: appConfig.plan,
-            generatedPermissions: appConfig.generatedPermissions,
-        })
-        .then(() => process.exit());
+    await permissions.runOnce({
+        plan: appConfig.plan,
+        generatedPermissions: appConfig.generatedPermissions,
+    });
 }
 
-main();
+main().then(() => process.exit());

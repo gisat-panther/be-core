@@ -4,7 +4,6 @@ const uuid = require('../src/uuid');
 const qb = require('@imatic/pgqb');
 const db = require('../src/db');
 const faker = require('faker');
-db.init();
 
 async function insert(client, table, columns) {
     const entries = Object.entries(columns);
@@ -71,6 +70,11 @@ async function generateInserts(n) {
     });
 }
 
-generateInserts(50_000).then(() => {
+async function main() {
+    await db.init();
+    await generateInserts(50_000);
+}
+
+main().then(() => {
     process.exit(0);
 });

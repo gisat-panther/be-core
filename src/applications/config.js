@@ -2,6 +2,30 @@ const _ = require('lodash/fp');
 const planCompiler = require('../modules/rest/compiler');
 const generatedPermissionsCompiler = require('../modules/permissions/compiler');
 
+/**
+ * @typedef {import('../modules/rest/compiler').Plan} PlanConfig
+ * @typedef {import('../modules/routing/index').RouteData[]} RouterConfig
+ *
+ * @callback PermissionsConfig
+ * @param {{plan: import('../modules/rest/compiler').Plan}} opts
+ * @returns {import('../modules/permissions/compiler').Permissions}
+ *
+ * @typedef Config
+ * @property {PlanConfig} plan
+ * @property {RouterConfig} router
+ * @property {PermissionsConfig} generatedPermissions
+ *
+ * @typedef Appconfig
+ * @property {import('../modules/rest/compiler').Plan} plan
+ * @property {import('../modules/routing/index').RouteData[]} router
+ * @property {import('../modules/permissions/compiler').Permissions} generatedPermissions
+ */
+
+/**
+ * @param {Config} config
+ *
+ * @returns {Function}
+ */
 function getAppendHandler(config) {
     if (_.isArray(config)) {
         return _.concat;
@@ -22,6 +46,12 @@ function getAppendHandler(config) {
     return _.merge;
 }
 
+/**
+ * @param {Config} result
+ * @param {Config} application
+ *
+ * @returns {Config}
+ */
 function appendApplication(result, application) {
     return _.reduce(
         function (result, k) {
@@ -40,11 +70,16 @@ function appendApplication(result, application) {
 
 /**
  * Merges given applications into one config.
+ *
+ * @returns {Config}
  */
 function mergeApplications(...applications) {
     return _.reduce(appendApplication, {}, applications);
 }
 
+/**
+ * @returns {Appconfig}
+ */
 function get() {
     const config = mergeApplications(
         require('./core/index'),

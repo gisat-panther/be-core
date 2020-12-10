@@ -10,8 +10,6 @@ const getPlan = require('../src/applications/plan').get;
 const db = require('../src/db');
 const _ = require('lodash/fp');
 
-db.init();
-
 /**
  * @returns {Promise<string[]>}
  */
@@ -86,6 +84,8 @@ function keyToIndexDrop(key) {
  * @returns {Promise<{create: string[], drop: string[]}?>}
  */
 async function main() {
+    await db.init();
+
     const relationKeys = _.flatMap((group) => {
         return _.flatMap((type) => {
             return _.map((rel) => rel.ownKey, type.relations);
