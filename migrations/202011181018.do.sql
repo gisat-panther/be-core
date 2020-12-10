@@ -4,7 +4,9 @@ ALTER TABLE "user"."groupPermissions"
 CREATE TABLE "public"."generatedPermissions"(
   "name" TEXT NOT NULL,
   "last_event" BIGINT NOT NULL,
-  PRIMARY KEY("name")
+  "config_hash" TEXT NOT NULL,
+  "active" BOOLEAN NOT NULL DEFAULT true,
+  PRIMARY KEY("name", "config_hash")
 );
 
 ALTER TABLE "user"."permissions"

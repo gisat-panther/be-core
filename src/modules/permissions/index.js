@@ -100,30 +100,58 @@ async function* runAuditQuery(client, sqlMap) {
 
 /**
  * @param {import('pg').Client} client
- * @param {import('./compiler').Permission} permissions
+ * @param {import('./compiler').Permissions} permissions
  *
  * @returns {Promise}
  */
 async function initPermissions(client, permissions) {
-    const names = _.keys(permissions);
-    if (names.length === 0) {
+    if (_.size(permissions) === 0) {
         return;
     }
 
-    const sqlMap = qb.merge(
-        qb.insertInto('public.generatedPermissions'),
-        qb.columns(['name', 'last_event']),
-        qb.values(
-            _.map(
-                (name) => [qb.val.inlineParam(name), qb.val.inlineParam(0)],
-                names
+    const staleSqlMap = qb.merge(
+        qb.update('public.generatedPermissions'),
+        qb.set([qb.expr.eq('active', qb.val.inlineParam(false))]),
+        qb.where(
+            qb.expr.not(
+                qb.expr.or(
+                    ..._.map(
+                        ([name, p]) =>
+                            qb.expr.and(
+                                qb.expr.eq('name', qb.val.inlineParam(name)),
+                                qb.expr.eq(
+                                    'config_hash',
+                                    qb.val.inlineParam(p.hash)
+                                )
+                            ),
+                        Object.entries(permissions)
+                    )
+                )
             )
-        ),
-        qb.onConflict(['name']),
-        qb.doNothing()
+        )
     );
 
-    await client.query(qb.toSql(sqlMap));
+    const sqlMap = qb.merge(
+        qb.insertInto('public.generatedPermissions'),
+        qb.columns(['name', 'last_event', 'config_hash']),
+        qb.values(
+            _.map(
+                ([name, p]) => [
+                    qb.val.inlineParam(name),
+                    qb.val.inlineParam(0),
+                    qb.val.inlineParam(p.hash),
+                ],
+                Object.entries(permissions)
+            )
+        ),
+        qb.onConflict(['name', 'config_hash']),
+        qb.doUpdate([qb.expr.eq('active', qb.val.inlineParam(true))])
+    );
+
+    await Promise.all([
+        client.query(qb.toSql(sqlMap)),
+        client.query(qb.toSql(staleSqlMap)),
+    ]);
 }
 
 /**
@@ -137,7 +165,10 @@ async function updatePermissionProgress(client, name, lastEvent) {
     const sqlMap = qb.merge(
         qb.update('public.generatedPermissions'),
         qb.set([qb.expr.eq('last_event', qb.val.inlineParam(lastEvent))]),
-        qb.where(qb.expr.eq('name', qb.val.inlineParam(name)))
+        qb.where(
+            qb.expr.eq('name', qb.val.inlineParam(name)),
+            qb.expr.eq('active', qb.val.inlineParam(true))
+        )
     );
 
     await client.query(qb.toSql(sqlMap));
@@ -153,7 +184,12 @@ function lastPermissionEvent(client, name) {
     const sqlMap = qb.merge(
         qb.select(['gp.last_event']),
         qb.from('public.generatedPermissions', 'gp'),
-        qb.where(qb.expr.eq('gp.name', qb.val.inlineParam(name)))
+        qb.where(
+            qb.expr.and(
+                qb.expr.eq('gp.name', qb.val.inlineParam(name)),
+                qb.expr.eq('gp.active', qb.val.inlineParam(true))
+            )
+        )
     );
 
     return client
@@ -293,11 +329,32 @@ async function ensureGroups(client, groups) {
  * @param {import('pg').Client} client
  */
 async function clearGroupPermissions(client) {
-    const sql = `DELETE FROM "user"."groupPermissions"
+    const inactiveSqlMap = qb.merge(
+        qb.select(['name', 'config_hash']),
+        qb.from('public.generatedPermissions'),
+        qb.where(qb.expr.eq('active', qb.val.inlineParam(false)))
+    );
+
+    const res = await client.query(qb.toSql(inactiveSqlMap));
+    await Promise.all(
+        res.rows.map((row) =>
+            deleteAllGroupPermissions(
+                client,
+                createPermissionSource(row.name, row.config_hash)
+            )
+        )
+    );
+
+    const stalePermissionsSql = `DELETE FROM "user"."groupPermissions"
 WHERE
   ARRAY_LENGTH("permissionSources", 1) IS NULL`;
 
-    await client.query(sql);
+    const staleGeneratedPermissionsSql = `DELETE FROM "public"."generatedPermissions" WHERE "active" = false`;
+
+    await Promise.all([
+        client.query(stalePermissionsSql),
+        client.query(staleGeneratedPermissionsSql),
+    ]);
 }
 
 /**
@@ -468,11 +525,12 @@ function createTableToTypeMapping(plan) {
 
 /**
  * @param {string} name
+ * @param {string} hash
  *
  * @returns {string}
  */
-function createPermissionSource(name) {
-    return 'generated:' + name;
+function createPermissionSource(name, hash) {
+    return 'generated:' + name + ':' + hash;
 }
 
 /**
@@ -512,12 +570,12 @@ function permissionTarget({data, permission, action, tableToType}) {
 
 /**
  * @param {{client: import('pg').Client,  tableToType: Object<string, Object<string, string>>}} context
- * @param {{permission: ColumnsPermission, name: string}} params
+ * @param {{permission: import('./compiler').Permission, name: string}} params
  *
  * @returns {Promise}
  */
 async function manageGroups({client, tableToType}, {permission, name}) {
-    const permissionSource = createPermissionSource(name);
+    const permissionSource = createPermissionSource(name, permission.hash);
     const eventId = await lastPermissionEvent(client, name);
     for await (let action of runAuditQuery(
         client,
@@ -744,12 +802,12 @@ async function permissionGroups(client, permission) {
 
 /**
  * @param {{client: import('pg').Client}} context
- * @param {{permission: ColumnsPermission, name: string}} params
+ * @param {{permission: import('./compiler').Permission, name: string}} params
  *
  * @returns {Promise}
  */
 async function manageGroups2({client}, {permission, name}) {
-    const permissionSource = createPermissionSource(name);
+    const permissionSource = createPermissionSource(name, permission.hash);
     const {sourceGroups, targetGroups} = await permissionGroups(
         client,
         permission

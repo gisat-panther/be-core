@@ -1,4 +1,6 @@
+const {flow} = require('lodash');
 const _ = require('lodash/fp');
+const hash = require('object-hash');
 
 const mapValuesWithKey = _.mapValues.convert({cap: false});
 
@@ -21,11 +23,63 @@ const mapValuesWithKey = _.mapValues.convert({cap: false});
  * @property {boolean} assignGroup If true, target has to be user type. Target will be assigned to group given by `groupName`
  * @property {string[]} sourceGroups Groups that will have `targetPermissions` on `targetGroups`
  * @property {string[]} targetGroups Groups that will be accessible with `targetPermissions` by `sourceGroups`
+ * @property {string} hash Hash of the config - if changed, permissions are regenerated
  *
  * @typedef {ColumnsPermission} Permission
  *
  * @typedef {Object<string, Permission>} Permissions
  */
+
+/**
+ * @param {{plan: import('../rest/compiler').Plan}} context
+ * @param {Permission} permission
+ *
+ * @returns {Permission}
+ */
+function enrichPermissionTargets({plan}, permission) {
+    if (permission.targets == null) {
+        return permission;
+    }
+
+    return _.update(
+        'targets',
+        (targets) =>
+            mapValuesWithKey((groupData, group) => {
+                return mapValuesWithKey((typeData, type) => {
+                    return _.set(
+                        'table',
+                        _.getOr(type, [group, type, 'table'], plan),
+                        typeData
+                    );
+                }, groupData);
+            }, targets),
+        permission
+    );
+}
+
+/**
+ * @param {Permission} permission
+ *
+ * @returns {Permission}
+ */
+function enrichPermissionWithHash(permission) {
+    return _.set(
+        'hash',
+        hash(
+            _.pick(
+                [
+                    'sourceGroups',
+                    'targetGroups',
+                    'targetPermissions',
+                    'targets',
+                    'assignGroup',
+                ],
+                permission
+            )
+        ),
+        permission
+    );
+}
 
 /**
  * @param {{plan: import('../rest/compiler').Plan}} context
@@ -35,24 +89,10 @@ const mapValuesWithKey = _.mapValues.convert({cap: false});
  */
 function compile({plan}, permissions) {
     return _.mapValues((permission) => {
-        if (permission.targets == null) {
-            return permission;
-        }
-
-        return _.update(
-            'targets',
-            (targets) =>
-                mapValuesWithKey((groupData, group) => {
-                    return mapValuesWithKey((typeData, type) => {
-                        return _.set(
-                            'table',
-                            _.getOr(type, [group, type, 'table'], plan),
-                            typeData
-                        );
-                    }, groupData);
-                }, targets),
-            permission
-        );
+        return flow(
+            (permission) => enrichPermissionTargets({plan}, permission),
+            enrichPermissionWithHash
+        )(permission);
     }, permissions);
 }
 
