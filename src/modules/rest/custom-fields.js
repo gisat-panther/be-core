@@ -21,7 +21,7 @@ const mapValuesWithKey = _.mapValues.convert({cap: false});
  * @returns {object}
  */
 function schema() {
-    return Joi.object().unknown(true);
+    return Joi.object().unknown(true).pattern(Joi.fieldName(), Joi.any());
 }
 
 /**
