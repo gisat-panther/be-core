@@ -6,6 +6,7 @@ const qb = require('@imatic/pgqb');
  * @property {{columns: string[]}} list
  * @property {{columns: string[]}} create
  * @property {{columns: string[]}} update
+ * @property {object} defaultFilter
  *
  * @typedef {Object} ColumnRelation
  * @property {string} resourceGroup
@@ -209,6 +210,10 @@ function compileGroup(group) {
  * ### columns (required)
  *
  * Allowed columns during this operation.
+ *
+ * ### defaultFilter (optional)
+ *
+ * If no filter is specified when making request, this one will be used.
  *
  * @returns {Plan} Given plan with added default values where optional ones were omitted
  *   so that code using the plan doesn't have to know what's optional, default and check
