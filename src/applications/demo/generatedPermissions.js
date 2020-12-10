@@ -1,26 +1,54 @@
 const _ = require('lodash/fp');
 
-function pickByNotNil(obj) {
-    return _.pickBy((v) => v != null, obj);
+function isApplicationRelation(relation) {
+    return (
+        relation.resourceGroup === 'application' &&
+        relation.resourceType === 'application'
+    );
 }
 
-function pickByNonEmpty(obj) {
-    return _.pickBy(_.complement(_.isEmpty), obj);
-}
-
-function typeApplicationKey(type) {
-    return _.hasIn(['columns', 'applicationKey'], type)
-        ? {columns: ['applicationKey']}
-        : null;
+function typeApplicationRelations(type) {
+    return _.filter(isApplicationRelation, _.getOr({}, 'relations', type));
 }
 
 function applicationKeyTargets(plan) {
-    return pickByNonEmpty(
-        _.mapValues(
-            (group) => pickByNotNil(_.mapValues(typeApplicationKey, group)),
-            plan
-        )
-    );
+    const targets = {};
+    for (const [groupName, group] of Object.entries(plan)) {
+        for (const [typeName, type] of Object.entries(group)) {
+            const relations = typeApplicationRelations(type);
+            if (relations.length === 0) {
+                continue;
+            }
+
+            if (relations.length !== 1) {
+                throw new Error(
+                    `Type "${groupName}.${typeName}" is expected to have one or none application relations, but ${relations.length} found.`
+                );
+            }
+
+            const relation = _.head(relations);
+            if (relation.inverseKey !== 'applicationKey') {
+                throw new Error(
+                    `Inverse key of application relation is expected to be 'applicationKey', but it is ${relation.inverseKey}`
+                );
+            }
+
+            const [rschema, rtable] = relation.relationTable.split('.');
+            if (targets[rschema] == null) {
+                targets[rschema] = {};
+            }
+
+            targets[rschema][rtable] = {
+                targetType: {
+                    resourceGroup: groupName,
+                    resourceType: typeName,
+                    resourceKeyPath: relation.ownKey,
+                },
+            };
+        }
+    }
+
+    return targets;
 }
 
 module.exports = function ({plan}) {
@@ -40,7 +68,7 @@ module.exports = function ({plan}) {
              */
             targets: {
                 user: {
-                    user: {columns: ['email']},
+                    user: {},
                 },
             },
             groupName: ({email}) => {
@@ -53,19 +81,7 @@ module.exports = function ({plan}) {
             targetPermissions: ['view'],
         },
         demo__application: {
-            // todo: generate application targets
-            targets: {
-                relations: {
-                    caseRelation: {
-                        columns: ['applicationKey'],
-                        targetType: {
-                            resourceGroup: 'metadata',
-                            resourceType: 'case',
-                            resourceKeyPath: 'parentCaseKey',
-                        },
-                    },
-                },
-            },
+            targets: applicationKeyTargets(plan),
             /*
              * Targets will be part of group based on application key.
              * Permissions of the group will be `targetPermissions`.
