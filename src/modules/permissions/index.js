@@ -491,6 +491,11 @@ function createPermissionSource(name) {
     return 'generated:' + name;
 }
 
+/**
+ * @param {{data: object, permission: Permission, action: object, tableToType: Object<string, Object<string, string>>}} context
+ *
+ * @returns {{resourceGroup: string, resourceType: string, resourceKey: string}}
+ */
 function permissionTarget({data, permission, action, tableToType}) {
     const actionType = _.getOr(
         action.table_name,
@@ -651,6 +656,53 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                             ),
                         ]);
                     }
+                }
+                break;
+            case 'D':
+                {
+                    const oldData = action.row_data;
+                    const oldGroup = permission.groupName(oldData);
+                    if (oldGroup == null) {
+                        continue;
+                    }
+
+                    const permissionType = permissionTarget({
+                        tableToType,
+                        data: oldData,
+                        permission,
+                        action,
+                    });
+
+                    if (permissionType == null) {
+                        continue;
+                    }
+
+                    const requiredPermissions = permission.targetPermissions;
+                    const permissions = _.map(
+                        (perm) =>
+                            _.merge(permissionType, {
+                                permission: perm,
+                            }),
+                        requiredPermissions
+                    );
+
+                    const [oldGroupKeys, permissionKeys] = await Promise.all([
+                        ensureGroups(client, [oldGroup]),
+                        ensurePermissions(client, permissions),
+                    ]);
+
+                    await Promise.all([
+                        deleteGroupsPermissions(
+                            client,
+                            oldGroupKeys,
+                            permissionKeys,
+                            permissionSource
+                        ),
+                        ..._.map(
+                            (k) => unassignGroup(client, oldData.key, k),
+                            shouldAssigngroup ? oldGroupKeys : []
+                        ),
+                    ]);
                 }
                 break;
         }

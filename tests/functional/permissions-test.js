@@ -247,6 +247,7 @@ describe('modules/permissions', function () {
             // guard
             assert.isFalse(await hasPermission());
 
+            // create application relation
             await h.createRecord('"relations"."caseRelation"', {
                 key: '73493df1-6890-46bb-bbd2-e8b907753917',
                 parentCaseKey: CASE_KEY,
@@ -255,7 +256,12 @@ describe('modules/permissions', function () {
             await ensurePermissionsAreGenerated();
             assert.isTrue(await hasPermission());
 
-            // todo: more tests
+            // delete application relation
+            await db.query(
+                `DELETE FROM "relations"."caseRelation" WHERE "key" = '73493df1-6890-46bb-bbd2-e8b907753917'`
+            );
+            await ensurePermissionsAreGenerated();
+            assert.isFalse(await hasPermission());
         });
     });
 });
