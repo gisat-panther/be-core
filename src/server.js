@@ -5,6 +5,8 @@ const db = require('./db');
 const migrations = require('./migrations');
 const permissions = require('./modules/permissions/index');
 const getAppConfig = require('./applications/config').get;
+const prometheus = require('./modules/prometheus/index');
+const express = require('express');
 
 const initMaster = async () => {
 	try {
@@ -12,9 +14,14 @@ const initMaster = async () => {
 		initWorkers()
 		await db.init();
 		const appConfig = getAppConfig();
+		const app = express();
+		prometheus.init({app});
 		permissions.run({
 			plan: appConfig.plan,
 			generatedPermissions: appConfig.generatedPermissions
+		});
+		app.listen(config.masterPort, () => {
+			console.log(`#NOTE# Master is listening on port ${config.masterPort}`);
 		});
 	} catch (error) {
 		console.log(`#ERROR#`, error)
@@ -33,10 +40,9 @@ const initWorkers = () => {
 }
 
 const initWorker = async () => {
-	const express = require('express');
-
 	await db.init();
 	const app = express();
+	prometheus.init({app});
 	app.use(applicationsRouter);
 	app.listen(process.env.port, () => {
 		console.log(`#NOTE# Cluster worker id ${cluster.worker.id} is listening on port ${process.env.port}`);
