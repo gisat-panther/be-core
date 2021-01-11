@@ -1,3 +1,16 @@
+# v0.0.21 (Mon Jan 11 2021)
+
+#### 🐾 Patch
+
+- Prometheus metrics [#33](https://github.com/gisat-panther/be-core/pull/33) ([@nenadalm](https://github.com/nenadalm))
+- Generated permissions [#27](https://github.com/gisat-panther/be-core/pull/27) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.20 (Fri Dec 04 2020)
 
 #### 🐾 Patch
