@@ -271,8 +271,8 @@ const LocaleSchema = Joi.string().min(1);
 function schema() {
     return {
         translations: Joi.object().pattern(
-            Joi.string().min(1),
-            Joi.object().pattern(LocaleSchema, Joi.any())
+            LocaleSchema,
+            Joi.object().pattern(Joi.fieldName(), Joi.any())
         ),
     };
 }

@@ -74,10 +74,21 @@ function listBody(plan, group) {
         }, plan[group])
     );
 
+    const defaultFilter = _.mergeAll(
+        _.map(
+            (type) => _.getOr({}, ['context', 'list', 'defaultFilter'], type),
+            plan[group]
+        )
+    );
+
+    const context = _.pickBy((v) => !_.isEmpty(v), {
+        defaultFilter: defaultFilter,
+    });
+
     return Joi.object()
         .meta({className: `${group}List`})
         .keys({
-            filter: schemaUtil.filter(columns),
+            filter: schemaUtil.filter(columns, context),
             order: schemaUtil.order(columns),
             limit: Joi.number().integer().default(100),
             offset: Joi.number().integer().default(0),

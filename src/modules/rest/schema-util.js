@@ -101,14 +101,31 @@ function colFilterSchema(col) {
 }
 
 /**
+ * @param {object} Schema
+ * @param {{defaultFilter: any}=} context
+ *
+ * @returns {object}
+ */
+function setDefaultFilterValue(Schema, context) {
+    if (!_.has('defaultFilter', context)) {
+        return Schema;
+    }
+
+    return Schema.default(_.get('defaultFilter', context));
+}
+
+/**
  * @param {Object<string, {type: import('joi').Root}>} columns
+ * @param {{defaultFilter: any}=} context
  *
  * @returns {import('joi').Root}
  */
-function filter(columns) {
-    return Joi.object()
+function filter(columns, context) {
+    const Schema = Joi.object()
         .keys(_.omitBy(_.isNil, _.mapValues(colFilterSchema, columns)))
         .allow(null);
+
+    return setDefaultFilterValue(Schema, context);
 }
 
 /**

@@ -1,5 +1,4 @@
 const express = require('express');
-const planCompiler = require('../modules/rest/compiler');
 const restRouter = require('../modules/rest/router');
 const createLoginApi = require('../modules/login/router');
 const routing = require('../modules/routing/index');
@@ -10,40 +9,9 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const _ = require('lodash/fp');
 const p = require('./plan');
+const getConfig = require('./config').get;
 
-/**
- * Reducing function for application merging.
- */
-function appendApplication(result, application) {
-    return _.reduce(
-        function (result, k) {
-            if (result[k] == null) {
-                return _.set(k, application[k], result);
-            }
-
-            const appendHandler = _.isArray(result[k]) ? _.concat : _.merge;
-
-            return _.set(k, appendHandler(result[k], application[k]), result);
-        },
-        result,
-        _.keys(application)
-    );
-}
-
-/**
- * Merges given applications into one config.
- */
-function mergeApplications(...applications) {
-    return _.reduce(appendApplication, {}, applications);
-}
-
-/**
- * Merged config of all applications
- */
-const config = mergeApplications(
-    require('./core/index'),
-    require('./demo/index')
-);
+const config = getConfig();
 
 /**
  * Creates api router with swagger documentation.
@@ -51,7 +19,7 @@ const config = mergeApplications(
 function apiRouter() {
     const router = express.Router();
 
-    const plan = planCompiler.compile(config.plan);
+    const plan = config.plan;
     p.init(plan);
     const api = [
         ...createLoginApi(plan),
