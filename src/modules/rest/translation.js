@@ -2,6 +2,13 @@ const Joi = require('../../joi');
 const _ = require('lodash/fp');
 const qb = require('@imatic/pgqb');
 const SQL = require('sql-template-strings');
+const cf = require('./custom-fields');
+const schemaUtil = require('./schema-util');
+const {HttpError} = require('../error');
+const apiUtil = require('../../util/api');
+
+const mapWithKey = _.map.convert({cap: false});
+const mapValuesWithKey = _.mapValues.convert({cap: false});
 
 /**
  * @param {{group: string, type: string}} context
@@ -74,7 +81,7 @@ async function updateTranslations({client, group, type}, records) {
 }
 
 /**
- * @param {{group: string, type: string, translations: string}} context
+ * @param {{group: string, type: string, translations: string[]}} context
  * @param {string} alias
  *
  * @returns {import('@imatic/pgqb').Sql}
@@ -143,6 +150,119 @@ function listTranslationsQuery({group, type, translations}, alias) {
     ]);
 }
 
+/**
+ * @param {{group: string, type: string, translations: string[]}} context
+ * @param {{alias: string, field: string}} field
+ */
+function sortExpr(
+    {plan, group, type, translations, customFields},
+    {alias, field, order}
+) {
+    if (_.size(translations) === 0) {
+        return null;
+    }
+
+    const columns = groupColumns({plan, group, customFields});
+
+    const orderBys = _.map(
+        (trans) =>
+            qb.orderBy(
+                qb.val.raw(SQL`("_ptrans"."locale" = ${trans})::int`),
+                'DESC'
+            ),
+        translations
+    );
+    const dbType = cf.columnDbType(_.get(field, columns));
+
+    const translationSqlMap = qb.merge(
+        qb.select([
+            qb.val.raw(SQL``.append(`("_ptrans"."value" #>> '{}')::${dbType}`)),
+        ]),
+        qb.from('public.translations', '_ptrans'),
+        qb.where(
+            qb.expr.and(
+                qb.expr.eq(
+                    qb.val.raw('"t"."key"::text'),
+                    '_ptrans.resourceKey'
+                ),
+                qb.expr.eq('_ptrans.resourceGroup', qb.val.inlineParam(group)),
+                qb.expr.eq('_ptrans.resourceType', qb.val.inlineParam(type)),
+                qb.expr.eq('_ptrans.field', qb.val.inlineParam(field)),
+                qb.expr.in(
+                    '_ptrans.locale',
+                    translations.map(qb.val.inlineParam)
+                )
+            )
+        ),
+        qb.append(...orderBys),
+        qb.limit(1)
+    );
+
+    const fieldExpr =
+        cf.fieldExpr({customFields}, {alias, field}) || `${alias}.${field}`;
+
+    const sqlMap = qb.merge(
+        qb.select([qb.expr.fn('COALESCE', translationSqlMap, fieldExpr)])
+    );
+
+    return qb.orderBy(sqlMap, order === 'ascending' ? 'ASC' : 'DESC');
+}
+
+function filterFieldExpr(
+    {plan, group, type, translations, customFields},
+    {alias, field}
+) {
+    if (_.size(translations) === 0) {
+        return null;
+    }
+
+    const columns = groupColumns({plan, group, customFields});
+
+    const orderBys = _.map(
+        (trans) =>
+            qb.orderBy(
+                qb.val.raw(SQL`("_ptrans"."locale" = ${trans})::int`),
+                'DESC'
+            ),
+        translations
+    );
+
+    const dbType = cf.columnDbType(_.get(field, columns));
+
+    const translationSqlMap = qb.merge(
+        qb.select([
+            qb.val.raw(SQL``.append(`("_ptrans"."value" #>> '{}')::${dbType}`)),
+        ]),
+        qb.from('public.translations', '_ptrans'),
+        qb.where(
+            qb.expr.and(
+                qb.expr.eq(
+                    qb.val.raw('"t"."key"::text'),
+                    '_ptrans.resourceKey'
+                ),
+                qb.expr.eq('_ptrans.resourceGroup', qb.val.inlineParam(group)),
+                qb.expr.eq('_ptrans.resourceType', qb.val.inlineParam(type)),
+                qb.expr.eq('_ptrans.field', qb.val.inlineParam(field)),
+                qb.expr.in(
+                    '_ptrans.locale',
+                    translations.map(qb.val.inlineParam)
+                )
+            )
+        ),
+        qb.append(...orderBys),
+        qb.limit(1)
+    );
+
+    const fieldExpr =
+        cf.fieldExpr({customFields}, {alias, field}) || `${alias}.${field}`;
+
+    const sqlMap = qb.merge(
+        qb.select([qb.expr.fn('COALESCE', translationSqlMap, fieldExpr)])
+    );
+
+    return sqlMap;
+}
+
 const LocaleSchema = Joi.string().min(1);
 
 /**
@@ -151,8 +271,8 @@ const LocaleSchema = Joi.string().min(1);
 function schema() {
     return {
         translations: Joi.object().pattern(
-            Joi.string().min(1),
-            Joi.object().pattern(LocaleSchema, Joi.any())
+            LocaleSchema,
+            Joi.object().pattern(Joi.fieldName(), Joi.any())
         ),
     };
 }
@@ -220,6 +340,89 @@ function lastChangeExprs({group, type}, ids) {
     ];
 }
 
+/**
+ * @param {{plan: import('./compiler').Plan, group: string, customFields: {all: import('./custom-fields').CustomFields}}} param0
+ *
+ * @returns {Object<string, import('./compiler').Column>}
+ */
+function groupColumns({plan, group, customFields}) {
+    return schemaUtil.mergeColumns([
+        ..._.flatMap((s) => {
+            const types = _.getOr({}, ['type', 'types'], 3);
+
+            return schemaUtil.mergeColumns(
+                _.concat(
+                    [s.columns],
+                    _.map((t) => t.columns, types)
+                )
+            );
+        }, plan[group]),
+        _.mapValues(cf.customFieldToColumn, _.getOr({}, 'all', customFields)),
+    ]);
+}
+
+/**
+ * @param {{plan: import('./compiler').Plan, group: string}} context
+ */
+function modifyTranslationMiddleware({plan, group}) {
+    return async function (request, response, next) {
+        const columns = groupColumns({
+            plan,
+            group,
+            customFields: request.customFields,
+        });
+
+        const TranslationSchema = Joi.object().keys(
+            _.omitBy(
+                _.isNil,
+                _.mapValues((col) => col.schema, columns)
+            )
+        );
+
+        const RecordSchema = Joi.object().keys({
+            translations: Joi.object().pattern(LocaleSchema, TranslationSchema),
+        });
+        const TypeSchema = Joi.array().items(RecordSchema);
+        const BodySchema = Joi.object().keys({
+            data: Joi.object().keys(_.mapValues(() => TypeSchema, plan[group])),
+        });
+
+        const validationResult = BodySchema.validate(request.body, {
+            abortEarly: false,
+            stripUnknown: true,
+        });
+        if (validationResult.error) {
+            if (validationResult.error) {
+                return next(
+                    new HttpError(
+                        400,
+                        apiUtil.createDataErrorObject(validationResult.error)
+                    )
+                );
+            }
+        }
+
+        const data = request.parameters.body.data;
+        const resultData = validationResult.value.data;
+
+        const dataWithTranslations = mapValuesWithKey((records, type) => {
+            return mapWithKey((record, index) => {
+                const translations = _.getOr(
+                    {},
+                    [type, index, 'translations'],
+                    resultData
+                );
+
+                return _.set('translations', translations, record);
+            }, records);
+        }, data);
+
+        request.parameters.body.data = dataWithTranslations;
+
+        next();
+    };
+}
+
 module.exports = {
     schema,
     listSchema,
@@ -227,4 +430,7 @@ module.exports = {
     listTranslationsQuery,
     formatRow,
     lastChangeExprs,
+    sortExpr,
+    modifyTranslationMiddleware,
+    filterFieldExpr,
 };

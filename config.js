@@ -1,5 +1,6 @@
 const ptr4 = {
 	url: 'http://localhost/backend', // url on which server is accessible
+	masterPort: 9849,
 	clusterPorts: [9850, 9851, 9852, 9853, 9854, 9855, 9856, 9857, 9858, 9859],
 	keepAliveWorkers: true,
 	pgConfig: {

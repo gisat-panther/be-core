@@ -9,16 +9,16 @@
 const {SQL} = require('sql-template-strings');
 const db = require('../src/db');
 
-db.init();
-
 if (process.argv.length !== 3) {
     throw new Error('Script expects exactly one parameter - user key.');
 }
 
 const userKey = process.argv[2];
 
-db.query(
-    SQL`
+async function main() {
+    await db.init();
+    await db.query(
+        SQL`
 INSERT INTO "user"."userPermissions"
   ("userKey", "permissionKey")
 SELECT
@@ -27,4 +27,7 @@ FROM
   "user"."permissions" "p"
 ON CONFLICT DO NOTHING
 `
-).then(() => process.exit());
+    );
+}
+
+main().then(() => process.exit());
