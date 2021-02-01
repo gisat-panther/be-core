@@ -2,7 +2,7 @@
 -- Name: topology; Type: SCHEMA; Schema: -; Owner: -
 --
 
-CREATE SCHEMA topology;
+CREATE SCHEMA IF NOT EXISTS topology;
 
 --
 -- Name: postgis_topology; Type: EXTENSION; Schema: topology; Owner: -
