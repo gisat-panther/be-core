@@ -118,14 +118,6 @@ async function getPopulatedRelationsByFilter(filter, user) {
 	return relations;
 }
 
-function convertRange( value, r1, r2 ) {
-	return ( value - r1[ 0 ] ) * ( r2[ 1 ] - r2[ 0 ] ) / ( r1[ 1 ] - r1[ 0 ] ) + r2[ 0 ];
-}
-
-function getGeometryTolerance(level) {
-	return convertRange(level, [1, 20], [0.00001, 1]);
-}
-
 async function getDataForRelations(relations, filter) {
 	const data = {
 		spatial: {},
@@ -134,8 +126,9 @@ async function getDataForRelations(relations, filter) {
 
 	const allowedDataSourceTypes = ["vector"];
 
+	const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
 	const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.level);
-	const geometryTolerance = getGeometryTolerance(filter.data.spatialFilter.level);
+	const geometryTolerance = gridSize / tileSize;
 
 	const tileGeometries = {};
 	_.each(filter.data.spatialFilter.tiles, (tile) => {
@@ -161,12 +154,10 @@ async function getDataForRelations(relations, filter) {
 
 		columns.push(`"${spatialDataSource.key}"."${spatialDataSource.fidColumnName}"`);
 
-		if (filter.data.geometry) {
-			if (hasTopo) {
-				columns.push(`st_asgeojson(topology.st_simplify("${spatialDataSource.key}"."topo", ${geometryTolerance})) AS "${spatialDataSource.geometryColumnName}"`);
-			} else {
-				columns.push(`st_asgeojson(st_simplify("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}", ${geometryTolerance})) AS "${spatialDataSource.geometryColumnName}"`);
-			}
+		if (hasTopo) {
+			columns.push(`st_asgeojson(topology.st_simplify("${spatialDataSource.key}"."topo", ${geometryTolerance})) AS "${spatialDataSource.geometryColumnName}"`);
+		} else {
+			columns.push(`st_asgeojson(st_simplify("${spatialDataSource.key}"."${spatialDataSource.geometryColumnName}", ${geometryTolerance})) AS "${spatialDataSource.geometryColumnName}"`);
 		}
 
 		const relatedAttributeRelations = _.filter(relations.attribute, (attributeRelation) => {
@@ -240,11 +231,13 @@ async function getDataForRelations(relations, filter) {
 
 		for (const attributeRelation of relatedAttributeRelations) {
 			const attributeDataSource = attributeRelation.attributeDataSource;
-			data.attribute[attributeDataSource.key] = {};
+			if (!data.attribute[attributeDataSource.key]) {
+				data.attribute[attributeDataSource.key] = {};
+			}
 		}
 
 		_.each(queryResult.rows, (row) => {
-			if (row.hasOwnProperty(spatialDataSource.geometryColumnName)) {
+			if (row.hasOwnProperty(spatialDataSource.geometryColumnName) && filter.data.geometry) {
 				data.spatial[spatialDataSource.key].data[row[spatialDataSource.fidColumnName]] = JSON.parse(row[spatialDataSource.geometryColumnName]);
 			}
 
