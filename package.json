@@ -11,6 +11,7 @@
     "url": "https://github.com/gisat-panther/be-core/issues"
   },
   "dependencies": {
+    "@gisatcz/ptr-tile-grid": "^0.0.2-alpha.5",
     "@imatic/pgqb": "^0.1.24",
     "bcrypt": "^5.0.0",
     "body-parser": "^1.19.0",
@@ -32,7 +33,9 @@
     "prom-client": "^12.0.0",
     "sql-template-strings": "^2.2.2",
     "swagger-ui-express": "^4.1.5",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "multer": "^1.4.2",
+    "adm-zip": "^0.5.1"
   },
   "devDependencies": {
     "@auto-it/git-tag": "^10.4.2",
