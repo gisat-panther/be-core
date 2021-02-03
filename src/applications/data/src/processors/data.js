@@ -5,6 +5,8 @@ const ptrTileGrid = require('@gisatcz/ptr-tile-grid');
 const db = require('../../../../db');
 const plan = require('../../../plan');
 const query = require('../../../../modules/rest/query');
+const corePlan = require('../../../../applications/core/plan');
+
 
 async function getData(group, type, user, filter) {
 	let data = await query.list({group, type, user}, {filter});
@@ -124,6 +126,10 @@ async function getDataForRelations(relations, filter) {
 		attribute: {}
 	};
 
+	let spatialRelationKeys = _.keys(corePlan.relations.spatial.columns);
+	let attributeRelationKeys = _.keys(corePlan.relations.attribute.columns);
+	let commonKeys = _.without(_.intersection(spatialRelationKeys, attributeRelationKeys), "key");
+
 	const allowedDataSourceTypes = ["vector"];
 
 	const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
@@ -161,7 +167,15 @@ async function getDataForRelations(relations, filter) {
 		}
 
 		const relatedAttributeRelations = _.filter(relations.attribute, (attributeRelation) => {
-			return attributeRelation.layerTemplateKey === spatialRelation.layerTemplateKey;
+			let match = true;
+
+			_.each(commonKeys, (key) => {
+				if (spatialRelation[key] && spatialRelation[key] !== attributeRelation[key]) {
+					match = false;
+				}
+			})
+
+			return match;
 		});
 
 		for (const attributeRelation of relatedAttributeRelations) {
