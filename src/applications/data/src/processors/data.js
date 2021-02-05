@@ -143,9 +143,11 @@ async function getDataForRelations(relations, filter) {
 	const spatialIndex = filter.data.spatialIndex || filter.data.spatialFilter;
 
 	let featureKeys = [];
+	let requestedFeatureKeys = filter.data.featureKeys;
 
 	for (const spatialRelation of relations.spatial) {
 		let spatialDataSource = spatialRelation.spatialDataSource;
+		let whereSqls = [];
 
 		if (!allowedDataSourceTypes.includes(spatialDataSource.type)) {
 			continue;
@@ -163,7 +165,15 @@ async function getDataForRelations(relations, filter) {
 			geometryColumnSql = `ST_AsGeoJSON(ST_Simplify("${spatialDataSource.geometryColumnName}", ${geometryTolerance})) AS "${spatialDataSource.geometryColumnName}"`;
 		}
 
-		let spatialDataPgQuerySql = `SELECT "${spatialDataSource.fidColumnName}", ${geometryColumnSql} FROM "${spatialDataSource.tableName}" WHERE ST_Intersects("${spatialDataSource.geometryColumnName}", ST_GeomFromGeoJSON('${JSON.stringify(tileGeometries[spatialIndex.tiles[0]].geometry)}'))`;
+		let featureKeysWhereSql;
+		if (requestedFeatureKeys && requestedFeatureKeys.length) {
+			let featureKeysString = JSON.stringify(requestedFeatureKeys).replace(/"/g, "'").replace(/(\[)|(\])/g, "");
+			whereSqls.push(`"${spatialDataSource.fidColumnName}" IN (${featureKeysString})`);
+		}
+
+		whereSqls.push(`ST_Intersects("${spatialDataSource.geometryColumnName}", ST_GeomFromGeoJSON('${JSON.stringify(tileGeometries[spatialIndex.tiles[0]].geometry)}'))`)
+
+		let spatialDataPgQuerySql = `SELECT "${spatialDataSource.fidColumnName}", ${geometryColumnSql} FROM "${spatialDataSource.tableName}" WHERE ${whereSqls.join(" AND ")}`;
 
 		await db.query(spatialDataPgQuerySql)
 			.then((pgResult) => {
