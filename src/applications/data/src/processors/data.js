@@ -198,24 +198,79 @@ async function getDataForRelations(relations, filter) {
 			});
 	}
 
+	let isAttributeFilterActive = false;
 	if (featureKeys.length) {
 		for (const attributeRelation of relations.attribute) {
 			let attributeDataSource = attributeRelation.attributeDataSource;
 
-			let attributeDataPgQuerySql = `SELECT "${attributeDataSource.fidColumnName}", "${attributeDataSource.columnName}" FROM "${attributeDataSource.tableName}" WHERE "${attributeDataSource.fidColumnName}" IN (${_.map(featureKeys, (value, index) => {
-				return `$${++index}`
-			})})`;
+			let attributeWhereSqls = [];
 
-			await db.query(attributeDataPgQuerySql, featureKeys)
+			let featureKeysString = JSON.stringify(featureKeys).replace(/"/g, "'").replace(/(\[)|(\])/g, "");
+
+			attributeWhereSqls.push(`"${attributeDataSource.fidColumnName}" IN (${featureKeysString})`)
+
+			if (filter.data.attributeFilter) {
+				let attributeKeys = _.keys(filter.data.attributeFilter);
+				if (attributeKeys.includes(attributeRelation.attributeKey)) {
+
+					isAttributeFilterActive = true;
+
+					if (_.isObject(filter.data.attributeFilter[attributeRelation.attributeKey])) {
+						if (filter.data.attributeFilter[attributeRelation.attributeKey].in) {
+							let attributeValuesString = JSON.stringify(filter.data.attributeFilter[attributeRelation.attributeKey].in).replace(/"/g, "'").replace(/(\[)|(\])/g, "");
+							attributeWhereSqls.push(`"${attributeDataSource.columnName}" IN (${attributeValuesString})`);
+						}
+					} else {
+						if (_.isNumber(filter.data.attributeFilter[attributeRelation.attributeKey])) {
+							attributeWhereSqls.push(`"${attributeDataSource.columnName}" = ${filter.data.attributeFilter[attributeRelation.attributeKey]}`);
+						} else {
+							attributeWhereSqls.push(`"${attributeDataSource.columnName}" = '${filter.data.attributeFilter[attributeRelation.attributeKey]}'`);
+						}
+					}
+				}
+			}
+
+			let attributeDataPgQuerySql = `SELECT "${attributeDataSource.fidColumnName}", "${attributeDataSource.columnName}" FROM "${attributeDataSource.tableName}" WHERE ${attributeWhereSqls.join(" AND ")}`;
+
+			await db.query(attributeDataPgQuerySql)
 				.then((pgQuery) => {
 					if (pgQuery.rows.length) {
 						data.attribute[attributeDataSource.key] = {};
+						featureKeys = [];
+
 						_.each(pgQuery.rows, (row) => {
 							data.attribute[attributeDataSource.key][row[attributeDataSource.fidColumnName]] = row[attributeDataSource.columnName];
+							featureKeys.push(row[attributeDataSource.fidColumnName]);
 						})
 					}
 				})
 		}
+	}
+
+	if (isAttributeFilterActive) {
+		_.each(data.spatial, (spatial, key) => {
+			let filteredData = {};
+			let filteredSpatialIndex = {};
+
+			_.each(spatial.data, (data, key) => {
+				if (featureKeys.includes(key)) {
+					filteredData[key] = data;
+				}
+			})
+
+			_.each(spatial.spatialIndex, (spatialIndex, level) => {
+				_.each(spatial.spatialIndex[level], (fids, tile) => {
+					if (!filteredSpatialIndex.hasOwnProperty(level)) {
+						filteredSpatialIndex[level] = {};
+					}
+
+					filteredSpatialIndex[level][tile] = _.intersection(featureKeys, fids);
+				})
+			});
+
+			data.spatial[key].data = filteredData;
+			data.spatial[key].spatialIndex = filteredSpatialIndex;
+		})
 	}
 
 	return data;
