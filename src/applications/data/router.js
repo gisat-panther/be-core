@@ -23,6 +23,20 @@ module.exports = [
         handler: request.data,
     },
     {
+        path: '/rest/attributeData/filtered',
+        method: 'post',
+        swagger: {
+            tags: ['attributeData']
+        },
+        middlewares: [
+            userMiddleware,
+            autoLoginMiddleware,
+            authMiddleware,
+        ],
+        responses: {200: {}},
+        handler: request.attributeData,
+    },
+    {
         path: '/rest/data/import',
         method: 'post',
         swagger: {
