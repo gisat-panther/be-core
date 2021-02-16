@@ -125,36 +125,90 @@ async function getDataForRelations(relations, filter) {
 		attribute: {}
 	};
 
-	for (const attributeRelation of relations.attribute) {
-		const attributeDataSource = attributeRelation.attributeDataSource;
+	let geometrySql = "";
+	let filteredFeatureKeys = [];
 
-		let orderSql = [];
+	if (filter.data.spatialFilter.tiles) {
+		const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
+		const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.tiles.level);
 
-		if (filter.data.attributeOrder && filter.data.attributeOrder.length) {
-			_.each(filter.data.attributeOrder, (attributeOrder) => {
-				if (attributeOrder[0] === attributeRelation.attributeKey) {
-					if (attributeOrder[1] === "ascending") {
-						orderSql.push(`"${attributeDataSource.columnName}" ASC`);
-					} else {
-						orderSql.push(`"${attributeDataSource.columnName}" DESC`);
-					}
-				}
-			})
-		}
+		// todo what is for last parameter and why it throws an error if not set or set to false?
+		// there is also problem when set to true, all returned geometry coordinates are set to null
+		const gridAsGeoJson = ptrTileGrid.utils.getTileGridAsGeoJSON(filter.data.spatialFilter.tiles.tiles, gridSize);
 
-		if (orderSql.length) {
-			orderSql = `ORDER BY ${orderSql.join(", ")}`;
-		}
+		let featureGeometrySql = [];
+		_.each(gridAsGeoJson.features, (feature) => {
+			featureGeometrySql.push(`ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}')`);
+		});
 
-		data.attribute[attributeDataSource.key] = await db.query(`SELECT "${attributeDataSource.fidColumnName}", "${attributeDataSource.columnName}" FROM "${attributeDataSource.tableName}" ${orderSql} ;`)
-			.then((pgResult) => {
-				return _.map(pgResult.rows, (row) => {
-					return {
-						[row[attributeDataSource.fidColumnName]]: row[attributeDataSource.columnName]
-					}
-				})
-			});
+		geometrySql = `ST_Collect(ARRAY[${featureGeometrySql.join(", ")}])`;
+
+	} else if (filter.data.spatialFilter.geoJson) {
+
 	}
+
+	let querySql = "";
+
+	if (relations.attribute.length) {
+		let firstAttributeRelation = relations.attribute[0];
+		if (firstAttributeRelation) {
+			let fidColumnSql = [];
+			let columnSql = [];
+
+			_.each(relations.attribute, (attributeRelation) => {
+				const attributeDataSource = attributeRelation.attributeDataSource;
+
+				fidColumnSql.push(`"${attributeRelation.key}"."${attributeDataSource.fidColumnName}"`);
+				columnSql.push(`"${attributeRelation.key}"."${attributeDataSource.columnName}" AS "${attributeDataSource.key}"`);
+			})
+
+			if (fidColumnSql.length && columnSql.length) {
+				querySql += `SELECT COALESCE(${fidColumnSql.join(", ")}) AS "featureKey", ${columnSql.join(", ")}`;
+				querySql += ` FROM "${firstAttributeRelation.attributeDataSource.tableName}" AS "${firstAttributeRelation.key}"`
+			}
+
+			if (relations.attribute.length > 1) {
+				_.each(_.slice(relations.attribute, 1), (attributeRelation) => {
+					const attributeDataSource = attributeRelation.attributeDataSource;
+					querySql += ` FULL JOIN "${attributeDataSource.tableName}" AS "${attributeRelation.key}" ON "${attributeRelation.key}"."${attributeRelation.attributeDataSource.fidColumnName}" = "${firstAttributeRelation.key}"."${firstAttributeRelation.attributeDataSource.fidColumnName}"`
+				})
+			}
+
+			if (filter.data.attributeFilter && _.keys(filter.data.attributeFilter).length) {
+
+			}
+
+			if (filter.data.attributeOrder && filter.data.attributeOrder.length) {
+				let orderSql = [];
+
+				_.each(filter.data.attributeOrder, (attributeOrder) => {
+					let attributeRelation = _.find(relations.attribute, (attributeRelation) => {
+						return attributeRelation.attributeKey === attributeOrder[0];
+					})
+
+					if (attributeRelation) {
+						orderSql.push(`"${attributeRelation.attributeDataSource.key}" ${attributeOrder[1] === "ascending" ? "ASC" : "DESC"}`);
+					}
+				});
+
+				if (orderSql.length) {
+					querySql += ` ORDER BY ${orderSql.join(", ")}`
+				}
+			} else {
+				querySql += ` ORDER BY "featureKey"`
+			}
+
+			querySql += ` LIMIT 1`
+		}
+	}
+
+	await db.query(querySql)
+		.then((pgResult) => {
+			console.log(pgResult.rows);
+		})
+		.catch((error) => {
+			console.log(error);
+		})
 
 	return data;
 }
