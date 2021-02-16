@@ -175,7 +175,27 @@ async function getDataForRelations(relations, filter) {
 			}
 
 			if (filter.data.attributeFilter && _.keys(filter.data.attributeFilter).length) {
+				let whereSql = [];
 
+				_.each(filter.data.attributeFilter, (filter, attributeKey) => {
+					let attributeRelation = _.find(relations.attribute, (attributeRelation) => {
+						return attributeRelation.attributeKey === attributeKey;
+					})
+
+					if (attributeRelation) {
+						if (_.isString(filter)) {
+
+						} else if (_.isNumber(filter)) {
+							whereSql.push(`"${attributeRelation.key}"."${attributeRelation.attributeDataSource.columnName}" = ${filter}`);
+						} else if (_.isObject(filter)) {
+
+						}
+					}
+				});
+
+				if (whereSql.length) {
+					querySql += ` WHERE ${whereSql.join(" AND ")}`
+				}
 			}
 
 			if (filter.data.attributeOrder && filter.data.attributeOrder.length) {
@@ -192,19 +212,17 @@ async function getDataForRelations(relations, filter) {
 				});
 
 				if (orderSql.length) {
-					querySql += ` ORDER BY ${orderSql.join(", ")}`
+					querySql += ` ORDER BY ${orderSql.join(", ")}, "featureKey" ASC`
 				}
 			} else {
-				querySql += ` ORDER BY "featureKey"`
+				querySql += ` ORDER BY "featureKey" ASC`
 			}
-
-			querySql += ` LIMIT 1`
 		}
 	}
 
 	await db.query(querySql)
 		.then((pgResult) => {
-			console.log(pgResult.rows);
+			console.log(pgResult.rows.length);
 		})
 		.catch((error) => {
 			console.log(error);
