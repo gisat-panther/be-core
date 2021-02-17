@@ -25,87 +25,31 @@ async function getData(group, type, user, filter) {
 
 function formatData(rawData, filter) {
 	let formattedResponse = {
-		data: {
-			spatialRelations: [],
-			attributeRelations: [],
-			spatialDataSources: [],
-			attributeDataSources: [],
-			spatialData: rawData.data.spatial,
+		attributeRelationsDataSources: {
+			total: rawData.data.pagination.relations.total,
+			offset: rawData.data.pagination.relations.offset,
+			limit: rawData.data.pagination.relations.limit,
+			attributeRelations: _.map(rawData.attribute, (attributeRelation) => {
+				let cleanAttributeRelation = {
+					key: attributeRelation.key,
+					data: {
+						...attributeRelation
+					}
+				}
+
+				_.unset(cleanAttributeRelation.data, "key");
+				_.unset(cleanAttributeRelation.data, "attributeDataSource");
+
+				return cleanAttributeRelation;
+			})
+		},
+		attributeData: {
+			total: rawData.data.pagination.data.total,
+			offset: rawData.data.pagination.data.offset,
+			limit: rawData.data.pagination.data.limit,
 			attributeData: rawData.data.attribute
-		},
-		total: {
-			spatialRelations: rawData.spatial.length,
-			attributeRelations: rawData.attribute.length
-		},
-		limit: (filter.relations && filter.relations.limit) || 100,
-		offset: (filter.relations && filter.relations.offset) || 0
-	};
-
-	if (filter.data.relations) {
-		rawData.spatial.forEach((spatialRelation) => {
-			formattedResponse.data.spatialDataSources.push({
-				key: spatialRelation.spatialDataSource.key,
-				data: {
-					..._.pick(spatialRelation.spatialDataSource, _.without(_.keys(spatialRelation.spatialDataSource), 'key'))
-				}
-			});
-
-			formattedResponse.data.spatialRelations.push(spatialRelation);
-		})
-
-		rawData.attribute.forEach((attributeRelation) => {
-			formattedResponse.data.attributeDataSources.push({
-				key: attributeRelation.attributeDataSource.key,
-				data: {
-					..._.pick(attributeRelation.attributeDataSource, _.without(_.keys(attributeRelation.attributeDataSource), 'key'))
-				}
-			});
-
-			formattedResponse.data.attributeRelations.push(attributeRelation);
-		})
-	}
-
-	formattedResponse.data.spatialRelations = _.slice(formattedResponse.data.spatialRelations, formattedResponse.offset, formattedResponse.offset + formattedResponse.limit);
-	formattedResponse.data.attributeRelations = _.slice(formattedResponse.data.attributeRelations, formattedResponse.offset, formattedResponse.offset + formattedResponse.limit);
-
-	formattedResponse.data.spatialDataSources = _.filter(formattedResponse.data.spatialDataSources, (spatialDataSource) => {
-		return _.map(formattedResponse.data.spatialRelations, 'spatialDataSourceKey').includes(spatialDataSource.key);
-	});
-
-	formattedResponse.data.attributeDataSources = _.filter(formattedResponse.data.attributeDataSources, (attributeDataSource) => {
-		return _.map(formattedResponse.data.attributeRelations, 'attributeDataSourceKey').includes(attributeDataSource.key);
-	});
-
-	formattedResponse.data.spatialRelations = _.map(formattedResponse.data.spatialRelations, (spatialRelation) => {
-		let clearSpatialRelation = {
-			key: spatialRelation.key,
-			data: {
-				...spatialRelation
-			}
-		};
-
-		delete clearSpatialRelation.data.key;
-		delete clearSpatialRelation.data.data;
-		delete clearSpatialRelation.data.spatialDataSource;
-		delete clearSpatialRelation.data.spatialIndex;
-
-		return clearSpatialRelation;
-	});
-
-	formattedResponse.data.attributeRelations = _.map(formattedResponse.data.attributeRelations, (attributeRelation) => {
-		let clearAttributeRelation = {
-			key: attributeRelation.key,
-			data: {
-				...attributeRelation
-			}
 		}
-
-		delete clearAttributeRelation.data.key;
-		delete clearAttributeRelation.data.data;
-		delete clearAttributeRelation.data.attributeDataSource;
-
-		return clearAttributeRelation;
-	});
+	};
 
 	return formattedResponse;
 }
@@ -122,32 +66,44 @@ async function getPopulatedRelationsByFilter(filter, user) {
 
 async function getDataForRelations(relations, filter) {
 	const data = {
-		attribute: {}
+		attribute: {},
+		pagination: {
+			relations: {
+				limit: filter.relations.limit || 100,
+				offset: filter.relations.offset || 0,
+				total: relations.attribute.length
+			},
+			data: {
+				limit: filter.data.limit || 100,
+				offset: filter.data.offset || 0,
+				total: null
+			}
+		}
 	};
 
 	let geometrySql = "";
+	let querySql = "";
 	let filteredFeatureKeys = [];
 
-	if (filter.data.spatialFilter.tiles) {
-		const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
-		const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.tiles.level);
+	if (filter.data.spatialFilter && _.keys(filter.data.spatialFilter).length) {
+		if (filter.data.spatialFilter.tiles) {
+			const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
+			const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.tiles.level);
 
-		// todo what is for last parameter and why it throws an error if not set or set to false?
-		// there is also problem when set to true, all returned geometry coordinates are set to null
-		const gridAsGeoJson = ptrTileGrid.utils.getTileGridAsGeoJSON(filter.data.spatialFilter.tiles.tiles, gridSize);
+			const gridAsGeoJson = ptrTileGrid.utils.getTileGridAsGeoJSON([filter.data.spatialFilter.tiles.tiles], gridSize);
 
-		let featureGeometrySql = [];
-		_.each(gridAsGeoJson.features, (feature) => {
-			featureGeometrySql.push(`ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}')`);
-		});
+			let featureGeometrySql = [];
+			_.each(gridAsGeoJson.features, (feature) => {
+				featureGeometrySql.push(`ST_GeomFromGeoJSON('${JSON.stringify(feature.geometry)}')`);
+			});
 
-		geometrySql = `ST_Collect(ARRAY[${featureGeometrySql.join(", ")}])`;
+			if (featureGeometrySql.length) {
+				geometrySql = `ST_Collect(ARRAY[${featureGeometrySql.join(", ")}])`;
+			}
+		} else if (filter.data.spatialFilter.geoJson) {
 
-	} else if (filter.data.spatialFilter.geoJson) {
-
+		}
 	}
-
-	let querySql = "";
 
 	if (relations.attribute.length) {
 		let firstAttributeRelation = relations.attribute[0];
@@ -163,7 +119,7 @@ async function getDataForRelations(relations, filter) {
 			})
 
 			if (fidColumnSql.length && columnSql.length) {
-				querySql += `SELECT COALESCE(${fidColumnSql.join(", ")}) AS "featureKey", ${columnSql.join(", ")}`;
+				querySql += `SELECT COALESCE(${fidColumnSql.join(", ")}) AS "featureKey", ${columnSql.join(", ")}, COUNT(*) OVER () AS total`;
 				querySql += ` FROM "${firstAttributeRelation.attributeDataSource.tableName}" AS "${firstAttributeRelation.key}"`
 			}
 
@@ -174,9 +130,9 @@ async function getDataForRelations(relations, filter) {
 				})
 			}
 
-			if (filter.data.attributeFilter && _.keys(filter.data.attributeFilter).length) {
-				let whereSql = [];
+			let whereSql = [];
 
+			if (filter.data.attributeFilter && _.keys(filter.data.attributeFilter).length) {
 				_.each(filter.data.attributeFilter, (filter, attributeKey) => {
 					let attributeRelation = _.find(relations.attribute, (attributeRelation) => {
 						return attributeRelation.attributeKey === attributeKey;
@@ -184,7 +140,7 @@ async function getDataForRelations(relations, filter) {
 
 					if (attributeRelation) {
 						if (_.isString(filter)) {
-
+							whereSql.push(`"${attributeRelation.key}"."${attributeRelation.attributeDataSource.columnName}" = '${filter}'`);
 						} else if (_.isNumber(filter)) {
 							whereSql.push(`"${attributeRelation.key}"."${attributeRelation.attributeDataSource.columnName}" = ${filter}`);
 						} else if (_.isObject(filter)) {
@@ -192,10 +148,24 @@ async function getDataForRelations(relations, filter) {
 						}
 					}
 				});
+			}
 
-				if (whereSql.length) {
-					querySql += ` WHERE ${whereSql.join(" AND ")}`
+			if (geometrySql) {
+				let spatialQuerySql = [];
+
+				_.each(relations.spatial, (spatialRelation) => {
+					const spatialDataSource = spatialRelation.spatialDataSource;
+
+					spatialQuerySql.push(`SELECT "${spatialDataSource.fidColumnName}" AS "featureKey" FROM "${spatialDataSource.tableName}" WHERE ST_Intersects(${geometrySql}, "${spatialDataSource.geometryColumnName}")`);
+				})
+
+				if (spatialQuerySql.length) {
+					whereSql.push(`COALESCE(${fidColumnSql.join(", ")}) IN (${spatialQuerySql.join(" UNION ")})`);
 				}
+			}
+
+			if (whereSql.length) {
+				querySql += ` WHERE ${whereSql.join(" AND ")}`
 			}
 
 			if (filter.data.attributeOrder && filter.data.attributeOrder.length) {
@@ -220,13 +190,31 @@ async function getDataForRelations(relations, filter) {
 		}
 	}
 
-	await db.query(querySql)
-		.then((pgResult) => {
-			console.log(pgResult.rows.length);
-		})
-		.catch((error) => {
-			console.log(error);
-		})
+	if (querySql) {
+		querySql += ` LIMIT ${data.pagination.data.limit} OFFSET ${data.pagination.data.offset}`
+
+		await db.query(querySql)
+			.then((pgResult) => {
+				_.each(pgResult.rows, (row) => {
+					const featureKey = row.featureKey;
+
+					if (!data.pagination.data.total) {
+						data.pagination.data.total = _.toNumber(row.total);
+					}
+
+					_.unset(row, "featureKey");
+					_.unset(row, "total");
+
+					_.each(row, (value, dataSourceKey) => {
+						if (!data.attribute.hasOwnProperty(dataSourceKey)) {
+							data.attribute[dataSourceKey] = {};
+						}
+
+						data.attribute[dataSourceKey][featureKey] = value;
+					})
+				});
+			});
+	}
 
 	return data;
 }
