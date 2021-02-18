@@ -164,6 +164,16 @@ async function getDataForRelations(relations, filter) {
 				}
 			}
 
+			if (filter.data.featureKeys && filter.data.featureKeys.length) {
+				whereSql.push(`COALESCE(${fidColumnSql.join(", ")}) IN (${_.map(filter.data.featureKeys, (featureKey) => {
+					if (_.isNumber(featureKey)) {
+						return featureKey;
+					} else {
+						return `'${featureKey}'`;
+					}
+				}).join(", ")})`);
+			}
+
 			if (whereSql.length) {
 				querySql += ` WHERE ${whereSql.join(" AND ")}`
 			}
