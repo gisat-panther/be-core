@@ -29,7 +29,7 @@ function formatData(rawData, filter) {
 			total: rawData.data.pagination.relations.total,
 			offset: rawData.data.pagination.relations.offset,
 			limit: rawData.data.pagination.relations.limit,
-			attributeRelations: _.map(rawData.attribute, (attributeRelation) => {
+			attributeRelations: _.map(_.slice(rawData.attribute, rawData.data.pagination.relations.offset, rawData.data.pagination.relations.offset + rawData.data.pagination.relations.limit), (attributeRelation) => {
 				let cleanAttributeRelation = {
 					key: attributeRelation.key,
 					data: {
