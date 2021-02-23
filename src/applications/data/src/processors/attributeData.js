@@ -47,7 +47,8 @@ function formatData(rawData, filter) {
 			total: rawData.data.pagination.data.total,
 			offset: rawData.data.pagination.data.offset,
 			limit: rawData.data.pagination.data.limit,
-			attributeData: rawData.data.attribute
+			attributeData: rawData.data.attribute,
+			index: rawData.data.index
 		}
 	};
 
@@ -78,7 +79,8 @@ async function getDataForRelations(relations, filter) {
 				offset: filter.data.offset || 0,
 				total: null
 			}
-		}
+		},
+		index: []
 	};
 
 	let geometrySql = "";
@@ -109,17 +111,19 @@ async function getDataForRelations(relations, filter) {
 		let firstAttributeRelation = relations.attribute[0];
 		if (firstAttributeRelation) {
 			let fidColumnSql = [];
+			let helperFidColumnSql = [];
 			let columnSql = [];
 
 			_.each(relations.attribute, (attributeRelation) => {
 				const attributeDataSource = attributeRelation.attributeDataSource;
 
 				fidColumnSql.push(`"${attributeRelation.key}"."${attributeDataSource.fidColumnName}"`);
+				helperFidColumnSql.push(`"${attributeRelation.key}"."${attributeDataSource.fidColumnName}" AS "${attributeDataSource.key}_FID"`);
 				columnSql.push(`"${attributeRelation.key}"."${attributeDataSource.columnName}" AS "${attributeDataSource.key}"`);
 			})
 
 			if (fidColumnSql.length && columnSql.length) {
-				querySql += `SELECT COALESCE(${fidColumnSql.join(", ")}) AS "featureKey", ${columnSql.join(", ")}, COUNT(*) OVER () AS total`;
+				querySql += `SELECT COALESCE(${fidColumnSql.join(", ")}) AS "featureKey", ${helperFidColumnSql.join(", ")}, ${columnSql.join(", ")}, COUNT(*) OVER () AS total`;
 				querySql += ` FROM "${firstAttributeRelation.attributeDataSource.tableName}" AS "${firstAttributeRelation.key}"`
 			}
 
@@ -215,12 +219,18 @@ async function getDataForRelations(relations, filter) {
 					_.unset(row, "featureKey");
 					_.unset(row, "total");
 
-					_.each(row, (value, dataSourceKey) => {
-						if (!data.attribute.hasOwnProperty(dataSourceKey)) {
-							data.attribute[dataSourceKey] = {};
-						}
+					data.index.push(featureKey);
 
-						data.attribute[dataSourceKey][featureKey] = value;
+					_.each(row, (value, columnName) => {
+						if (!columnName.endsWith("_FID")) {
+							if (!data.attribute.hasOwnProperty(columnName)) {
+								data.attribute[columnName] = {};
+							}
+
+							if (row[`${columnName}_FID`]) {
+								data.attribute[columnName][featureKey] = value;
+							}
+						}
 					})
 				});
 			});
