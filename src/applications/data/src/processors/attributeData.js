@@ -24,30 +24,41 @@ async function getData(group, type, user, filter) {
 }
 
 function formatData(rawData, filter) {
+	let attributeRelations = false;
+	let attributeData = false;
+
+	if (filter.relations.relations) {
+		attributeRelations = _.map(_.slice(rawData.attribute, rawData.data.pagination.relations.offset, rawData.data.pagination.relations.offset + rawData.data.pagination.relations.limit), (attributeRelation) => {
+			let cleanAttributeRelation = {
+				key: attributeRelation.key,
+				data: {
+					...attributeRelation
+				}
+			}
+
+			_.unset(cleanAttributeRelation.data, "key");
+			_.unset(cleanAttributeRelation.data, "attributeDataSource");
+
+			return cleanAttributeRelation;
+		})
+	}
+
+	if (filter.data.data) {
+		attributeData = rawData.data.attribute;
+	}
+
 	let formattedResponse = {
 		attributeRelationsDataSources: {
 			total: rawData.data.pagination.relations.total,
 			offset: rawData.data.pagination.relations.offset,
 			limit: rawData.data.pagination.relations.limit,
-			attributeRelations: _.map(_.slice(rawData.attribute, rawData.data.pagination.relations.offset, rawData.data.pagination.relations.offset + rawData.data.pagination.relations.limit), (attributeRelation) => {
-				let cleanAttributeRelation = {
-					key: attributeRelation.key,
-					data: {
-						...attributeRelation
-					}
-				}
-
-				_.unset(cleanAttributeRelation.data, "key");
-				_.unset(cleanAttributeRelation.data, "attributeDataSource");
-
-				return cleanAttributeRelation;
-			})
+			attributeRelations
 		},
 		attributeData: {
 			total: rawData.data.pagination.data.total,
 			offset: rawData.data.pagination.data.offset,
 			limit: rawData.data.pagination.data.limit,
-			attributeData: rawData.data.attribute,
+			attributeData,
 			index: rawData.data.index
 		}
 	};
