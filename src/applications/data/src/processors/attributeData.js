@@ -26,6 +26,7 @@ async function getData(group, type, user, filter) {
 function formatData(rawData, filter) {
 	let attributeRelations = false;
 	let attributeData = false;
+	let index = false;
 
 	if (filter.relations.relations) {
 		attributeRelations = _.map(_.slice(rawData.attribute, rawData.data.pagination.relations.offset, rawData.data.pagination.relations.offset + rawData.data.pagination.relations.limit), (attributeRelation) => {
@@ -45,6 +46,7 @@ function formatData(rawData, filter) {
 
 	if (filter.data.data) {
 		attributeData = rawData.data.attribute;
+		index = rawData.data.index;
 	}
 
 	let formattedResponse = {
@@ -59,7 +61,7 @@ function formatData(rawData, filter) {
 			offset: rawData.data.pagination.data.offset,
 			limit: rawData.data.pagination.data.limit,
 			attributeData,
-			index: rawData.data.index
+			index: index
 		}
 	};
 
