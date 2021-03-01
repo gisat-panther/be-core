@@ -1510,16 +1510,14 @@ async function updateRecordRelation({plan, group, type, client}, record) {
                         ];
                     }, relKey);
 
+                    // todo find out how to do this using imatic pgqb
+                    const parentTableName = plan[group][type].table || type;
                     acc.push(
-                        qb.toSql(
-                            qb.merge(
-                                qb.insertInto(rel.relationTable),
-                                qb.columns([rel.ownKey, rel.inverseKey]),
-                                qb.values(values),
-                                qb.onConflict([rel.ownKey, rel.inverseKey]),
-                                qb.doNothing()
-                            )
-                        )
+						SQL`INSERT INTO `
+							.append(`${quoteIdentifier(rel.relationTable)} ("${rel.ownKey}", "${rel.inverseKey}") `)
+							.append(`SELECT '${record.key}', '${relKey}' WHERE EXISTS `)
+							.append(`(SELECT * FROM "${group}"."${parentTableName}" `)
+							.append(`WHERE "key" = '${record.key}')`)
                     );
 
                     return acc;
