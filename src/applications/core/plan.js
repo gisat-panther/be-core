@@ -1264,7 +1264,7 @@ module.exports = {
                 dispatchColumn: 'type',
                 key: 'sourceKey',
                 types: {
-                    vector: {
+                    "tiledVector": {
                         context: {
                             list: {
                                 columns: ['layerName', 'tableName', 'fidColumnName', 'geometryColumnName'],

@@ -130,7 +130,7 @@ async function getDataForRelations(relations, filter) {
 	let attributeRelationKeys = _.keys(corePlan.relations.attribute.columns);
 	let commonKeys = _.without(_.intersection(spatialRelationKeys, attributeRelationKeys), "key");
 
-	const allowedDataSourceTypes = ["vector"];
+	const allowedDataSourceTypes = ["tiledVector"];
 
 	const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
 	const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.level);
