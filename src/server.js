@@ -55,19 +55,20 @@ const createWorker = (env) => {
 	let worker = cluster.fork(env);
 	worker.process.env = env;
 
-	if(config.keepAliveWorkers) {
-		worker.on("exit", () => {
-			console.log(`#NOTE# Worker ${worker.id} died`);
+	worker.on("exit", () => {
+		console.log(`#NOTE# Worker ${worker.id} died`);
+
+		if (config.keepAliveWorkers) {
 			createWorker(env);
-		})
-	}
+		}
+	})
 }
 
 process.on(`uncaughtException`, (error) => {
 	console.log(`#ERROR#`, error)
 });
 
-if(cluster.isMaster) {
+if (cluster.isMaster) {
 	initMaster();
 } else {
 	initWorker();
