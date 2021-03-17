@@ -2,6 +2,7 @@ const cluster = require('cluster');
 const applicationsRouter = require('./applications/index').router;
 const config = require('../config');
 const db = require('./db');
+const shared = require("../src/util/shared");
 const migrations = require('./migrations');
 const permissions = require('./modules/permissions/index');
 const getAppConfig = require('./applications/config').get;
@@ -12,6 +13,7 @@ const initMaster = async () => {
 	try {
 		await migrations.migrate();
 		initWorkers()
+		shared.init();
 		await db.init();
 		const appConfig = getAppConfig();
 		const app = express();
