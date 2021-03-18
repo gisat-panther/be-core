@@ -3,6 +3,7 @@ const ipc = require("node-ipc");
 const {v4: uuid} = require("uuid");
 const _ = require("lodash");
 const fs = require("fs");
+const hash = require('object-hash');
 
 const ipcSocketPath = "/tmp/ptr-ipc-master.sock"
 
@@ -178,6 +179,20 @@ const maintenance = () => {
 	}, 1000);
 }
 
+const getHash = (...args) => {
+	return hash({
+		...args
+	});
+}
+
+const getUserHash = (user) => {
+	if (user.type === "guest") {
+		return hash(user.type);
+	} else {
+		return hash(user);
+	}
+}
+
 const initIpc = () => {
 	if (cluster.isMaster) {
 		if (fs.existsSync(ipcSocketPath)) {
@@ -207,5 +222,7 @@ module.exports = {
 	init,
 	get,
 	set,
-	del
+	del,
+	getHash,
+	getUserHash
 }
