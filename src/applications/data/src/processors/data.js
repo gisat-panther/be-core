@@ -178,9 +178,24 @@ async function getDataForRelations(relations, filter) {
 
 		whereSqls.push(`ST_Intersects("${spatialDataSource.geometryColumnName}", ST_GeomFromGeoJSON('${JSON.stringify(tileGeometries[spatialIndex.tiles[0]].geometry)}'))`)
 
+		// todo find way how to cache data as whole and not per tile
 		let spatialDataPgQuerySql = `SELECT "${spatialDataSource.fidColumnName}", ${geometryColumnSql} FROM "${spatialDataSource.tableName}" WHERE ${whereSqls.join(" AND ")}`;
-
-		await db.query(spatialDataPgQuerySql)
+		await Promise
+			.resolve()
+			.then(async () => {
+				let cachedPgResult = await shared.get(shared.getHash(spatialDataPgQuerySql));
+				if (cachedPgResult) {
+					return cachedPgResult
+				} else {
+					return db.query(spatialDataPgQuerySql)
+						.then((pgResult) => {
+							return shared.set(shared.getHash(spatialDataPgQuerySql), pgResult)
+								.then(() => {
+									return pgResult;
+								})
+						})
+				}
+			})
 			.then((pgResult) => {
 				data.spatial[spatialDataSource.key] = {
 					data: {},
