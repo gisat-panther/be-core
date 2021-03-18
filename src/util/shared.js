@@ -11,7 +11,7 @@ const shared = {};
 ipc.config.silent = true;
 // ipc.config.retry = 1500;
 
-const set = (key, value) => {
+const set = (key, value, ttl) => {
 	return new Promise((resolve) => {
 		let tKey = uuid();
 		ipc.config.id = `ptr-be-worker-${cluster.worker.id}`;
@@ -27,7 +27,8 @@ const set = (key, value) => {
 							tKey,
 							key,
 							value,
-							method: "set"
+							method: "set",
+							ttl
 						}
 					)
 					// get response from master
@@ -45,7 +46,7 @@ const set = (key, value) => {
 
 const _set = (data, socket) => {
 	if (data.key && data.value) {
-		_.set(shared, data.key, data.value);
+		_.set(shared, data.key, {value: data.value, ttl: data.ttl});
 	}
 
 	ipc.server.emit(
@@ -95,7 +96,7 @@ const _get = (data, socket) => {
 		data.tKey,
 		{
 			...data,
-			value: shared[data.key]
+			value: shared[data.key] && shared[data.key].value
 		}
 	)
 }
@@ -171,7 +172,7 @@ const maintenance = () => {
 	setInterval(() => {
 		_.each(shared, (data, key) => {
 			if (data.ttl && data.ttl < Date.now()) {
-				del(key).then();
+				_.unset(shared, key);
 			}
 		})
 	}, 1000);
