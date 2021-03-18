@@ -7,6 +7,8 @@ const plan = require('../../../plan');
 const query = require('../../../../modules/rest/query');
 const corePlan = require('../../../../applications/core/plan');
 
+const shared = require('../../../../util/shared');
+
 
 async function getData(group, type, user, filter) {
 	let data = await query.list({group, type, user}, {filter});
@@ -280,7 +282,14 @@ async function getDataForRelations(relations, filter) {
 }
 
 async function populateRelationsWithDataSources(relations, user) {
-	let spatialDataSources = await getData(`dataSources`, `spatial`, user, {key: {in: _.map(relations.spatial, (relation) => {return relation.spatialDataSourceKey})}});
+	let cachedSpatialDataSources = await shared.get(shared.getHash({key: {in: _.map(relations.spatial, (relation) => {return relation.spatialDataSourceKey})}}, shared.getUserHash(user)));
+	let spatialDataSources;
+	if (cachedSpatialDataSources) {
+		spatialDataSources = cachedSpatialDataSources;
+	} else {
+		spatialDataSources = await getData(`dataSources`, `spatial`, user, {key: {in: _.map(relations.spatial, (relation) => {return relation.spatialDataSourceKey})}});
+		await shared.set(shared.getHash({key: {in: _.map(relations.spatial, (relation) => {return relation.spatialDataSourceKey})}}, shared.getUserHash(user)), spatialDataSources);
+	}
 	_.each(spatialDataSources, (dataSource) => {
 		_.each(relations.spatial, (relation) => {
 			if (relation.spatialDataSourceKey === dataSource.key) {
@@ -289,7 +298,14 @@ async function populateRelationsWithDataSources(relations, user) {
 		})
 	})
 
-	let attributeDataSources = await getData(`dataSources`, `attribute`, user, {key: {in: _.map(relations.attribute, (relation) => {return relation.attributeDataSourceKey})}});
+	let cachedAttributeDataSources = await shared.get(shared.getHash({key: {in: _.map(relations.attribute, (relation) => {return relation.attributeDataSourceKey})}}, shared.getUserHash(user)));
+	let attributeDataSources;
+	if (cachedAttributeDataSources) {
+		attributeDataSources = cachedAttributeDataSources;
+	} else {
+		attributeDataSources = await getData(`dataSources`, `attribute`, user, {key: {in: _.map(relations.attribute, (relation) => {return relation.attributeDataSourceKey})}});
+		await shared.set(shared.getHash({key: {in: _.map(relations.attribute, (relation) => {return relation.attributeDataSourceKey})}}, shared.getUserHash(user)), attributeDataSources);
+	}
 	_.each(attributeDataSources, (dataSource) => {
 		_.each(relations.attribute, (relation) => {
 			if (relation.attributeDataSourceKey === dataSource.key) {
@@ -314,7 +330,13 @@ async function getRelationsByFilter(filter, user) {
 		_.set(spatialRelationsFilter, 'spatialDataSourceKey', {in: filter.data.dataSourceKeys});
 	}
 
-	relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
+	let cachedSpatialRelations = await shared.get(shared.getHash(spatialRelationsFilter, shared.getUserHash(user)));
+	if (cachedSpatialRelations) {
+		relations.spatial = cachedSpatialRelations;
+	} else {
+		relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
+		await shared.set(shared.getHash(spatialRelationsFilter, shared.getUserHash(user)), relations.spatial);
+	}
 
 	let attributeRelationsFilter = filter.modifiers || {};
 	if (filter.hasOwnProperty('styleKey')) {
@@ -322,8 +344,17 @@ async function getRelationsByFilter(filter, user) {
 			_.set(attributeRelationsFilter, 'attributeDataSourceKey', {in: filter.data.dataSourceKeys});
 		}
 
-		let styles = await getData(`metadata`, `styles`, user, {key: filter.styleKey});
-		let style = styles[0];
+		let cachedStyle = await shared.get(shared.getHash({key: filter.styleKey}, shared.getUserHash(user)));
+		let style;
+		if (cachedStyle) {
+			style = cachedStyle;
+		} else {
+			let styles = await getData(`metadata`, `styles`, user, {key: filter.styleKey});
+			style = styles[0];
+			if (style) {
+				await shared.set(shared.getHash({key: filter.styleKey}, shared.getUserHash(user)), style);
+			}
+		}
 
 		if (style) {
 			let attributeKeys = _.compact(_.flatten(_.map(style.definition.rules, (rule) => {
@@ -337,7 +368,13 @@ async function getRelationsByFilter(filter, user) {
 			}
 		}
 
-		relations.attribute = await getData(`relations`, `attribute`, user, attributeRelationsFilter);
+		let cachedAttributeRelations = await shared.get(shared.getHash(attributeRelationsFilter, shared.getUserHash(user)));
+		if (cachedAttributeRelations) {
+			relations.attribute = cachedAttributeRelations;
+		} else {
+			relations.attribute = await getData(`relations`, `attribute`, user, attributeRelationsFilter);
+			await shared.set(shared.getHash(attributeRelationsFilter, shared.getUserHash(user)), relations.attribute);
+		}
 	}
 
 	return relations;
