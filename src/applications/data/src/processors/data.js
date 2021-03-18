@@ -282,37 +282,43 @@ async function getDataForRelations(relations, filter) {
 }
 
 async function populateRelationsWithDataSources(relations, user) {
-	let cachedSpatialDataSources = await shared.get(shared.getHash({key: {in: _.map(relations.spatial, (relation) => {return relation.spatialDataSourceKey})}}, shared.getUserHash(user)));
-	let spatialDataSources;
-	if (cachedSpatialDataSources) {
-		spatialDataSources = cachedSpatialDataSources;
-	} else {
-		spatialDataSources = await getData(`dataSources`, `spatial`, user, {key: {in: _.map(relations.spatial, (relation) => {return relation.spatialDataSourceKey})}});
-		await shared.set(shared.getHash({key: {in: _.map(relations.spatial, (relation) => {return relation.spatialDataSourceKey})}}, shared.getUserHash(user)), spatialDataSources);
-	}
-	_.each(spatialDataSources, (dataSource) => {
-		_.each(relations.spatial, (relation) => {
-			if (relation.spatialDataSourceKey === dataSource.key) {
-				relation.spatialDataSource = dataSource;
-			}
+	let spatialDataSourceKeys = _.map(relations.spatial, (relation) => {return relation.spatialDataSourceKey});
+	if (spatialDataSourceKeys.length) {
+		let cachedSpatialDataSources = await shared.get(shared.getHash({key: {in: spatialDataSourceKeys}}, shared.getUserHash(user)));
+		let spatialDataSources;
+		if (cachedSpatialDataSources) {
+			spatialDataSources = cachedSpatialDataSources;
+		} else {
+			spatialDataSources = await getData(`dataSources`, `spatial`, user, {key: {in: spatialDataSourceKeys}});
+			await shared.set(shared.getHash({key: {in: _.map(relations.spatial, (relation) => {return relation.spatialDataSourceKey})}}, shared.getUserHash(user)), spatialDataSources);
+		}
+		_.each(spatialDataSources, (dataSource) => {
+			_.each(relations.spatial, (relation) => {
+				if (relation.spatialDataSourceKey === dataSource.key) {
+					relation.spatialDataSource = dataSource;
+				}
+			})
 		})
-	})
+	}
 
-	let cachedAttributeDataSources = await shared.get(shared.getHash({key: {in: _.map(relations.attribute, (relation) => {return relation.attributeDataSourceKey})}}, shared.getUserHash(user)));
-	let attributeDataSources;
-	if (cachedAttributeDataSources) {
-		attributeDataSources = cachedAttributeDataSources;
-	} else {
-		attributeDataSources = await getData(`dataSources`, `attribute`, user, {key: {in: _.map(relations.attribute, (relation) => {return relation.attributeDataSourceKey})}});
-		await shared.set(shared.getHash({key: {in: _.map(relations.attribute, (relation) => {return relation.attributeDataSourceKey})}}, shared.getUserHash(user)), attributeDataSources);
-	}
-	_.each(attributeDataSources, (dataSource) => {
-		_.each(relations.attribute, (relation) => {
-			if (relation.attributeDataSourceKey === dataSource.key) {
-				relation.attributeDataSource = dataSource;
-			}
+	let attributeDataSourceKeys = _.map(relations.attribute, (relation) => {return relation.attributeDataSourceKey});
+	if (attributeDataSourceKeys.length) {
+		let cachedAttributeDataSources = await shared.get(shared.getHash({key: {in: attributeDataSourceKeys}}, shared.getUserHash(user)));
+		let attributeDataSources;
+		if (cachedAttributeDataSources) {
+			attributeDataSources = cachedAttributeDataSources;
+		} else {
+			attributeDataSources = await getData(`dataSources`, `attribute`, user, {key: {in: _.map(relations.attribute, (relation) => {return relation.attributeDataSourceKey})}});
+			await shared.set(shared.getHash({key: {in: attributeDataSourceKeys}}, shared.getUserHash(user)), attributeDataSources);
+		}
+		_.each(attributeDataSources, (dataSource) => {
+			_.each(relations.attribute, (relation) => {
+				if (relation.attributeDataSourceKey === dataSource.key) {
+					relation.attributeDataSource = dataSource;
+				}
+			})
 		})
-	})
+	}
 }
 
 async function getRelationsByFilter(filter, user) {
