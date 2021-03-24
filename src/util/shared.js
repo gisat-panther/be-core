@@ -80,7 +80,7 @@ const get = (key) => {
 					)
 					// get data from master
 					ipc.of[tKey].on(tKey, (data) => {
-						if (data.tKey === tKey && data.value !== "#processing") {
+						if (data.tKey === tKey) {
 							ipc.disconnect(tKey);
 							resolve(data.value);
 						}
@@ -92,14 +92,19 @@ const get = (key) => {
 }
 
 const _get = (data, socket) => {
-	ipc.server.emit(
-		socket,
-		data.tKey,
-		{
-			...data,
-			value: shared[data.key] && shared[data.key].value
+	let interval = setInterval(() => {
+		if (!shared[data.key] || shared[data.key].value !== "#processing") {
+			ipc.server.emit(
+				socket,
+				data.tKey,
+				{
+					...data,
+					value: shared[data.key] && shared[data.key].value
+				}
+			)
+			clearInterval(interval);
 		}
-	)
+	}, 0);
 }
 
 const del = (key) => {
