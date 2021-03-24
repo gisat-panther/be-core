@@ -382,9 +382,5 @@ async function getFormattedResponse(filter, user) {
 }
 
 module.exports = async function (filter, user) {
-	let start = Date.now();
-	return await getFormattedResponse(filter, user)
-		.finally(() => {
-			console.log(`#${process.pid} Spatial data execution time ${Date.now() - start}ms`);
-		})
+	return await getFormattedResponse(filter, user);
 }
