@@ -11,7 +11,7 @@
     "url": "https://github.com/gisat-panther/be-core/issues"
   },
   "dependencies": {
-    "@gisatcz/ptr-tile-grid": "^0.0.5",
+    "@gisatcz/ptr-tile-grid": "^0.0.8",
     "@imatic/pgqb": "^0.1.24",
     "adm-zip": "^0.5.1",
     "bcrypt": "^5.0.0",

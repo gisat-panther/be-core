@@ -80,7 +80,7 @@ const get = (key) => {
 					)
 					// get data from master
 					ipc.of[tKey].on(tKey, (data) => {
-						if (data.tKey === tKey) {
+						if (data.tKey === tKey && data.value !== "#processing") {
 							ipc.disconnect(tKey);
 							resolve(data.value);
 						}
