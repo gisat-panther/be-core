@@ -382,12 +382,5 @@ async function getFormattedResponse(filter, user) {
 }
 
 module.exports = async function (filter, user) {
-	let start = Date.now();
 	return await getFormattedResponse(filter, user)
-		.catch((error) => {
-			console.log(error);
-		})
-		.finally(() => {
-			console.log(process.pid, Date.now() - start);
-		})
 }
