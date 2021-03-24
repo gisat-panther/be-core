@@ -209,11 +209,7 @@ const getDataForRelations = async (relations, filter) => {
 		mViewName = `ptr_${cacheKey}`;
 		await shared.set(cacheKey, "#processing");
 		await db.query(
-			SQL`DROP MATERIALIZED VIEW IF EXISTS`
-				.append(` "${mViewName}"`)
-		);
-		await db.query(
-			SQL`CREATE MATERIALIZED VIEW `
+			SQL`CREATE MATERIALIZED VIEW IF NOT EXISTS`
 				.append(`"ptr_${cacheKey}" AS `)
 				.append(sql)
 				.setName(`ptr_${uuid()}`)
