@@ -13,8 +13,8 @@ const initMaster = async () => {
 	try {
 		await migrations.migrate();
 		initWorkers()
-		shared.init();
 		await db.init();
+		shared.init();
 		const appConfig = getAppConfig();
 		const app = express();
 		prometheus.init({app});

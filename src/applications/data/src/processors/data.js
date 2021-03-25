@@ -203,19 +203,16 @@ const getDataForRelations = async (relations, filter) => {
 
 	const sql = getSqlForRelationsAndFilter(relations, filter);
 	const cacheKey = shared.getHash(relations, filter.data.spatialFilter);
+	const mViewName = `ptr_${cacheKey}`;
 
-	let mViewName = await shared.get(cacheKey);
-	if (!mViewName) {
-		mViewName = `ptr_${cacheKey}`;
-		await shared.set(cacheKey, "#processing");
-		await db.query(
-			SQL`CREATE MATERIALIZED VIEW IF NOT EXISTS`
-				.append(`"ptr_${cacheKey}" AS `)
-				.append(sql)
-				.setName(`ptr_${uuid()}`)
-		)
-		await shared.set(cacheKey, mViewName);
-	}
+	await shared.exec({
+		type: "pg",
+		key: mViewName,
+		query: SQL`CREATE MATERIALIZED VIEW IF NOT EXISTS`
+			.append(`"ptr_${cacheKey}" AS `)
+			.append(sql)
+			.setName(`ptr_${uuid()}`)
+	})
 
 	let tileKeys = [];
 	if (filter.data.spatialIndex && filter.data.spatialIndex.tiles) {
@@ -224,7 +221,7 @@ const getDataForRelations = async (relations, filter) => {
 		tileKeys.push(`'${filter.data.spatialFilter.tiles[0]}'`);
 	}
 
-	if (tileKeys) {
+	if (tileKeys.length) {
 		await db.query(
 			SQL`SELECT *`
 				.append(` FROM "${mViewName}"`)
@@ -232,7 +229,10 @@ const getDataForRelations = async (relations, filter) => {
 				.setName(`ptr_${uuid()}`)
 		).then((pgResult) => {
 			_.each(pgResult.rows, (row) => {
-				data.spatial[row.spatialDataSourceKey] = data.spatial[row.spatialDataSourceKey] || {data: {}, spatialIndex: {}};
+				data.spatial[row.spatialDataSourceKey] = data.spatial[row.spatialDataSourceKey] || {
+					data: {},
+					spatialIndex: {}
+				};
 				data.attribute[row.attributeDataSourceKey] = data.attribute[row.attributeDataSourceKey] || {}
 
 				data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] = data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] || {};
@@ -378,5 +378,9 @@ async function getFormattedResponse(filter, user) {
 }
 
 module.exports = async function (filter, user) {
-	return await getFormattedResponse(filter, user);
+	let start = Date.now();
+	return await getFormattedResponse(filter, user)
+		.finally(() => {
+			console.log(Date.now() - start);
+		})
 }

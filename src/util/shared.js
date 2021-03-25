@@ -4,10 +4,12 @@ const {v4: uuid} = require("uuid");
 const _ = require("lodash");
 const fs = require("fs");
 const hash = require('object-hash');
+const db = require("../db");
 
 const ipcSocketPath = "/tmp/ptr-ipc-master.sock"
 
 const shared = {};
+const execs = {};
 
 ipc.config.silent = true;
 // ipc.config.retry = 1500;
@@ -152,6 +154,54 @@ const _del = (data, socket) => {
 	)
 }
 
+const exec = (data) => {
+	return new Promise((resolve) => {
+		let tKey = uuid();
+		ipc.config.id = `ptr-be-worker-${cluster.worker.id}`;
+		ipc.connectTo(
+			tKey,
+			ipcSocketPath,
+			() => {
+				ipc.of[tKey].on("connect", () => {
+					// ask master for data
+					ipc.of[tKey].emit(
+						"shared",
+						{
+							tKey,
+							data,
+							method: "exec"
+						}
+					)
+					// get data from master
+					ipc.of[tKey].on(tKey, (data) => {
+						if (data.tKey === tKey) {
+							ipc.disconnect(tKey);
+							resolve();
+						}
+					})
+				})
+			}
+		)
+	});
+}
+
+const _exec = (data, socket) => {
+	execute(data);
+	let interval = setInterval(() => {
+		if (execs[data.data.key].done) {
+			ipc.server.emit(
+				socket,
+				data.tKey,
+				{
+					...execs[data.data.key],
+					tKey: data.tKey
+				}
+			)
+			clearInterval(interval);
+		}
+	}, 0);
+}
+
 const request = (data, socket) => {
 	switch (data.method) {
 		case "get":
@@ -163,6 +213,29 @@ const request = (data, socket) => {
 		case "del":
 			_del(data, socket);
 			break;
+		case "exec":
+			_exec(data, socket);
+			break;
+	}
+}
+
+const execute = (data) => {
+	if (!execs[data.data.key]) {
+		execs[data.data.key] = data;
+	}
+
+	if (!execs[data.data.key].done && !execs[data.data.key].active && data.data.type === "pg") {
+		execs[data.data.key].active = true;
+
+		db
+			.query(data.data.query.strings.join())
+			.then((pgResult) => {
+				execs[data.data.key].done = true;
+			})
+			.catch((error) => {
+				execs[data.data.key].done = true;
+				execs[data.data.key].error = error.message;
+			})
 	}
 }
 
@@ -228,6 +301,7 @@ module.exports = {
 	get,
 	set,
 	del,
+	exec,
 	getHash,
 	getUserHash
 }
