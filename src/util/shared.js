@@ -10,6 +10,7 @@ const ipcSocketPath = "/tmp/ptr-ipc-master.sock"
 
 const shared = {};
 const execs = {};
+const firstGets = {};
 
 ipc.config.silent = true;
 // ipc.config.retry = 1500;
@@ -50,6 +51,10 @@ const set = (key, value, ttl) => {
 const _set = (data, socket) => {
 	if (data.key && data.value) {
 		_.set(shared, data.key, {value: data.value, ttl: data.ttl});
+	}
+
+	if (firstGets[data.key]) {
+		_.unset(firstGets, data.key);
 	}
 
 	ipc.server.emit(
@@ -95,7 +100,10 @@ const get = (key) => {
 
 const _get = (data, socket) => {
 	let interval = setInterval(() => {
-		if (!shared[data.key] || shared[data.key].value !== "#processing") {
+		if (!firstGets[data.key]) {
+			if (!shared[data.key]) {
+				firstGets[data.key] = true;
+			}
 			ipc.server.emit(
 				socket,
 				data.tKey,
@@ -106,7 +114,7 @@ const _get = (data, socket) => {
 			)
 			clearInterval(interval);
 		}
-	}, 0);
+	}, 1);
 }
 
 const del = (key) => {
@@ -199,7 +207,7 @@ const _exec = (data, socket) => {
 			)
 			clearInterval(interval);
 		}
-	}, 0);
+	}, 1);
 }
 
 const request = (data, socket) => {
