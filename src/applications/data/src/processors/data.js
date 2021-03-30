@@ -190,8 +190,6 @@ const getSqlForRelationsAndFilter = (relations, filter) => {
 
 	sql.setName(`ptr_${uuid()}`);
 
-	console.log(sql);
-
 	return sql;
 }
 
