@@ -130,7 +130,9 @@ async function getPopulatedRelationsByFilter(filter, user) {
 const getSqlForRelationsAndFilter = (relations, filter) => {
 	let sql = SQL``;
 
-	let tileSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.level);
+	const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
+	const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.level);
+	const geometryTolerance = gridSize / tileSize;
 
 	sql.append(`SELECT`);
 	sql.append(` "fid", "geometry", "spatialDataSourceKey", "tile", "level"`);
@@ -163,11 +165,14 @@ const getSqlForRelationsAndFilter = (relations, filter) => {
 
 			}
 
-			let tileAsPolygon = ptrTileGrid.utils.getTileAsPolygon(tile, tileSize);
+			let tileAsPolygon = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
 
 			sql.append(`SELECT`)
 			sql.append(` "${spatialDataSource.fidColumnName}" AS "fid"`)
-			sql.append(`, ST_AsGeoJSON("${spatialDataSource.geometryColumnName}") AS "geometry"`)
+			sql.append(`, CASE WHEN EXISTS(SELECT * FROM "information_schema"."columns" WHERE "table_name" = '${spatialDataSource.tableName}' AND "column_name" = 'topo')`)
+			sql.append(` THEN ST_AsGeoJSON(topology.st_simplify("topo", ${geometryTolerance}))`)
+			sql.append(` ELSE ST_AsGeoJSON(ST_Simplify("${spatialDataSource.geometryColumnName}", ${geometryTolerance}))`)
+			sql.append(` END AS "geometry"`)
 			sql.append(`, '${spatialDataSource.key}' AS "spatialDataSourceKey"`)
 			sql.append(`, '${tile}' AS "tile"`)
 			sql.append(`, '${filter.data.spatialFilter.level}' AS "level"`)
@@ -184,6 +189,8 @@ const getSqlForRelationsAndFilter = (relations, filter) => {
 	})
 
 	sql.setName(`ptr_${uuid()}`);
+
+	console.log(sql);
 
 	return sql;
 }
@@ -209,10 +216,10 @@ const getDataForRelations = async (relations, filter) => {
 		type: "pg",
 		key: mViewName,
 		query: SQL`CREATE MATERIALIZED VIEW IF NOT EXISTS`
-			.append(`"ptr_${cacheKey}" AS `)
+			.append(` "ptr_${cacheKey}" AS `)
 			.append(sql)
 			.setName(`ptr_${uuid()}`)
-	})
+	});
 
 	let tileKeys = [];
 	if (filter.data.spatialIndex && filter.data.spatialIndex.tiles) {
