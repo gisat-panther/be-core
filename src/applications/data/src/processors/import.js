@@ -225,7 +225,7 @@ const createTilesForLayer = (layerName, options) => {
 
 	return db
 		.query(
-			`ALTER TABLE "${layerName}" ADD CONSTRAINT "unique_${options.fidColumnName}" UNIQUE ("${options.fidColumnName}")`
+			`ALTER TABLE "${layerName}" ADD CONSTRAINT "${layerName}_${options.fidColumnName}_unique" UNIQUE ("${options.fidColumnName}")`
 		)
 		.then(() => {
 			return db
@@ -240,56 +240,21 @@ const createTilesForLayer = (layerName, options) => {
 		.then((pgResult) => {
 			return pgResult.rows[0].fidColumnType;
 		})
-		.then(async (fidColumnType) => {
-			await db
+		.then((fidColumnType) => {
+			return db
 				.query(
-					`CREATE TABLE "${layerName}_tiles" (
-					"${options.fidColumnName}" ${fidColumnType} REFERENCES "${layerName}" ("${options.fidColumnName}"), 
-					"tile" TEXT, 
-					"level" INT
-					)`
-				)
-
-			await db
-				.query(
-					`CREATE TABLE "${layerName}_simple" (
+					`BEGIN;
+					CREATE TABLE "${layerName}_simple" (
 					"${options.fidColumnName}" ${fidColumnType} REFERENCES "${layerName}" ("${options.fidColumnName}"),
-					"level" INT
-					)`
+					"level" INT,
+					"json" TEXT,
+					UNIQUE ("${options.fidColumnName}", "level")
+					);
+					CREATE INDEX ON "${layerName}_simple" ("level");
+					COMMIT;`
 				)
 		})
-		.then(() => {
-			return db
-				.query(
-					`SELECT ST_SRID(geom) AS "srid", GeometryType(geom) AS "type"
-					FROM "${layerName}" LIMIT 1`
-				)
-				.then((pgResult) => {
-					return pgResult.rows[0];
-				})
-
-		})
-		.then((geomProps) => {
-			return db
-				.query(
-					`SELECT AddGeometryColumn('public', '${layerName}_simple', 'geom', ${geomProps.srid}, '${geomProps.type}', 2)`
-				)
-		})
-		.then(() => {
-			return db
-				.query(
-					`SELECT 
-					ST_XMin(ST_Extent(geom)) AS "xMin", 
-					ST_YMin(ST_Extent(geom)) AS "yMin", 
-					ST_XMax(ST_Extent(geom)) AS "xMax", 
-					ST_YMax(ST_Extent(geom)) AS "yMax" 
-					FROM "${layerName}"`
-				)
-				.then((pgResult) => {
-					return [[pgResult.rows[0].xMin, pgResult.rows[0].yMin], [pgResult.rows[0].xMax, pgResult.rows[0].yMax]]
-				})
-		})
-		.then(async (bBox) => {
+		.then(async () => {
 			const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
 
 			const hasTopo = await db
@@ -301,15 +266,8 @@ const createTilesForLayer = (layerName, options) => {
 			let runs = 0;
 
 			for (let level = 0; level <= 25; level++) {
-				const start = Date.now();
 				const gridSize = ptrTileGrid.utils.getGridSizeForLevel(level);
-				const grid = ptrTileGrid.grid.getGridForLevelAndExtent(level, bBox);
 				const precision = gridSize / tileSize;
-
-				ptrTileGrid.utils.forEachTile(grid, (tile, row, column) => {
-					// todo there is an issue with getGridForLevelAndExtent, wait for fix or find other solution
-					const tileGeometry = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
-				});
 
 				Promise
 					.resolve()
@@ -317,13 +275,12 @@ const createTilesForLayer = (layerName, options) => {
 						runs++;
 					})
 					.then(() => {
-						console.log(`level ${level}`);
 						return db.query(
 							`INSERT INTO "${layerName}_simple" 
 							SELECT 
 							"${options.fidColumnName}", 
 							'${level}',
-							${hasTopo ? `topology.st_simplify("topo", ${precision})` : `ST_Simplify("geom", ${precision})`} 
+							${hasTopo ? `ST_AsGeoJSON(topology.st_simplify("topo", ${precision}))` : `ST_AsGeoJSON(ST_Simplify("geom", ${precision}))`} 
 							FROM "${layerName}"`
 						)
 					})
@@ -340,6 +297,10 @@ const createTilesForLayer = (layerName, options) => {
 					}, 1);
 				})
 			}
+		})
+		.then(() => {
+			return db
+				.query(`VACUUM ANALYZE "${layerName}_simple";`)
 		})
 }
 
