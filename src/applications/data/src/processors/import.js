@@ -172,11 +172,6 @@ const clearLayerData = (layerName) => {
 				})
 		})
 		.then(() => {
-			return db.query(`DROP TABLE "${layerName}_tiles" CASCADE`)
-				.catch(() => {
-				})
-		})
-		.then(() => {
 			return db.query(`DROP TABLE "${layerName}_simple" CASCADE`)
 				.catch(() => {
 				})
