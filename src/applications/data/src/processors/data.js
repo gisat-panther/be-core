@@ -156,29 +156,28 @@ const getSqlForRelationsAndFilter = (relations, filter) => {
 
 		if (index > 0) {
 			sql.append(` UNION `);
-
 		}
 
-		_.each(filter.data.spatialFilter.tiles, (tile, index) => {
-			if (index > 0) {
-				sql.append(` UNION `);
+		let tile;
+		if (filter.data.spatialIndex && filter.data.spatialIndex.tiles && filter.data.spatialIndex.tiles.length) {
+			tile = filter.data.spatialIndex.tiles[0]
+		} else if (filter.data.spatialFilter && filter.data.spatialFilter.tiles && filter.data.spatialFilter.tiles.length) {
+			tile = filter.data.spatialFilter.tiles[0];
+		}
 
-			}
-
+		if (tile) {
 			let tileAsPolygon = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
 
 			sql.append(`SELECT`)
-			sql.append(` "${spatialDataSource.fidColumnName}" AS "fid"`)
-			sql.append(`, CASE WHEN EXISTS(SELECT * FROM "information_schema"."columns" WHERE "table_name" = '${spatialDataSource.tableName}' AND "column_name" = 'topo')`)
-			sql.append(` THEN ST_AsGeoJSON(topology.st_simplify("topo", ${geometryTolerance}))`)
-			sql.append(` ELSE ST_AsGeoJSON(ST_Simplify("${spatialDataSource.geometryColumnName}", ${geometryTolerance}))`)
-			sql.append(` END AS "geometry"`)
+			sql.append(` "base"."${spatialDataSource.fidColumnName}" AS "fid"`)
+			sql.append(`, "simple"."json" AS "geometry"`)
 			sql.append(`, '${spatialDataSource.key}' AS "spatialDataSourceKey"`)
 			sql.append(`, '${tile}' AS "tile"`)
 			sql.append(`, '${filter.data.spatialFilter.level}' AS "level"`)
-			sql.append(` FROM "${spatialDataSource.tableName}"`)
-			sql.append(` WHERE ST_Intersects("${spatialDataSource.geometryColumnName}", ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}'))`)
-		})
+			sql.append(` FROM "${spatialDataSource.tableName}" AS base`)
+			sql.append(` LEFT JOIN "${spatialDataSource.tableName}_simple" AS simple ON "base"."${spatialDataSource.fidColumnName}" = "simple"."${spatialDataSource.fidColumnName}"`)
+			sql.append(` WHERE "simple"."level" = ${filter.data.spatialFilter.level} AND "base"."${spatialDataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`)
+		}
 	})
 
 	sql.append(`) AS "spatial"`);
@@ -207,32 +206,10 @@ const getDataForRelations = async (relations, filter) => {
 	}
 
 	const sql = getSqlForRelationsAndFilter(relations, filter);
-	const cacheKey = shared.getHash(relations, filter.data.spatialFilter);
-	const mViewName = `ptr_${cacheKey}`;
 
-	await shared.exec({
-		type: "pg",
-		key: mViewName,
-		query: SQL`CREATE MATERIALIZED VIEW IF NOT EXISTS`
-			.append(` "ptr_${cacheKey}" AS `)
-			.append(sql)
-			.setName(`ptr_${uuid()}`)
-	});
-
-	let tileKeys = [];
-	if (filter.data.spatialIndex && filter.data.spatialIndex.tiles) {
-		tileKeys.push(`'${filter.data.spatialIndex.tiles[0]}'`);
-	} else {
-		tileKeys.push(`'${filter.data.spatialFilter.tiles[0]}'`);
-	}
-
-	if (tileKeys.length) {
-		await db.query(
-			SQL`SELECT *`
-				.append(` FROM "${mViewName}"`)
-				.append(` WHERE "tile" IN (${tileKeys})`)
-				.setName(`ptr_${uuid()}`)
-		).then((pgResult) => {
+	await db
+		.query(sql)
+		.then((pgResult) => {
 			_.each(pgResult.rows, (row) => {
 				data.spatial[row.spatialDataSourceKey] = data.spatial[row.spatialDataSourceKey] || {
 					data: {},
@@ -251,7 +228,6 @@ const getDataForRelations = async (relations, filter) => {
 				}
 			});
 		})
-	}
 
 	return data;
 }
