@@ -1528,8 +1528,9 @@ async function updateRecordRelation({plan, group, type, client}, record) {
         [],
         validRelationCols
     );
-
-    await Promise.all(_.map((sql) => client.query(sql), relationQueries));
+    for (const sql of relationQueries) {
+        await client.query(sql);
+    }
 }
 
 /**
