@@ -131,7 +131,7 @@ const getSqlForRelationsAndFilter = (relations, filter) => {
 	const geometryTolerance = gridSize / tileSize;
 
 	sql.append(`SELECT`);
-	sql.append(` "fid", "geometry", "spatialDataSourceKey", "tile", "level"`);
+	sql.append(` "bFid" AS "fid", "geometry", "spatialDataSourceKey", "tile", "level"`);
 
 	_.each(relations.attribute, (attributeRelation) => {
 		let attributeDataSource = attributeRelation.attributeDataSource;
@@ -165,7 +165,7 @@ const getSqlForRelationsAndFilter = (relations, filter) => {
 			let tileAsPolygon = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
 
 			sql.append(`SELECT`)
-			sql.append(` "base"."${spatialDataSource.fidColumnName}" AS "fid"`)
+			sql.append(` "base"."${spatialDataSource.fidColumnName}" AS "bFid"`)
 			sql.append(`, "simple"."json" AS "geometry"`)
 			sql.append(`, '${spatialDataSource.key}' AS "spatialDataSourceKey"`)
 			sql.append(`, '${tile}' AS "tile"`)
@@ -180,7 +180,7 @@ const getSqlForRelationsAndFilter = (relations, filter) => {
 
 	_.each(relations.attribute, (attributeRelation, index) => {
 		let attributeDataSource = attributeRelation.attributeDataSource;
-		sql.append(` LEFT JOIN "${attributeDataSource.tableName}" AS "${attributeDataSource.key}" ON "spatial"."fid" = "${attributeDataSource.key}"."${attributeDataSource.fidColumnName}"`)
+		sql.append(` LEFT JOIN "${attributeDataSource.tableName}" AS "${attributeDataSource.key}" ON "spatial"."bFid" = "${attributeDataSource.key}"."${attributeDataSource.fidColumnName}"`)
 	})
 
 	sql.setName(`ptr_${uuid()}`);
