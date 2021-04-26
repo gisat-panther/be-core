@@ -49,10 +49,24 @@ module.exports = [
             fileParseMiddleware
         ],
         responses: {200: {}},
-        handler: request.import
+        handler: request.importData
     },
     {
-        path: '/rest/data/import/status/:key',
+        path: '/rest/metadata/import',
+        method: 'post',
+        swagger: {
+            tags: ["metadata", "import"]
+        },
+        middlewares: [
+            userMiddleware,
+            autoLoginMiddleware,
+            authMiddleware
+        ],
+        responses: {200: {}},
+        handler: request.importMetadata
+    },
+    {
+        path: '/rest/import/status/:key',
         method: 'get',
         swagger: {
             tags: ["data", "status"]

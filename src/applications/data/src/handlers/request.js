@@ -5,8 +5,19 @@ const pImport = require('../processors/import');
 const pStatus = require('../processors/status');
 
 module.exports = {
-	import: (request, response, next) => {
-		pImport(request.file, request.user, request.body)
+	importData: (request, response, next) => {
+		pImport
+			.data(request.file, request.user, request.body)
+			.then((responsePayload) => {
+				response.status(200).send(responsePayload);
+			})
+			.catch((error) => {
+				response.status(500).send({success: false, message: error.message});
+			})
+	},
+	importMetadata: (request, response, next) => {
+		pImport
+			.metadata(request.body, request.user)
 			.then((responsePayload) => {
 				response.status(200).send(responsePayload);
 			})

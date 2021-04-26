@@ -10,7 +10,7 @@ const config = require('../../../../../config');
 
 const cache = require('../../../../cache');
 const db = require('../../../../db');
-db.init();
+const query = require('../../../../modules/rest/query');
 
 const basePath = "/tmp/ptr_import_";
 
@@ -37,7 +37,7 @@ const extractPackage = (file, importKey) => {
 
 const getFiles = (importKey) => {
 	return new Promise((resolve, reject) => {
-		let files = fs.readdir(`${basePath}${importKey}`, (error, files) => {
+		fs.readdir(`${basePath}${importKey}`, (error, files) => {
 			if (error) {
 				reject(error);
 			} else {
@@ -83,7 +83,10 @@ const importSpatialDataToPostgres = (importKey, path) => {
 
 const getExistingLayers = (layerNames) => {
 	return db
-		.query(`SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('${layerNames.join("', '")}')`)
+		.query(`SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                  AND table_name IN ('${layerNames.join("', '")}')`)
 		.then((pgResult) => {
 			return _.map(pgResult.rows, "table_name");
 		})
@@ -149,10 +152,10 @@ const processShapefile = (importKey, name, files, options) => {
 			}
 		})
 		.then(() => {
-			if (options && options.tiled) {
-				return createTilesForLayer(name, options)
+			if (options && options.simple) {
+				return createSimpleLayer(name, options)
 					.then(() => {
-						log(importKey, `tiles for ${name} calculated`)
+						log(importKey, `layer ${name} simplified`)
 					})
 			}
 		})
@@ -206,10 +209,12 @@ const createTopologyForLayer = (layerName, options) => {
 		})
 		.then((pgResult) => {
 			let topoLayerId = pgResult.rows[0].addtopogeometrycolumn;
-			return db.query(`UPDATE "${layerName}" SET "topo" = toTopoGeom("geom", 'topo_${layerName}', ${topoLayerId})`)
+			return db.query(`UPDATE "${layerName}"
+                             SET "topo" = toTopoGeom("geom", 'topo_${layerName}', ${topoLayerId})`)
 		})
 		.then(() => {
-			return db.query(`SELECT * FROM  ValidateTopology('topo_${layerName}');`)
+			return db.query(`SELECT *
+                             FROM ValidateTopology('topo_${layerName}');`)
 				.then((pgResult) => {
 					if (pgResult.rows && pgResult.rows.length) {
 						throw new Error(_.map(pgResult.rows, 'error').join(", "));
@@ -218,23 +223,23 @@ const createTopologyForLayer = (layerName, options) => {
 		})
 }
 
-const createTilesForLayer = (layerName, options) => {
+const createSimpleLayer = (layerName, options) => {
 	if (!options.fidColumnName) {
 		throw new Error(`missing fidColumnName options`);
 	}
 
 	return db
 		.query(
-			`ALTER TABLE "${layerName}" ADD CONSTRAINT "${layerName}_${options.fidColumnName}_unique" UNIQUE ("${options.fidColumnName}")`
+			`ALTER TABLE "${layerName}"
+                ADD CONSTRAINT "${layerName}_${options.fidColumnName}_unique" UNIQUE ("${options.fidColumnName}")`
 		)
 		.then(() => {
 			return db
 				.query(
-					`SELECT 
-					"data_type" AS "fidColumnType" 
-					FROM "information_schema"."columns" 
-					WHERE "table_name" = '${layerName}' 
-					AND "column_name" = '${options.fidColumnName}'`
+					`SELECT "data_type" AS "fidColumnType"
+                     FROM "information_schema"."columns"
+                     WHERE "table_name" = '${layerName}'
+                       AND "column_name" = '${options.fidColumnName}'`
 				)
 		})
 		.then((pgResult) => {
@@ -258,7 +263,9 @@ const createTilesForLayer = (layerName, options) => {
 			const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
 
 			const hasTopo = await db
-				.query(`SELECT EXISTS(SELECT * FROM "information_schema"."columns" WHERE "table_name" = '${layerName}' AND "column_name" = 'topo')`)
+				.query(`SELECT EXISTS(SELECT *
+                                      FROM "information_schema"."columns"
+                                      WHERE "table_name" = '${layerName}' AND "column_name" = 'topo')`)
 				.then((pgResult) => {
 					return pgResult.rows[0].exists;
 				})
@@ -276,12 +283,11 @@ const createTilesForLayer = (layerName, options) => {
 					})
 					.then(() => {
 						return db.query(
-							`INSERT INTO "${layerName}_simple" 
-							SELECT 
-							"${options.fidColumnName}", 
-							'${level}',
-							${hasTopo ? `ST_AsGeoJSON(topology.st_simplify("topo", ${precision}))` : `ST_AsGeoJSON(ST_Simplify("geom", ${precision}))`} 
-							FROM "${layerName}"`
+							`INSERT INTO "${layerName}_simple"
+                             SELECT "${options.fidColumnName}",
+                                    '${level}',
+                                    ${hasTopo ? `ST_AsGeoJSON(topology.st_simplify("topo", ${precision}))` : `ST_AsGeoJSON(ST_Simplify("geom", ${precision}))`}
+                             FROM "${layerName}"`
 						)
 					})
 					.then(() => {
@@ -425,7 +431,57 @@ const importFile = (file, user, options) => {
 	return Promise
 		.resolve({
 			importKey,
-			statusPath: `${config.url}/rest/data/import/status/${importKey}`
+			statusPath: `${config.url}/rest/import/status/${importKey}`
+		});
+}
+
+const importMetadataByGroupType = async (group, type, metadata) => {
+	await db
+		.transactional((client) => {
+			return query.create({group, type, client}, metadata);
+		})
+		.catch(() => {
+			return db
+				.transactional((client) => {
+					return query.update({group, type, client}, metadata);
+				})
+		})
+}
+
+const importMetadataByGroup = async (group, metadata, user) => {
+	for (const type of _.keys(metadata)) {
+		await importMetadataByGroupType(group, type, metadata[type], user);
+	}
+}
+
+const importMetadataForEach = async (metadata, user) => {
+	for (const group of _.keys(metadata)) {
+		await importMetadataByGroup(group, metadata[group], user);
+	}
+}
+
+const importMetadata = (metadata, user) => {
+	let importKey = crypto.randomBytes(16).toString("hex");
+
+	log(importKey, "started");
+
+	cache.set(`import_${importKey}`, {status: "running"})
+		.then(() => {
+			return importMetadataForEach(metadata, user);
+		})
+		.then(() => {
+			log(importKey, `done`);
+			return cache.set(`import_${importKey}`, {status: "done"});
+		})
+		.catch((error) => {
+			log(importKey, `failed with error ${error.message}`);
+			return cache.set(`import_${importKey}`, {status: "failed", message: error.message});
+		})
+
+	return Promise
+		.resolve({
+			importKey,
+			statusPath: `${config.url}/rest/import/status/${importKey}`
 		});
 }
 
@@ -433,6 +489,11 @@ const log = (importKey, message) => {
 	console.log(`#IMPORT# ${new Date().toISOString()} | ${importKey} | ${message}`);
 }
 
-module.exports = (file, user, options) => {
-	return importFile(file, user, options);
+module.exports = {
+	data: (file, user, options) => {
+		return importFile(file, user, options);
+	},
+	metadata: (metadata, user) => {
+		return importMetadata(metadata, user);
+	}
 }
