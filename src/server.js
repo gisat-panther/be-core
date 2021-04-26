@@ -12,13 +12,13 @@ const express = require('express');
 const initMaster = async () => {
 	try {
 		await migrations.migrate();
-		initWorkers()
 		await db.init();
 		shared.init();
+		initWorkers()
 		const appConfig = getAppConfig();
 		const app = express();
 		prometheus.init({app});
-		permissions.run({
+		await permissions.run({
 			plan: appConfig.plan,
 			generatedPermissions: appConfig.generatedPermissions
 		});
