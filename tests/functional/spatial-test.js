@@ -58,9 +58,9 @@ describe('/rest/dataSources', function () {
                             {
                                 key: 'cb007139-9b66-4e71-a092-8c779a9a1d90',
                                 data: {
-                                    nameInternal: 'vector type',
+                                    nameInternal: 'tiledVector type',
                                     attribution: 'vattr',
-                                    type: 'vector',
+                                    type: 'tiledVector',
                                     layerName: 'lv',
                                     tableName: 'tv',
                                     fidColumnName: 'fid',
@@ -167,9 +167,9 @@ describe('/rest/dataSources', function () {
                                 {
                                     key: 'cb007139-9b66-4e71-a092-8c779a9a1d90',
                                     data: {
-                                        nameInternal: 'vector type',
+                                        nameInternal: 'tiledVector type',
                                         attribution: 'vattr',
-                                        type: 'vector',
+                                        type: 'tiledVector',
                                         layerName: 'lv',
                                         tableName: 'tv',
                                         fidColumnName: 'fid',
@@ -333,9 +333,9 @@ describe('/rest/dataSources', function () {
                                 {
                                     key: 'cb007139-9b66-4e71-a092-8c779a9a1d90',
                                     data: {
-                                        nameInternal: 'vector type',
+                                        nameInternal: 'tiledVector type',
                                         attribution: 'vattr',
-                                        type: 'vector',
+                                        type: 'tiledVector',
                                         layerName: 'lv',
                                         tableName: 'tv',
                                         fidColumnName: 'fid',
@@ -731,9 +731,9 @@ describe('/rest/dataSources', function () {
                             {
                                 key: '2780786e-56d6-4fc0-a006-8179db9e7697',
                                 data: {
-                                    nameInternal: 'vector type',
+                                    nameInternal: 'tiledVector type',
                                     attribution: 'vattr',
-                                    type: 'vector',
+                                    type: 'tiledVector',
                                     layerName: 'lv',
                                     tableName: 'tv',
                                 },
@@ -749,9 +749,11 @@ describe('/rest/dataSources', function () {
                                     data: {
                                         attribution: 'vattr',
                                         layerName: 'lv',
-                                        nameInternal: 'vector type',
+                                        nameInternal: 'tiledVector type',
                                         tableName: 'tv',
-                                        type: 'vector',
+                                        type: 'tiledVector',
+                                        fidColumnName: null,
+                                        geometryColumnName: null
                                     },
                                     key: '2780786e-56d6-4fc0-a006-8179db9e7697',
                                     permissions: {

@@ -297,7 +297,7 @@ describe('/rest/metadata', function () {
                     status: 200,
                     body: {
                         data: {
-                            case: [],
+                            cases: [],
                         },
                         limit: 100,
                         offset: 0,
@@ -327,7 +327,7 @@ describe('/rest/metadata', function () {
                     status: 200,
                     body: {
                         data: {
-                            case: [
+                            cases: [
                                 {
                                     key: '9466d6c1-6596-49c0-9729-0e3ff3ad08a0',
                                     data: {
@@ -413,7 +413,7 @@ describe('/rest/metadata', function () {
         });
     });
 
-    describe('POST /rest/metadata/filtered/period', async function () {
+    describe('POST /rest/metadata/filtered/periods', async function () {
         before(async function () {
             await Promise.all([
                 h.createRecord('"metadata"."period"', {
@@ -447,7 +447,7 @@ describe('/rest/metadata', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            period: [
+                            periods: [
                                 {
                                     data: {
                                         applicationKey: null,
@@ -462,7 +462,7 @@ describe('/rest/metadata', function () {
                                     permissions: {
                                         activeUser: {
                                             create: true,
-                                            delete: false,
+                                            delete: true,
                                             update: true,
                                             view: true,
                                         },
@@ -488,7 +488,7 @@ describe('/rest/metadata', function () {
                                     permissions: {
                                         activeUser: {
                                             create: true,
-                                            delete: false,
+                                            delete: true,
                                             update: true,
                                             view: true,
                                         },
@@ -520,7 +520,7 @@ describe('/rest/metadata', function () {
                 expectedResult: {
                     body: {
                         data: {
-                            period: [
+                            periods: [
                                 {
                                     data: {
                                         applicationKey: null,
@@ -535,7 +535,7 @@ describe('/rest/metadata', function () {
                                     permissions: {
                                         activeUser: {
                                             create: true,
-                                            delete: false,
+                                            delete: true,
                                             update: true,
                                             view: true,
                                         },
@@ -561,7 +561,7 @@ describe('/rest/metadata', function () {
         tests.forEach((test) => {
             it(test.name, async function () {
                 const response = await fetch(
-                    url('/rest/metadata/filtered/period'),
+                    url('/rest/metadata/filtered/periods'),
                     {
                         method: 'POST',
                         headers: new fetch.Headers({
@@ -587,7 +587,7 @@ describe('/rest/metadata', function () {
                 name: 'create period without `period` prop',
                 body: JSON.stringify({
                     data: {
-                        period: [
+                        periods: [
                             {
                                 key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d0',
                                 data: {},
@@ -599,7 +599,7 @@ describe('/rest/metadata', function () {
                     status: 201,
                     body: {
                         data: {
-                            period: [
+                            periods: [
                                 {
                                     key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d0',
                                     data: {
@@ -614,7 +614,7 @@ describe('/rest/metadata', function () {
                                     permissions: {
                                         activeUser: {
                                             create: true,
-                                            delete: false,
+                                            delete: true,
                                             update: true,
                                             view: true,
                                         },
@@ -640,7 +640,7 @@ describe('/rest/metadata', function () {
                 name: 'create period with `period` prop',
                 body: JSON.stringify({
                     data: {
-                        period: [
+                        periods: [
                             {
                                 key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
                                 data: {
@@ -654,7 +654,7 @@ describe('/rest/metadata', function () {
                     status: 201,
                     body: {
                         data: {
-                            period: [
+                            periods: [
                                 {
                                     key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
                                     data: {
@@ -669,7 +669,7 @@ describe('/rest/metadata', function () {
                                     permissions: {
                                         activeUser: {
                                             create: true,
-                                            delete: false,
+                                            delete: true,
                                             update: true,
                                             view: true,
                                         },
