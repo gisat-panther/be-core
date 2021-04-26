@@ -1498,7 +1498,7 @@ async function updateRecordRelation({plan, group, type, client}, record) {
                                     rel.ownKey
                                 }" = `
                             )
-                            .append(SQL`${record.key} AND NOT (`)
+                            .append(SQL`${record.key} AND (`)
                             .append(`"${rel.inverseKey}"`)
                             .append(SQL` = ANY(${relKey}))`)
                     );
