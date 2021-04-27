@@ -85,10 +85,10 @@ VALUES ('ed6a9cb0-7662-4d85-bb9a-ed5b78396008', null, 'metadata', 'cases', 'view
        ('a6463b68-ef2d-4550-a3b7-67be1a7a0edf', null, 'metadata', 'periods', 'create'),
        ('6d594989-2adb-44cc-8915-9c12dad907ba', null, 'metadata', 'periods', 'update'),
        ('c6b86b26-a29b-4184-99c1-8bc46a5735df', null, 'metadata', 'periods', 'delete'),
-       ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'user', 'create'),
-       ('913e3bae-e5dd-4600-a854-ca7b65199bbf', null, 'user', 'user', 'update'),
-       ('9ac648e7-00d0-4196-be44-9ae2d7cfb598', null, 'user', 'user', 'delete'),
-       ('828af8c1-5438-475b-9f91-af432745e83f', null, 'user', 'user', 'view'),
+       ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'users', 'create'),
+       ('913e3bae-e5dd-4600-a854-ca7b65199bbf', null, 'user', 'users', 'update'),
+       ('9ac648e7-00d0-4196-be44-9ae2d7cfb598', null, 'user', 'users', 'delete'),
+       ('828af8c1-5438-475b-9f91-af432745e83f', null, 'user', 'users', 'view'),
        ('9d2b52c0-ced8-4a3c-b5ae-ea97befd3305', null, 'dataSources', 'spatial', 'create'),
        ('2f8f7e58-2c55-4c06-90c6-a5a164c3f1f1', null, 'dataSources', 'spatial', 'update'),
        ('92901779-f29f-44a3-ab05-2a22b6a94848', null, 'dataSources', 'spatial', 'delete'),
@@ -97,14 +97,22 @@ VALUES ('ed6a9cb0-7662-4d85-bb9a-ed5b78396008', null, 'metadata', 'cases', 'view
        ('10061997-2e64-4dd9-b645-28eb5f937f65', null, 'relations', 'attribute', 'update'),
        ('4f617ffb-86ff-4f38-84b6-ea016afcbaa3', null, 'relations', 'attribute', 'view'),
        ('0585eda7-de9e-4aab-8f47-1c1085804054', null, 'relations', 'attribute', 'delete'),
-       ('f2ead234-6402-4a6e-9374-b243647edc44', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'view'),
-       ('4f2b3dc7-9b3f-4624-82c0-93d139e19baa', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'update'),
-       ('e84dfa30-f2fc-4a1f-988c-b7f4e2489f2f', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'user', 'delete'),
-       ('432348bc-6adf-4fd3-ac44-48a15f7d8ac6', '7c5acddd-3625-46ef-90b3-82f829afb258', 'user', 'user', 'view');
+       ('f2ead234-6402-4a6e-9374-b243647edc44', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'users', 'view'),
+       ('4f2b3dc7-9b3f-4624-82c0-93d139e19baa', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'users', 'update'),
+       ('e84dfa30-f2fc-4a1f-988c-b7f4e2489f2f', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'users', 'delete'),
+       ('432348bc-6adf-4fd3-ac44-48a15f7d8ac6', '7c5acddd-3625-46ef-90b3-82f829afb258', 'user', 'users', 'view');
 
 INSERT INTO "user"."userPermissions"
     ("userKey", "permissionKey")
 VALUES
+    -- user: admin@example.com  metadata:scopes:view
+    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', 'a307e381-8c12-4d0e-9934-0d739cce7fa2'),
+    -- user: admin@example.com  metadata:scopes:create
+    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '55253c47-f406-4297-8a22-b4ef03200c36'),
+    -- user: admin@example.com  metadata:scopes:update
+    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '9df3cd8e-528d-4a7e-932e-e78ced43b0de'),
+    -- user: admin@example.com  metadata:scopes:delete
+    ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '820c4a94-9588-4926-8ba0-2df7abe2eb7f'),
     -- user: admin@example.com  metadata:periods:view
     ('2d069e3a-f77f-4a1f-aeda-50fd06c8c35d', '0cc99d81-8038-49a0-8f3a-b5bd55b94513'),
     -- user: admin@example.com  metadata:periods:create
