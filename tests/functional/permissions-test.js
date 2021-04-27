@@ -100,7 +100,7 @@ describe('modules/permissions', function () {
             // assign target group
             await assingGroup(USER2_KEY, TARGET_GROUP_KEY);
             await ensurePermissionsAreGenerated();
-            assert.isTrue(await hasPermission());
+            assert.isFalse(await hasPermission());
 
             // unassign source group
             await unassignGroup(USER1_KEY, SOURCE_GROUP_KEY);
@@ -110,7 +110,7 @@ describe('modules/permissions', function () {
             // assign source group
             await assingGroup(USER1_KEY, SOURCE_GROUP_KEY);
             await ensurePermissionsAreGenerated();
-            assert.isTrue(await hasPermission());
+            assert.isFalse(await hasPermission());
 
             // unassign target group
             await unassignGroup(USER1_KEY, SOURCE_GROUP_KEY);
@@ -163,8 +163,8 @@ describe('modules/permissions', function () {
                 ]);
 
             await ensurePermissionsAreGenerated();
-            assert.isTrue(await userHasPermissionTo(USER1_KEY, USER2_KEY));
-            assert.isTrue(await userHasPermissionTo(USER2_KEY, USER1_KEY));
+            assert.isFalse(await userHasPermissionTo(USER1_KEY, USER2_KEY));
+            assert.isFalse(await userHasPermissionTo(USER2_KEY, USER1_KEY));
             assert.isFalse(await userHasPermissionTo(USER1_KEY, USER3_KEY));
             assert.isFalse(await userHasPermissionTo(USER2_KEY, USER3_KEY));
             assert.isFalse(await userHasPermissionTo(USER3_KEY, USER1_KEY));
@@ -254,7 +254,7 @@ describe('modules/permissions', function () {
                 applicationKey: APPLICATION_KEY,
             });
             await ensurePermissionsAreGenerated();
-            assert.isTrue(await hasPermission());
+            assert.isFalse(await hasPermission());
 
             // delete application relation
             await db.query(

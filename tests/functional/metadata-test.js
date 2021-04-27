@@ -711,7 +711,7 @@ describe('/rest/metadata', function () {
                 assert.deepStrictEqual(data, test.expectedResult.body);
 
                 const periods = _.get(
-                    ['data', 'period'],
+                    ['data', 'periods'],
                     test.expectedResult.body
                 );
                 const periodKeys = _.map((period) => period.key, periods);
@@ -728,7 +728,7 @@ describe('/rest/metadata', function () {
                 name: 'update period with `period` prop',
                 body: JSON.stringify({
                     data: {
-                        period: [
+                        periods: [
                             {
                                 key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
                                 data: {
@@ -742,7 +742,7 @@ describe('/rest/metadata', function () {
                     status: 200,
                     body: {
                         data: {
-                            period: [
+                            periods: [
                                 {
                                     key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
                                     data: {
@@ -757,7 +757,7 @@ describe('/rest/metadata', function () {
                                     permissions: {
                                         activeUser: {
                                             create: true,
-                                            delete: false,
+                                            delete: true,
                                             update: true,
                                             view: true,
                                         },
@@ -784,7 +784,7 @@ describe('/rest/metadata', function () {
                 name: 'update period omitting `period` prop',
                 body: JSON.stringify({
                     data: {
-                        period: [
+                        periods: [
                             {
                                 key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
                                 data: {
@@ -798,7 +798,7 @@ describe('/rest/metadata', function () {
                     status: 200,
                     body: {
                         data: {
-                            period: [
+                            periods: [
                                 {
                                     key: '7eeea607-d9d7-4cf2-b765-fbcb1177e2d1',
                                     data: {
@@ -813,7 +813,7 @@ describe('/rest/metadata', function () {
                                     permissions: {
                                         activeUser: {
                                             create: true,
-                                            delete: false,
+                                            delete: true,
                                             update: true,
                                             view: true,
                                         },
@@ -855,7 +855,7 @@ describe('/rest/metadata', function () {
                 assert.deepStrictEqual(data, test.expectedResult.body);
 
                 const periods = _.get(
-                    ['data', 'period'],
+                    ['data', 'periods'],
                     test.expectedResult.body
                 );
                 const periodKeys = _.map((period) => period.key, periods);
@@ -876,7 +876,7 @@ describe('/rest/metadata', function () {
                 }),
                 body: JSON.stringify({
                     data: {
-                        scope: [
+                        scopes: [
                             {
                                 key: '1e675bdd-c92c-4150-a067-c49ff239b380',
                                 data: {},
@@ -899,7 +899,7 @@ describe('/rest/metadata', function () {
             assert.strictEqual(response.status, 201);
         });
 
-        describe('POST /rest/metadata/filtered/scope', async function () {
+        describe('POST /rest/metadata/filtered/scopes', async function () {
             const tests = [
                 {
                     name: 'cs,en',
@@ -958,7 +958,7 @@ describe('/rest/metadata', function () {
             tests.forEach((test) => {
                 it(test.name, async function () {
                     const response = await fetch(
-                        url('/rest/metadata/filtered/scope'),
+                        url('/rest/metadata/filtered/scopes'),
                         {
                             method: 'POST',
                             headers: new fetch.Headers({
@@ -977,7 +977,7 @@ describe('/rest/metadata', function () {
 
                     const interestingData = _.map(
                         _.pick(['key', 'translations']),
-                        data.data.scope
+                        data.data.scopes
                     );
                     assert.deepStrictEqual(
                         interestingData,
@@ -987,7 +987,7 @@ describe('/rest/metadata', function () {
             });
         });
 
-        describe('POST /rest/metadata/filtered/scope - sorting', async function () {
+        describe('POST /rest/metadata/filtered/scopes - sorting', async function () {
             before(async function () {
                 await Promise.all([
                     cf.storeNew(
@@ -1103,7 +1103,7 @@ describe('/rest/metadata', function () {
                             },
                             {
                                 key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
-                            },
+                            }
                         ],
                     },
                 },
@@ -1125,10 +1125,10 @@ describe('/rest/metadata', function () {
                         status: 200,
                         body: [
                             {
-                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
                             },
                             {
-                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
                             },
                         ],
                     },
@@ -1151,11 +1151,11 @@ describe('/rest/metadata', function () {
                         status: 200,
                         body: [
                             {
-                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
-                            },
-                            {
                                 key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
                             },
+                            {
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                            }
                         ],
                     },
                 },
@@ -1203,10 +1203,10 @@ describe('/rest/metadata', function () {
                         status: 200,
                         body: [
                             {
-                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
                             },
                             {
-                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
+                                key: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
                             },
                         ],
                     },
@@ -1216,7 +1216,7 @@ describe('/rest/metadata', function () {
             tests.forEach((test) => {
                 it(test.name, async function () {
                     const response = await fetch(
-                        url('/rest/metadata/filtered/scope'),
+                        url('/rest/metadata/filtered/scopes'),
                         {
                             method: 'POST',
                             headers: new fetch.Headers({
@@ -1235,7 +1235,7 @@ describe('/rest/metadata', function () {
 
                     const interestingData = _.map(
                         _.pick(['key']),
-                        data.data.scope
+                        data.data.scopes
                     );
                     assert.deepStrictEqual(
                         interestingData,
@@ -1245,7 +1245,7 @@ describe('/rest/metadata', function () {
             });
         });
 
-        describe('POST /rest/metadata/filtered/scope - filtering', async function () {
+        describe('POST /rest/metadata/filtered/scopes - filtering', async function () {
             before(async function () {
                 await Promise.all([
                     cf.storeNew(
@@ -1261,7 +1261,7 @@ describe('/rest/metadata', function () {
                     h.createTranslation({
                         resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
                         resourceGroup: 'metadata',
-                        resourceType: 'scope',
+                        resourceType: 'scopes',
                         locale: 'cs',
                         field: 'nameDisplay',
                         value: JSON.stringify('10'),
@@ -1269,7 +1269,7 @@ describe('/rest/metadata', function () {
                     h.createTranslation({
                         resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2310',
                         resourceGroup: 'metadata',
-                        resourceType: 'scope',
+                        resourceType: 'scopes',
                         locale: 'cs',
                         field: 'tIntegerField',
                         value: 2,
@@ -1282,7 +1282,7 @@ describe('/rest/metadata', function () {
                     h.createTranslation({
                         resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
                         resourceGroup: 'metadata',
-                        resourceType: 'scope',
+                        resourceType: 'scopes',
                         locale: 'cs',
                         field: 'nameDisplay',
                         value: JSON.stringify('2'),
@@ -1290,7 +1290,7 @@ describe('/rest/metadata', function () {
                     h.createTranslation({
                         resourceKey: 'f1e4a9ab-04fc-4939-a180-111cf54c2311',
                         resourceGroup: 'metadata',
-                        resourceType: 'scope',
+                        resourceType: 'scopes',
                         locale: 'cs',
                         field: 'tIntegerField',
                         value: 10,
@@ -1354,7 +1354,7 @@ describe('/rest/metadata', function () {
             tests.forEach((test) => {
                 it(test.name, async function () {
                     const response = await fetch(
-                        url('/rest/metadata/filtered/scope'),
+                        url('/rest/metadata/filtered/scopes'),
                         {
                             method: 'POST',
                             headers: new fetch.Headers({
@@ -1373,7 +1373,7 @@ describe('/rest/metadata', function () {
 
                     const interestingData = _.map(
                         _.pick(['key']),
-                        data.data.scope
+                        data.data.scopes
                     );
                     assert.deepStrictEqual(
                         interestingData,
@@ -1393,7 +1393,7 @@ describe('/rest/metadata', function () {
                     }),
                     body: JSON.stringify({
                         data: {
-                            scope: [
+                            scopes: [
                                 {
                                     key: '1e675bdd-c92c-4150-a067-c49ff239b380',
                                     data: {},
@@ -1425,7 +1425,7 @@ describe('/rest/metadata', function () {
                     }),
                     body: JSON.stringify({
                         data: {
-                            scope: [
+                            scopes: [
                                 {
                                     key: '1e675bdd-c92c-4150-a067-c49ff239b380',
                                     data: {},
@@ -1444,7 +1444,7 @@ describe('/rest/metadata', function () {
             });
         });
 
-        describe('POST /rest/metadata/filtered/scope after changes', async function () {
+        describe('POST /rest/metadata/filtered/scopes after changes', async function () {
             const tests = [
                 {
                     name: 'cs,en',
@@ -1507,7 +1507,7 @@ describe('/rest/metadata', function () {
             tests.forEach((test) => {
                 it(test.name, async function () {
                     const response = await fetch(
-                        url('/rest/metadata/filtered/scope'),
+                        url('/rest/metadata/filtered/scopes'),
                         {
                             method: 'POST',
                             headers: new fetch.Headers({
@@ -1526,7 +1526,7 @@ describe('/rest/metadata', function () {
 
                     const interestingData = _.map(
                         _.pick(['key', 'translations']),
-                        data.data.scope
+                        data.data.scopes
                     );
                     assert.deepStrictEqual(
                         interestingData,
@@ -1547,7 +1547,7 @@ describe('/rest/metadata', function () {
                 }),
                 body: JSON.stringify({
                     data: {
-                        scope: [
+                        scopes: [
                             {
                                 key: 'bf866d9d-b20a-4518-87e5-caff38645886',
                                 data: {
@@ -1565,7 +1565,7 @@ describe('/rest/metadata', function () {
             const data = await response.json();
             assert.deepStrictEqual(data, {
                 data: {
-                    scope: [
+                    scopes: [
                         {
                             key: 'bf866d9d-b20a-4518-87e5-caff38645886',
                             data: {
@@ -1610,7 +1610,7 @@ describe('/rest/metadata', function () {
                     }),
                     body: JSON.stringify({
                         data: {
-                            scope: [
+                            scopes: [
                                 {
                                     key: 'bf866d9d-b20a-4518-87e5-caff38645886',
                                     data: {
@@ -1628,7 +1628,7 @@ describe('/rest/metadata', function () {
                 const data = await response.json();
                 assert.deepStrictEqual(data, {
                     data: {
-                        scope: [
+                        scopes: [
                             {
                                 key: 'bf866d9d-b20a-4518-87e5-caff38645886',
                                 data: {
@@ -1673,7 +1673,7 @@ describe('/rest/metadata', function () {
                     }),
                     body: JSON.stringify({
                         data: {
-                            scope: [
+                            scopes: [
                                 {
                                     key: 'bf866d9d-b20a-4518-87e5-caff38645886',
                                     data: {
@@ -1830,7 +1830,7 @@ describe('/rest/metadata', function () {
             tests.forEach((test) => {
                 it(test.name, async function () {
                     const response = await fetch(
-                        url('/rest/metadata/filtered/scope'),
+                        url('/rest/metadata/filtered/scopes'),
                         {
                             method: 'POST',
                             headers: new fetch.Headers({
@@ -1849,7 +1849,7 @@ describe('/rest/metadata', function () {
 
                     const interestingData = _.map(
                         _.pick(['key']),
-                        data.data.scope
+                        data.data.scopes
                     );
                     assert.deepStrictEqual(
                         interestingData,
@@ -1860,7 +1860,7 @@ describe('/rest/metadata', function () {
 
             it('unknown field', async function () {
                 const response = await fetch(
-                    url('/rest/metadata/filtered/scope'),
+                    url('/rest/metadata/filtered/scopes'),
                     {
                         method: 'POST',
                         headers: new fetch.Headers({
@@ -1877,7 +1877,7 @@ describe('/rest/metadata', function () {
             });
         });
 
-        describe('POST /rest/metadata/filtered/scope - filtering', async function () {
+        describe('POST /rest/metadata/filtered/scopes - filtering', async function () {
             before(async function () {
                 await Promise.all([
                     cf.storeNew(
@@ -1960,7 +1960,7 @@ describe('/rest/metadata', function () {
             tests.forEach((test) => {
                 it(test.name, async function () {
                     const response = await fetch(
-                        url('/rest/metadata/filtered/scope'),
+                        url('/rest/metadata/filtered/scopes'),
                         {
                             method: 'POST',
                             headers: new fetch.Headers({
@@ -1979,7 +1979,7 @@ describe('/rest/metadata', function () {
 
                     const interestingData = _.map(
                         _.pick(['key']),
-                        data.data.scope
+                        data.data.scopes
                     );
                     assert.deepStrictEqual(
                         interestingData,
@@ -1990,7 +1990,7 @@ describe('/rest/metadata', function () {
 
             it('unknown field', async function () {
                 const response = await fetch(
-                    url('/rest/metadata/filtered/scope'),
+                    url('/rest/metadata/filtered/scopes'),
                     {
                         method: 'POST',
                         headers: new fetch.Headers({

@@ -273,9 +273,9 @@ describe('/rest/data/filtered', () => {
 						key: "c67eaa05-64e0-4b60-8552-7adb4962e93a",
 						permissions: {
 							activeUser: {
-								create: false,
-								delete: false,
-								update: false,
+								create: true,
+								delete: true,
+								update: true,
 								view: true,
 							},
 							guest: {
