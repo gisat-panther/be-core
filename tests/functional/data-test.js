@@ -879,6 +879,79 @@ describe('/rest/data/filtered', () => {
 
 		})
 
+		it("Get spatial and attribute data for Prague without styleKey defined", async () => {
+			const request = {
+				headers: new fetch.Headers({
+					Authorization: createAdminToken(),
+					'Content-Type': 'application/json',
+				}),
+				body: JSON.stringify({
+					modifiers: {
+						scopeKey: "c67eaa05-64e0-4b60-8552-7adb4962e93a",
+						periodKey: "6eca6523-0756-49cb-b39d-405dcafd2386"
+					},
+					layerTemplateKey: "b8cb9263-d656-4606-a326-a02e851ea0bb",
+					relations: {
+						offset: 0,
+						limit: 100
+					},
+					data: {
+						spatialFilter: {
+							level: 14,
+							tiles: [
+								[14.3701171875, 50.086669921875], [14.381103515625, 50.086669921875], [14.39208984375, 50.086669921875], [14.403076171875, 50.086669921875], [14.4140625, 50.086669921875], [14.425048828125, 50.086669921875], [14.43603515625, 50.086669921875], [14.447021484375, 50.086669921875], [14.4580078125, 50.086669921875], [14.3701171875, 50.07568359375], [14.381103515625, 50.07568359375], [14.39208984375, 50.07568359375], [14.403076171875, 50.07568359375], [14.4140625, 50.07568359375], [14.425048828125, 50.07568359375], [14.43603515625, 50.07568359375], [14.447021484375, 50.07568359375], [14.4580078125, 50.07568359375], [14.3701171875, 50.064697265625], [14.381103515625, 50.064697265625], [14.39208984375, 50.064697265625], [14.403076171875, 50.064697265625], [14.4140625, 50.064697265625], [14.425048828125, 50.064697265625], [14.43603515625, 50.064697265625], [14.447021484375, 50.064697265625], [14.4580078125, 50.064697265625], [14.3701171875, 50.0537109375], [14.381103515625, 50.0537109375], [14.39208984375, 50.0537109375], [14.403076171875, 50.0537109375], [14.4140625, 50.0537109375], [14.425048828125, 50.0537109375], [14.43603515625, 50.0537109375], [14.447021484375, 50.0537109375], [14.4580078125, 50.0537109375]
+							]
+						},
+						geometry: true
+					}
+				})
+			};
+
+			const expectedStatus = 200;
+			const expectedResponse = {
+				"spatialAttributeRelationsDataSources": {
+					"total": {
+						"attributeRelations": 0,
+						"spatialRelations": 1
+					},
+					"offset": 0,
+					"limit": 100,
+					"spatialRelations": [],
+					"attributeRelations": [],
+					"spatialDataSources": [],
+					"attributeDataSources": []
+				},
+				"spatialData": {
+					"cf55212e-2893-46d0-8a02-cbf10cb4471d": {
+						"data": {
+							"43c0dc2f-0c86-447f-9861-7969e1cbbe0a": {
+								"type": "Polygon",
+								"coordinates": [[[14.224435, 50.17743], [14.706787, 50.17743], [14.706787, 49.941901], [14.224435, 49.941901], [14.224435, 50.17743]]]
+							}
+						},
+						"spatialIndex": {"14": {"14.3701171875,50.086669921875": ["43c0dc2f-0c86-447f-9861-7969e1cbbe0a"]}}
+					}
+				},
+				"attributeData": {}
+			}
+
+			const response = await fetch(
+				url('/rest/data/filtered'),
+				{
+					method: 'POST',
+					headers: request.headers,
+					body: request.body
+				}
+			);
+
+			assert.strictEqual(response.status, expectedStatus);
+
+			let result = await response.json();
+
+			assert.deepStrictEqual(result, expectedResponse);
+
+		})
+
 		it("Get spatial and attribute data for Brno", async () => {
 			const request = {
 				headers: new fetch.Headers({
