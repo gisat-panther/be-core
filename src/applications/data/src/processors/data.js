@@ -211,7 +211,6 @@ const getDataForRelations = async (relations, filter) => {
 					data: {},
 					spatialIndex: {}
 				};
-				data.attribute[row.attributeDataSourceKey] = data.attribute[row.attributeDataSourceKey] || {}
 
 				data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] = data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] || {};
 				data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile] = data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile] || [];
@@ -219,7 +218,8 @@ const getDataForRelations = async (relations, filter) => {
 
 				data.spatial[row.spatialDataSourceKey].data[row.fid] = JSON.parse(row.geometry);
 
-				if (row.fid2) {
+				if (row.attributeDataSourceKey && row.fid2) {
+					data.attribute[row.attributeDataSourceKey] = data.attribute[row.attributeDataSourceKey] || {}
 					data.attribute[row.attributeDataSourceKey][row.fid2] = row.value;
 				}
 			});
