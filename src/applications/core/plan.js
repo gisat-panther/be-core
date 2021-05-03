@@ -274,7 +274,8 @@ module.exports = {
                     defaultValue: null,
                     schema: Joi.object(),
                     selectExpr: function ({alias}) {
-                        return qb.expr.fn('ST_AsGeoJSON', alias);
+                        // todo this has to be fixed properly in future
+                        return qb.val.raw(SQL`ST_AsGeoJSON(t."geometry")::JSON AS "geometry"`);
                     },
                     modifyExpr: function ({value}) {
                         if (value == null) {
@@ -288,7 +289,8 @@ module.exports = {
                     defaultValue: null,
                     schema: Joi.object(),
                     selectExpr: function ({alias}) {
-                        return qb.expr.fn('ST_AsGeoJSON', alias);
+                        // todo this has to be fixed properly in future
+                        return qb.val.raw(SQL`ST_AsGeoJSON(t."bbox")::JSON AS "bbox"`);
                     },
                     modifyExpr: function ({value}) {
                         if (value == null) {
