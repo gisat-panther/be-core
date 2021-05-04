@@ -1,10 +1,12 @@
 const admZip = require('adm-zip');
 const crypto = require('crypto');
 const fs = require('fs');
+const fse = require('fs-extra');
 const path = require('path');
 const _ = require('lodash');
 const chp = require('child_process');
 const ptrTileGrid = require('@gisatcz/ptr-tile-grid');
+const {exec} = require('child_process');
 
 const config = require('../../../../../config');
 
@@ -13,6 +15,9 @@ const db = require('../../../../db');
 const query = require('../../../../modules/rest/query');
 
 const basePath = "/tmp/ptr_import_";
+
+const rasterStaticPath = config.import.raster.paths.static || `/srv/static`;
+const mapFileStaticPath = config.import.raster.paths.mapfile || `/srv/msmaps`;
 
 const cleanUp = (importKey) => {
 	return new Promise((resolve, reject) => {
@@ -58,6 +63,10 @@ const importVerifiedFiles = (importKey, verifiedFiles, options) => {
 			imports.push(
 				processGeoPackage(importKey, value, options)
 			)
+		} else if (_.isObject(value) && value.type === "raster") {
+			imports.push(
+				processRaster(importKey, value, options)
+			)
 		}
 	})
 
@@ -92,8 +101,155 @@ const getExistingLayers = (layerNames) => {
 		})
 }
 
-const processGeoPackage = (importKey, options) => {
-	let path = `${basePath}${importKey}/${options.file}`;
+const ensureRasterFsStructure = () => {
+	return Promise
+		.resolve()
+		.then(() => {
+			return fse.ensureDir(rasterStaticPath);
+		})
+		.then(() => {
+			return fse.ensureDir(mapFileStaticPath);
+		})
+}
+
+const reProjectRasterFile = (source, output, srid) => {
+	return new Promise((resolve, reject) => {
+		exec(`gdalwarp -t_srs epsg:${srid} -of vrt ${source} ${output}`, (error) => {
+			if (error) {
+				reject(error);
+			} else {
+				resolve(output);
+			}
+		})
+	})
+}
+
+const optimizeRasterFile = (source, output) => {
+	return new Promise((resolve, reject) => {
+		exec(`gdal_translate -co COMPRESSED=YES -of HFA ${source} ${output}`, (error) => {
+			if (error) {
+				reject(error);
+			} else {
+				resolve(output);
+			}
+		})
+	})
+}
+
+const moveFinalProductToStaticRepository = (finalProduct) => {
+	let finalProductInStaticRepository = {
+	}
+	return Promise
+		.resolve()
+		.then(() => {
+			let fileName = path.basename(finalProduct.source);
+			let destination = `${rasterStaticPath}/${fileName}`;
+
+			finalProductInStaticRepository.source = destination;
+
+			return fse.copy(finalProduct.source, destination);
+		})
+		.then(() => {
+			let fileName = path.basename(finalProduct.optimized);
+			let destination = `${rasterStaticPath}/${fileName}`;
+
+			finalProductInStaticRepository.optimized = destination;
+
+			return fse.copy(finalProduct.optimized, destination);
+		})
+		.then(() => {
+			return finalProductInStaticRepository;
+		});
+}
+
+// todo this is specific only for world-water project
+const generateMsMapFileForFinalProduct = (finalProduct) => {
+	let layerName = path.basename(finalProduct.source, ".tif");
+	let mapFileTemplate = `MAP
+    NAME "ptr"
+
+    PROJECTION
+        "init=epsg:4326"
+    END
+
+    WEB
+        METADATA
+            wms_title "ptr"
+            wms_enable_request "*"
+            wcs_enable_request "*"
+        END
+    END
+
+    LAYER
+        NAME "ptr_${layerName}"
+        TYPE RASTER
+        STATUS ON
+        DATA ${finalProduct.optimized}
+
+        PROJECTION
+            "init=epsg:4326"
+        END
+
+        METADATA
+            wms_title "ptr_${layerName}"
+        END
+
+        CLASS
+            EXPRESSION ([pixel] = 1)
+            STYLE
+                COLOR 0 0 255
+            END
+        END
+    END
+END`
+
+	return Promise
+		.resolve()
+		.then(() => {
+			return fse.outputFile(`${mapFileStaticPath}/${layerName}.map`, mapFileTemplate)
+		})
+}
+
+const processRaster = (importKey, data, options) => {
+	const sourcePath = `${basePath}${importKey}/${data.file}`;
+	const srid = options.srid || 4326;
+
+	return Promise
+		.resolve()
+		.then(() => {
+			return ensureRasterFsStructure();
+		})
+		.then(() => {
+			if (!options.overwrite && fs.existsSync(`${rasterStaticPath}/${data.file}`)) {
+				throw new Error(`File ${data.file} already exists!`)
+			}
+		})
+		.then(() => {
+			return reProjectRasterFile(
+				sourcePath,
+				`${basePath}${importKey}/${path.basename(data.file, '.tif')}_epsg${srid}.vrt`,
+				srid
+			)
+		})
+		.then((vrtFile) => {
+			return optimizeRasterFile(
+				vrtFile,
+				`${basePath}${importKey}/${path.basename(data.file, '.tif')}_epsg${srid}.img`
+			)
+		})
+		.then((optimizedFile) => {
+			return moveFinalProductToStaticRepository({
+				source: sourcePath,
+				optimized: optimizedFile
+			})
+		})
+		.then((finalProduct) => {
+			return generateMsMapFileForFinalProduct(finalProduct);
+		})
+}
+
+const processGeoPackage = (importKey, data) => {
+	let path = `${basePath}${importKey}/${data.file}`;
 	let layerNames;
 	return getLayerNamesFromPath(path)
 		.then((pLayerNames) => {
@@ -364,6 +520,11 @@ const verifyFiles = (files) => {
 		} else if (extName.toLowerCase() === ".gpkg") {
 			verifiedFiles[baseName] = {
 				type: "gpkg",
+				file
+			};
+		} else if (extName.toLowerCase() === ".tif") {
+			verifiedFiles[baseName] = {
+				type: "raster",
 				file
 			};
 		}
