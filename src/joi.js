@@ -1,5 +1,6 @@
 const Joi = require('joi');
 const momentInterval = require('moment-interval');
+const {normalizeInterval} = require('./postgres');
 
 const extensions = [
     (joi) => ({
@@ -15,7 +16,7 @@ const extensions = [
         type: 'isoDuration',
         base: Joi.string().meta({baseType: 'string'}),
         validate: (value, helpers) => {
-            const {start, end} = momentInterval.interval(value);
+            const {start, end} = normalizeInterval(value);
 
             if (!start().isValid() || !end().isValid()) {
                 return {value, errors: helpers.error('isoDuration.interval')};

@@ -60,4 +60,5 @@ function intervalToRange(interval) {
 
 module.exports = {
     intervalToRange,
+    normalizeInterval
 };
