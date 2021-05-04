@@ -265,7 +265,8 @@ const createSimpleLayer = (layerName, options) => {
 			const hasTopo = await db
 				.query(`SELECT EXISTS(SELECT *
                                       FROM "information_schema"."columns"
-                                      WHERE "table_name" = '${layerName}' AND "column_name" = 'topo')`)
+                                      WHERE "table_name" = '${layerName}'
+                                        AND "column_name" = 'topo')`)
 				.then((pgResult) => {
 					return pgResult.rows[0].exists;
 				})
