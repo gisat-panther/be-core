@@ -67,6 +67,10 @@ const importVerifiedFiles = (importKey, verifiedFiles, options) => {
 			imports.push(
 				processRaster(importKey, value, options)
 			)
+		} else if (_.isObject(value) && value.type === "msmap") {
+			imports.push(
+				processMsMapFile(importKey, value, options)
+			)
 		}
 	})
 
@@ -203,6 +207,31 @@ END`
 		.resolve()
 		.then(() => {
 			return fse.outputFile(`${mapFileStaticPath}/${layerName}.map`, mapFileTemplate)
+		})
+}
+
+const processMsMapFile = (importKey, data, options) => {
+	const sourcePath = `${basePath}${importKey}/${data.file}`;
+	return Promise
+		.resolve()
+		.then(() => {
+			return ensureRasterFsStructure();
+		})
+		.then(() => {
+			if (!options.overwrite && fs.existsSync(`${mapFileStaticPath}/${data.file}`)) {
+				throw new Error(`File ${data.file} already exists!`)
+			}
+		})
+		.then(() => {
+			return new Promise((resolve, reject) => {
+				fs.copyFile(sourcePath, `${mapFileStaticPath}/${data.file}`, (error) => {
+					if (error) {
+						reject(error);
+					} else {
+						resolve();
+					}
+				})
+			})
 		})
 }
 
@@ -521,6 +550,11 @@ const verifyFiles = (files) => {
 		} else if (extName.toLowerCase() === ".tif") {
 			verifiedFiles[baseName] = {
 				type: "raster",
+				file
+			};
+		} else if (extName.toLowerCase() === ".map") {
+			verifiedFiles[baseName] = {
+				type: "msmap",
 				file
 			};
 		}
