@@ -48,6 +48,14 @@ const ptr4 = {
 			clientId: null,
 			clientSecret: null,
 		}
+	},
+	import: {
+		raster: {
+			paths: {
+				mapfile: `/tmp/panther/msmaps`,
+				static: `/tmp/panther/static`
+			}
+		}
 	}
 };
 
