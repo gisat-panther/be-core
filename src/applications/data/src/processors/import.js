@@ -179,6 +179,7 @@ const generateMsMapFileForFinalProduct = (finalProduct) => {
     WEB
         METADATA
             wms_title "ptr"
+            wms_onlineresource  "${config.urlMapServer}/?map=${layerName}.map&"
             wms_enable_request "*"
             wcs_enable_request "*"
             ows_sld_enabled "true"
