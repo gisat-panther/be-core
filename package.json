@@ -62,7 +62,7 @@
     "start": "node src/server.js",
     "start:watch": "nodemon src/server.js",
     "test": "./bin/load-fixtures && mocha -b --full-trace -t 60000 && ./bin/check-indexes && ./bin/check-custom-columns",
-    "test:wait": "wait-port localhost:9850 && npm run test",
+    "test:wait": "wait-port -t 30000 localhost:9850 && npm run test",
     "test:watch": "npm-watch test:wait",
     "db:migrations:create": "version=$(date +%Y%m%d%H%M) && touch \"migrations/${version}.do.sql\" && touch \"migrations/${version}.undo.sql\"",
     "load-performance-fixtures": "./bin/load-fixtures && ./bin/create-all-permissions && ./bin/assign-all-permissions-to-user 2d069e3a-f77f-4a1f-aeda-50fd06c8c35d && ./bin/load-performance-fixtures"
