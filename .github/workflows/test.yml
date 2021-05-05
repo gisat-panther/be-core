@@ -19,4 +19,4 @@ jobs:
                   node-version: '12.x'
             - run: 'npm ci'
             - run: 'npm run start &'
-            - run: 'npm test:wait'
+            - run: 'npm run test:wait'
