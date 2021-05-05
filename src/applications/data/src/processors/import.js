@@ -177,14 +177,15 @@ const generateMsMapFileForFinalProduct = (finalProduct) => {
             wms_title "ptr"
             wms_enable_request "*"
             wcs_enable_request "*"
+            ows_sld_enabled "true"
         END
     END
 
     LAYER
+    	DATA ${finalProduct.optimized}
         NAME "ptr_${layerName}"
-        TYPE RASTER
         STATUS ON
-        DATA ${finalProduct.optimized}
+        TYPE RASTER
 
         PROJECTION
             "init=epsg:4326"
@@ -194,12 +195,7 @@ const generateMsMapFileForFinalProduct = (finalProduct) => {
             wms_title "ptr_${layerName}"
         END
 
-        CLASS
-            EXPRESSION ([pixel] = 1)
-            STYLE
-                COLOR 0 0 255
-            END
-        END
+        INCLUDE "${mapFileStaticPath}/ww-base-style.map"
     END
 END`
 
