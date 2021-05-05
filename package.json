@@ -36,7 +36,8 @@
     "prom-client": "^12.0.0",
     "sql-template-strings": "^2.2.2",
     "swagger-ui-express": "^4.1.5",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "fs-extra": "^10.0.0"
   },
   "devDependencies": {
     "@auto-it/git-tag": "^10.4.2",
