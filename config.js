@@ -1,7 +1,8 @@
 const ptr4 = {
 	url: 'http://localhost/backend', // url on which server is accessible
+	urlMapServer: "http://localhost/mapserver", // url on which MapServer is accessible
 	masterPort: 9849,
-	clusterPorts: [9850, 9851, 9852, 9853, 9854, 9855, 9856, 9857, 9858, 9859],
+	clusterPorts: [9850, 9851],
 	keepAliveWorkers: true,
 	pgConfig: {
 		normal: {
