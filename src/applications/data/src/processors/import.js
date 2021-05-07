@@ -167,13 +167,13 @@ const moveFinalProductToStaticRepository = (finalProduct) => {
 }
 
 // todo this is specific only for world-water project
-const generateMsMapFileForFinalProduct = (finalProduct) => {
+const generateMsMapFileForFinalProduct = (finalProduct, srid) => {
 	let layerName = path.basename(finalProduct.source, ".tif");
 	let mapFileTemplate = `MAP
     NAME "ptr"
 
     PROJECTION
-        "init=epsg:4326"
+        "init=epsg:${srid}"
     END
 
     WEB
@@ -193,7 +193,7 @@ const generateMsMapFileForFinalProduct = (finalProduct) => {
         TYPE RASTER
 
         PROJECTION
-            "init=epsg:4326"
+            "init=epsg:${srid}"
         END
 
         METADATA
@@ -270,7 +270,7 @@ const processRaster = (importKey, data, options) => {
 			})
 		})
 		.then((finalProduct) => {
-			return generateMsMapFileForFinalProduct(finalProduct);
+			return generateMsMapFileForFinalProduct(finalProduct, srid);
 		})
 }
 
