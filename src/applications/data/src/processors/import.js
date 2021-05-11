@@ -71,6 +71,10 @@ const importVerifiedFiles = (importKey, verifiedFiles, options) => {
 			imports.push(
 				processMsMapFile(importKey, value, options)
 			)
+		} else if (_.isObject(value) && value.type === "geojson") {
+			imports.push(
+				processGeoJsonFile(importKey, value, options)
+			)
 		}
 	})
 
@@ -234,6 +238,10 @@ const processMsMapFile = (importKey, data, options) => {
 				})
 			})
 		})
+}
+
+const processGeoJsonFile = (importKey, data, options) => {
+
 }
 
 const processRaster = (importKey, data, options) => {
@@ -556,6 +564,11 @@ const verifyFiles = (files) => {
 		} else if (extName.toLowerCase() === ".map") {
 			verifiedFiles[baseName] = {
 				type: "msmap",
+				file
+			};
+		} else if (extName.toLowerCase() === ".geojson") {
+			verifiedFiles[baseName] = {
+				type: "geojson",
 				file
 			};
 		}
