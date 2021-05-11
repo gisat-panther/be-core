@@ -73,10 +73,56 @@ describe('joi', function () {
             tests.forEach((test) => {
                 it(test.name, function () {
                     const result = test.schema.validate(test.value);
-                    console.log(result.value);
+
                     assert.deepStrictEqual(
                         result.error.details.map((detail) => detail.type),
                         ['isoDuration.interval']
+                    );
+                });
+            });
+        });
+    });
+
+    describe('fieldName', function () {
+        describe('valid', function () {
+            const tests = [
+                {
+                    name: 'valid',
+                    value: 'camelCase',
+                    schema: Joi.fieldName(),
+                },
+            ];
+
+            tests.forEach((test) => {
+                it(test.name, function () {
+                    assert.deepStrictEqual(test.schema.validate(test.value), {
+                        value: test.value,
+                    });
+                });
+            });
+        });
+
+        describe('invalid', function () {
+            const tests = [
+                {
+                    name: 'invalid underscore',
+                    value: 'snake_case',
+                    schema: Joi.fieldName(),
+                },
+                {
+                    name: 'invalid dash',
+                    value: 'kebab-case',
+                    schema: Joi.fieldName(),
+                },
+            ];
+
+            tests.forEach((test) => {
+                it(test.name, function () {
+                    const result = test.schema.validate(test.value);
+
+                    assert.deepStrictEqual(
+                        result.error.details.map((detail) => detail.type),
+                        ['fieldName.base']
                     );
                 });
             });

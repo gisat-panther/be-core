@@ -43,10 +43,6 @@ function createUserAuthHeader(key) {
     return createAuthHeader(createUserToken(key));
 }
 
-function createGuestAuthHeader(key) {
-    return createAuthHeader(createGuestToken(key));
-}
-
 describe('modules/login', function () {
     describe('login', function () {
         it('login', function () {
@@ -56,7 +52,7 @@ describe('modules/login', function () {
                     'Content-Type': 'application/json',
                 }),
                 body: JSON.stringify({
-                    username: 'test@example.com',
+                    username: 'test@noperms.example.com',
                     password: 'test',
                 }),
             }).then((response) => {
@@ -73,7 +69,7 @@ describe('modules/login', function () {
                     assert.isString(token);
                     assert.deepStrictEqual(data, {
                         data: {
-                            email: 'test@example.com',
+                            email: 'test@noperms.example.com',
                             name: null,
                             phone: null,
                         },
@@ -97,7 +93,7 @@ describe('modules/login', function () {
                 {
                     name: 'invalid password',
                     body: {
-                        username: 'test@example.com',
+                        username: 'test@noperms.example.com',
                         password: 'wrong',
                     },
                 },
@@ -184,7 +180,7 @@ describe('modules/login', function () {
                         key: '7c5acddd-3625-46ef-90b3-82f829afb258',
                         data: {
                             name: null,
-                            email: 'test@example.com',
+                            email: 'test@noperms.example.com',
                             phone: null,
                         },
                         authToken: token,

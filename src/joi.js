@@ -22,6 +22,33 @@ const extensions = [
             }
         },
     }),
+    (joi) => ({
+        type: 'fieldName',
+        base: Joi.string().meta({baseType: 'string'}),
+        validate: (value, helpers) => {
+            if (value != null && !/^[A-Za-z]*$/.test(value)) {
+                return {value, errors: helpers.error('fieldName.base')};
+            }
+        },
+    }),
 ];
 
-module.exports = extensions.reduce((joi, ext) => joi.extend(ext), Joi);
+/**
+ * @typedef {import('joi').StringSchema} StringArraySchema
+ *
+ * @typedef {import('joi').StringSchema} IsoDurationSchema
+ *
+ * @typedef {import('joi').StringSchema} FieldNameSchema
+ *
+ * @typedef ExtensionRoot
+ * @property {() => StringArraySchema} stringArray
+ * @property {() => IsoDurationSchema} isoDuration
+ * @property {() => FieldNameSchema} fieldName
+ *
+ * @typedef {import('joi').Root & ExtensionRoot} Root
+ *
+ * @type {Root}
+ */
+const CustomJoi = extensions.reduce((joi, ext) => joi.extend(ext), Joi);
+
+module.exports = CustomJoi;

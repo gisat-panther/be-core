@@ -1,5 +1,4 @@
 const express = require('express');
-const planCompiler = require('../modules/rest/compiler');
 const restRouter = require('../modules/rest/router');
 const createLoginApi = require('../modules/login/router');
 const routing = require('../modules/routing/index');
@@ -10,6 +9,7 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const _ = require('lodash/fp');
 const p = require('./plan');
+const getConfig = require('./config').get;
 
 /**
  * Reducing function for application merging.
@@ -52,7 +52,7 @@ const config = mergeApplications(
 function apiRouter() {
     const router = express.Router();
 
-    const plan = planCompiler.compile(config.plan);
+    const plan = config.plan;
     p.init(plan);
     const api = [
         ...createLoginApi(plan),

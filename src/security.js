@@ -2,8 +2,6 @@ const config = require('../config');
 const db = require('./db');
 const {SQL} = require('sql-template-strings');
 
-db.init();
-
 /**
  * @param {string} password
  *

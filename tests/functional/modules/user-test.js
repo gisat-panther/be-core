@@ -62,6 +62,46 @@ function createSpecificPermsAdminToken() {
     );
 }
 
+/**
+ * We can't compare changes as we don't know the expected value
+ */
+function removeChanges(data) {
+    return _.omit(data, ['changes']);
+}
+
+/**
+ * Let's ignore auto generated groups
+ */
+function preserveKnownGroupKeys(data) {
+    if (!_.has(data, ['data', 'user'])) {
+        return data;
+    }
+
+    const knownGroupKeys = [
+        '52ddabec-d01a-49a0-bb4d-5ff931bd346e',
+        '742b6f3f-a77e-4267-8e96-1e4cea96dec3',
+        '52ddabec-d01a-49a0-bb4d-5ff931bd346e',
+        'e56f3545-57f5-44f9-9094-2750a69ef67e',
+    ];
+
+    data.data.user = data.data.user.map((u) => {
+        const groupKeys = _.intersection(u.data.groupKeys, knownGroupKeys);
+        if (groupKeys.length === 0) {
+            u.data.groupKeys = null;
+        } else {
+            u.data.groupKeys = groupKeys;
+        }
+
+        return u;
+    });
+
+    return data;
+}
+
+function clearData(data) {
+    return preserveKnownGroupKeys(removeChanges(data));
+}
+
 describe('modules/user', function () {
     describe('POST /rest/user/filtered/users', function () {
         const tests = [
@@ -80,7 +120,7 @@ describe('modules/user', function () {
                                 {
                                     key: '7c5acddd-3625-46ef-90b3-82f829afb258',
                                     data: {
-                                        email: 'test@example.com',
+                                        email: 'test@noperms.example.com',
                                         name: null,
                                         phone: null,
                                         groupKeys: null,
@@ -179,7 +219,7 @@ describe('modules/user', function () {
                                 {
                                     key: '7c5acddd-3625-46ef-90b3-82f829afb258',
                                     data: {
-                                        email: 'test@example.com',
+                                        email: 'test@noperms.example.com',
                                         name: null,
                                         phone: null,
                                         groupKeys: null,
@@ -278,7 +318,7 @@ describe('modules/user', function () {
                                 {
                                     key: '7c5acddd-3625-46ef-90b3-82f829afb258',
                                     data: {
-                                        email: 'test@example.com',
+                                        email: 'test@noperms.example.com',
                                         name: null,
                                         phone: null,
                                         groupKeys: null,
@@ -326,7 +366,7 @@ describe('modules/user', function () {
                     );
                     return response.json().then((data) => {
                         assert.deepStrictEqual(
-                            _.omit(data, ['changes']),
+                            clearData(data),
                             test.expectedResult.body
                         );
                     });
@@ -347,13 +387,13 @@ describe('modules/user', function () {
         assert.strictEqual(response.status, 200);
 
         const data = await response.json();
-        assert.deepStrictEqual(_.omit(data, ['changes']), {
+        assert.deepStrictEqual(clearData(data), {
             data: {
                 users: [],
             },
             limit: 100,
             offset: 0,
-            total: 0,
+            total: 1,
             success: true,
         });
     });
@@ -370,13 +410,42 @@ describe('modules/user', function () {
         assert.strictEqual(response.status, 200);
 
         const data = await response.json();
-        assert.deepStrictEqual(_.omit(data, ['changes']), {
+        assert.deepStrictEqual(clearData(data), {
             data: {
                 users: [
                     {
+                        key: '39ed471f-8383-4283-bb8a-303cb05cadef',
+                        data: {
+                            email: 'specificPermsAdmin@specific.example.com',
+                            groupKeys: null,
+                            name: null,
+                            permissionKeys: [
+                                '432348bc-6adf-4fd3-ac44-48a15f7d8ac6',
+                                '4f2b3dc7-9b3f-4624-82c0-93d139e19baa',
+                                'e84dfa30-f2fc-4a1f-988c-b7f4e2489f2f',
+                                'f2ead234-6402-4a6e-9374-b243647edc44',
+                            ],
+                            phone: null,
+                        },
+                        permissions: {
+                            activeUser: {
+                                create: false,
+                                delete: false,
+                                update: false,
+                                view: true,
+                            },
+                            guest: {
+                                create: false,
+                                delete: false,
+                                update: false,
+                                view: false,
+                            },
+                        },
+                    },
+                    {
                         key: '7c5acddd-3625-46ef-90b3-82f829afb258',
                         data: {
-                            email: 'test@example.com',
+                            email: 'test@noperms.example.com',
                             name: null,
                             phone: null,
                             groupKeys: null,
@@ -401,7 +470,7 @@ describe('modules/user', function () {
             },
             limit: 100,
             offset: 0,
-            total: 1,
+            total: 2,
             success: true,
         });
     });
@@ -590,7 +659,7 @@ describe('modules/user', function () {
 
         assert.strictEqual(response.status, 200);
         const data = await response.json();
-        assert.deepStrictEqual(data, {
+        assert.deepStrictEqual(clearData(data), {
             data: {
                 users: [
                     {
@@ -763,7 +832,7 @@ describe('modules/user', function () {
 
         assert.strictEqual(response.status, 200);
         const data = await response.json();
-        assert.deepStrictEqual(data, {
+        assert.deepStrictEqual(clearData(data), {
             data: {
                 users: [
                     {
@@ -820,7 +889,7 @@ describe('modules/user', function () {
 
         assert.strictEqual(response.status, 403);
         const data = await response.json();
-        assert.deepStrictEqual(data, {
+        assert.deepStrictEqual(clearData(data), {
             success: false,
         });
     });
@@ -915,7 +984,7 @@ describe('modules/user', function () {
 
         const data = await response.json();
 
-        assert.deepStrictEqual(data, {
+        assert.deepStrictEqual(clearData(data), {
             data: {
                 users: [
                     {

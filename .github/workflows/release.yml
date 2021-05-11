@@ -20,12 +20,12 @@ jobs:
               run: git fetch --unshallow --tags
 
             - name: Use Node.js 12.x
-              uses: actions/setup-node@v1
+              uses: actions/setup-node@v2.1.4
               with:
                   node-version: 12.x
 
             - name: Cache node modules
-              uses: actions/cache@v1
+              uses: actions/cache@v2.1.3
               with:
                   path: node_modules
                   key: npm-deps-${{ hashFiles('package-lock.json') }}

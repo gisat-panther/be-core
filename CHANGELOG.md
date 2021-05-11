@@ -1,3 +1,52 @@
+# v0.0.21 (Mon Jan 11 2021)
+
+#### 🐾 Patch
+
+- Prometheus metrics [#33](https://github.com/gisat-panther/be-core/pull/33) ([@nenadalm](https://github.com/nenadalm))
+- Generated permissions [#27](https://github.com/gisat-panther/be-core/pull/27) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
+# v0.0.20 (Fri Dec 04 2020)
+
+#### 🐾 Patch
+
+- Docker build and push workflow [#29](https://github.com/gisat-panther/be-core/pull/29) ([@mbabic84](https://github.com/mbabic84))
+
+#### Authors: 1
+
+- [@mbabic84](https://github.com/mbabic84)
+
+---
+
+# v0.0.19 (Thu Dec 03 2020)
+
+#### 🐾 Patch
+
+- Dockerfile [#28](https://github.com/gisat-panther/be-core/pull/28) ([@mbabic84](https://github.com/mbabic84))
+
+#### Authors: 1
+
+- [@mbabic84](https://github.com/mbabic84)
+
+---
+
+# v0.0.18 (Wed Nov 18 2020)
+
+#### 🐾 Patch
+
+- Filter, order in translations and custom fields [#26](https://github.com/gisat-panther/be-core/pull/26) ([@nenadalm](https://github.com/nenadalm))
+
+#### Authors: 1
+
+- Miloslav Nenadál ([@nenadalm](https://github.com/nenadalm))
+
+---
+
 # v0.0.17 (Thu Nov 05 2020)
 
 #### 🐾 Patch

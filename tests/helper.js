@@ -153,6 +153,53 @@ async function createRecord(table, columns) {
 }
 
 /**
+ * @param {object} columns
+ */
+async function removeTranslation(columns) {
+    return db.query(
+        `
+DELETE FROM
+  "public"."translations"
+WHERE
+  "resourceKey" = $1
+  AND "resourceGroup" = $2
+  AND "resourceType" = $3
+  AND "locale" = $4
+  AND "field" = $5`,
+        [
+            columns.resourceKey,
+            columns.resourceGroup,
+            columns.resourceType,
+            columns.locale,
+            columns.field,
+        ]
+    );
+}
+
+/**
+ * @param {object} columns
+ */
+async function createTranslation(columns) {
+    pushChange([removeTranslation, columns]);
+
+    return db.query(
+        `
+INSERT INTO
+  "public"."translations"("resourceKey", "resourceGroup", "resourceType", "locale", "field", "value")
+VALUES
+  ($1, $2, $3, $4, $5, $6)`,
+        [
+            columns.resourceKey,
+            columns.resourceGroup,
+            columns.resourceType,
+            columns.locale,
+            columns.field,
+            columns.value,
+        ]
+    );
+}
+
+/**
  * Reverts all changes made by functions in this module.
  */
 async function revertChanges() {
@@ -168,6 +215,7 @@ module.exports = {
     newScope,
     prevScope,
     createRecord,
+    createTranslation,
     grantPermission,
     grantPermissions,
     grantHashPermission,

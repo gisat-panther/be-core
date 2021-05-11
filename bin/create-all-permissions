@@ -16,8 +16,6 @@ const db = require('../src/db');
 
 const flatMapWithKey = _.flatMap.convert({cap: false});
 
-db.init();
-
 const permissions = ['view', 'create', 'update', 'delete'];
 const typesByGroup = _.mapValues(_.keys, getPlan());
 
@@ -32,10 +30,16 @@ function typeToValues(types, group) {
     }, types);
 }
 
-const sqlMap = qb.merge(
-    qb.insertInto('user.permissions'),
-    qb.columns(columns),
-    qb.values(flatMapWithKey(typeToValues, typesByGroup))
-);
+async function main() {
+    await db.init();
 
-db.query(qb.toSql(sqlMap)).then(() => process.exit());
+    const sqlMap = qb.merge(
+        qb.insertInto('user.permissions'),
+        qb.columns(columns),
+        qb.values(flatMapWithKey(typeToValues, typesByGroup))
+    );
+
+    await db.query(qb.toSql(sqlMap));
+}
+
+main().then(() => process.exit());

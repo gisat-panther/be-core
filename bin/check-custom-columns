@@ -13,8 +13,6 @@ const {SQL} = require('sql-template-strings');
 
 const flatMapWithKey = _.flatMap.convert({cap: false});
 
-db.init();
-
 /**
  * @param {{schema: string, tables: string[]}[]} tables
  *
@@ -66,6 +64,8 @@ function dropTableColumnQuery(tableName) {
 }
 
 async function main() {
+    await db.init();
+
     const tables = flatMapWithKey((group, groupName) => {
         return {
             schema: groupName,

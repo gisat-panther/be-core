@@ -1,0 +1,17 @@
+#!/usr/bin/env node
+
+const getAppConfig = require('../src/applications/config').get;
+const db = require('../src/db');
+const permissions = require('../src/modules/permissions/index');
+
+async function main() {
+    await db.init();
+
+    const appConfig = getAppConfig();
+    await permissions.runOnce({
+        plan: appConfig.plan,
+        generatedPermissions: appConfig.generatedPermissions,
+    });
+}
+
+main().then(() => process.exit());
