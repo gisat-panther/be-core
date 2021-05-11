@@ -1,5 +1,4 @@
-/.idea/workspace.xml
-/.idea/shelf/
-/.idea/dictionaries/
+.gitignore
+/.idea/
 /node_modules/
 /tmp/

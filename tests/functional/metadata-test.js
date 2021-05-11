@@ -44,7 +44,7 @@ function periodRanges(periodKeys) {
 }
 
 describe('/rest/metadata', function () {
-    describe('POST /rest/metadata/filtered/case', async function () {
+    describe('POST /rest/metadata/filtered/cases', async function () {
         before(async function () {
             await Promise.all([
                 h.createRecord('"application"."application"', {
@@ -111,7 +111,7 @@ describe('/rest/metadata', function () {
                     status: 200,
                     body: {
                         data: {
-                            case: [
+                            cases: [
                                 {
                                     key: '9466d6c1-6596-49c0-9729-0e3ff3ad08a0',
                                     data: {
@@ -191,7 +191,7 @@ describe('/rest/metadata', function () {
                     status: 200,
                     body: {
                         data: {
-                            case: [
+                            cases: [
                                 {
                                     key: '9466d6c1-6596-49c0-9729-0e3ff3ad08a0',
                                     data: {
@@ -247,7 +247,7 @@ describe('/rest/metadata', function () {
                     status: 200,
                     body: {
                         data: {
-                            case: [
+                            cases: [
                                 {
                                     key: '9466d6c1-6596-49c0-9729-0e3ff3ad08a0',
                                     data: {
@@ -396,7 +396,7 @@ describe('/rest/metadata', function () {
                 test.before && (await test.before());
 
                 const response = await fetch(
-                    url('/rest/metadata/filtered/case'),
+                    url('/rest/metadata/filtered/cases'),
                     {
                         method: 'POST',
                         headers: test.headers,
