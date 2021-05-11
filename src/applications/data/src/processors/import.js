@@ -166,7 +166,7 @@ const moveFinalProductToStaticRepository = (finalProduct) => {
 		});
 }
 
-// todo this is specific only for world-water project
+// TODO this is specific only for world-water project
 const generateMsMapFileForFinalProduct = (finalProduct, srid) => {
 	let layerName = path.basename(finalProduct.source, ".tif");
 	let mapFileTemplate = `MAP
