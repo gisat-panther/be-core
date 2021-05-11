@@ -83,6 +83,11 @@ module.exports = function ({plan}) {
         demo__application: {
             targets: applicationKeyTargets(plan),
             /*
+            todo fix bellow
+            - applicationKeyTargets return empty object for this plan which cause error during startup "Cannot convert undefined or null to object"
+             */
+
+            /*
              * Targets will be part of group based on application key.
              * Permissions of the group will be `targetPermissions`.
              */

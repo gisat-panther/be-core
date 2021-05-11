@@ -236,7 +236,7 @@ describe('/rest/relations', function () {
                         helper.createRecord('"user"."permissions"', {
                             key: permissions[0],
                             resourceGroup: 'metadata',
-                            resourceType: 'scope',
+                            resourceType: 'scopes',
                             permission: 'view',
                             resourceKey: scopeKey,
                         }),
@@ -345,7 +345,7 @@ describe('/rest/relations', function () {
                         helper.createRecord('"user"."permissions"', {
                             key: permissions[0],
                             resourceGroup: 'metadata',
-                            resourceType: 'scope',
+                            resourceType: 'scopes',
                             permission: 'view',
                             resourceKey: scopeKey,
                         }),
@@ -381,14 +381,14 @@ describe('/rest/relations', function () {
                         helper.createRecord('"user"."permissions"', {
                             key: permissions[0],
                             resourceGroup: 'metadata',
-                            resourceType: 'scope',
+                            resourceType: 'scopes',
                             permission: 'view',
                             resourceKey: scopeKey,
                         }),
                         helper.createRecord('"user"."permissions"', {
                             key: permissions[1],
                             resourceGroup: 'metadata',
-                            resourceType: 'place',
+                            resourceType: 'places',
                             permission: 'view',
                             resourceKey: placeKey,
                         }),
@@ -414,7 +414,6 @@ describe('/rest/relations', function () {
                                         attributeKey: null,
                                         attributeSetKey: null,
                                         caseKey: null,
-                                        fidColumnName: null,
                                         layerTemplateKey: null,
                                         periodKey: null,
                                         placeKey: placeKey,

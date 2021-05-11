@@ -11,9 +11,9 @@
     "url": "https://github.com/gisat-panther/be-core/issues"
   },
   "dependencies": {
-    "@gisatcz/ptr-tile-grid": "0.0.2-alpha.5",
-    "@imatic/pgqb": "^0.1.23",
-    "@turf/turf": "^5.1.6",
+    "@gisatcz/ptr-tile-grid": "^0.0.8",
+    "@imatic/pgqb": "^0.1.24",
+    "adm-zip": "^0.5.1",
     "bcrypt": "^5.0.0",
     "body-parser": "^1.19.0",
     "cookie-parser": "^1.4.5",
@@ -24,6 +24,8 @@
     "lodash": "^4.17.20",
     "moment": "^2.29.1",
     "moment-interval": "^0.2.1",
+    "multer": "^1.4.2",
+    "node-ipc": "^9.1.4",
     "object-hash": "^2.0.3",
     "passport": "^0.4.1",
     "passport-facebook": "^3.0.0",
@@ -33,10 +35,9 @@
     "postgrator": "^4.1.1",
     "prom-client": "^12.0.0",
     "sql-template-strings": "^2.2.2",
-    "swagger-ui-express": "^4.1.4",
-    "uuid": "^8.3.1",
-    "multer": "^1.4.2",
-    "adm-zip": "^0.4.16"
+    "swagger-ui-express": "^4.1.5",
+    "uuid": "^8.3.2",
+    "fs-extra": "^10.0.0"
   },
   "devDependencies": {
     "@auto-it/git-tag": "^10.4.2",
@@ -61,8 +62,8 @@
   "scripts": {
     "start": "node src/server.js",
     "start:watch": "nodemon src/server.js",
-    "test": "./bin/load-fixtures && mocha && ./bin/check-indexes && ./bin/check-custom-columns",
-    "test:wait": "wait-port localhost:9850 && npm run test",
+    "test": "./bin/load-fixtures && mocha -b --full-trace -t 60000 && ./bin/check-indexes && ./bin/check-custom-columns",
+    "test:wait": "wait-port -t 30000 localhost:9850 && npm run test",
     "test:watch": "npm-watch test:wait",
     "db:migrations:create": "version=$(date +%Y%m%d%H%M) && touch \"migrations/${version}.do.sql\" && touch \"migrations/${version}.undo.sql\"",
     "load-performance-fixtures": "./bin/load-fixtures && ./bin/create-all-permissions && ./bin/assign-all-permissions-to-user 2d069e3a-f77f-4a1f-aeda-50fd06c8c35d && ./bin/load-performance-fixtures"

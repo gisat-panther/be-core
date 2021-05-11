@@ -1,0 +1,33 @@
+#!/usr/bin/env node
+
+/**
+ * This script assigns all available permissions to group given as argument.
+ *
+ * Useful in development.
+ */
+
+const {SQL} = require('sql-template-strings');
+const db = require('../src/db');
+
+if (process.argv.length !== 3) {
+    throw new Error('Script expects exactly one parameter - group key.');
+}
+
+const groupKey = process.argv[2];
+
+async function main() {
+    await db.init();
+    await db.query(
+        SQL`
+INSERT INTO "user"."groupPermissions"
+  ("groupKey", "permissionKey")
+SELECT
+  ${groupKey}, "p"."key"
+FROM
+  "user"."permissions" "p"
+ON CONFLICT DO NOTHING
+`
+    );
+}
+
+main().then(() => process.exit());

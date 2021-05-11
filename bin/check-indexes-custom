@@ -1,0 +1,104 @@
+#!/usr/bin/env node
+
+/**
+ * Exits with 0 if there are no missing indexes that can be automatically checked and easilly forgotten
+ * to add, otherwise 1.
+ */
+
+require('../src/applications/index');
+const getPlan = require('../src/applications/plan').get;
+const db = require('../src/db');
+const _ = require('lodash');
+
+const getMissingIndexes = (indexes) => {
+	return db
+		.query(`SELECT "indexname"
+                FROM "pg_indexes"`)
+		.then((pgResult) => {
+			return _.map(pgResult.rows, "indexname");
+		})
+		.then((existingIndexes) => {
+			return _.filter(indexes, (index) => {
+				return !existingIndexes.includes(index.name);
+			})
+		})
+}
+
+const parseIndex = (index) => {
+	return `CREATE INDEX "${index.name}" ON "${index.schema}"."${index.table}" ("${index.column}");`;
+}
+
+const parseIndexDrop = (index) => {
+	return `DROP INDEX "${index.schema}"."${index.name}";`;
+}
+
+const short = (string) => {
+	return string.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(" ").map(i => i.charAt(0)).join("").toLowerCase();
+}
+
+/**
+ * @returns {Promise<{create: string[], drop: string[]}?>}
+ */
+const main = async () => {
+	await db.init();
+
+	const indexes = [];
+
+	_.each(getPlan(), (group, groupName) => {
+		_.each(group, (type) => {
+			_.each(type.columns, (column, columnName) => {
+				if (column.index) {
+					indexes.push({
+						schema: groupName,
+						table: type.table,
+						column: columnName,
+						name: `${short(groupName)}_${short(type.table)}_${columnName}_idx`.toLowerCase()
+					})
+				}
+			})
+
+			if (type.hasOwnProperty("type")) {
+				_.each (type.type.types, (type, tableName) => {
+					_.each(type.columns, (column, columnName) => {
+						if (column.index) {
+							indexes.push({
+								schema: groupName,
+								table: tableName,
+								column: columnName,
+								name: `${short(groupName)}_${short(tableName)}_${columnName}_idx`.toLowerCase()
+							})
+						}
+					})
+				})
+			}
+		})
+	});
+
+	const missingIndexes = await getMissingIndexes(_.uniqBy(indexes, "name"));
+
+	if (missingIndexes) {
+		return {
+			create: missingIndexes.map(parseIndex),
+			drop: missingIndexes.map(parseIndexDrop),
+		};
+	}
+}
+
+main().then((missingIndexes) => {
+	if (missingIndexes == null) {
+		return process.exit(0);
+	}
+
+	console.error(`Some indexes are missing. Create migration with following contents:
+====================================================================
+
+do.sql
+------
+${missingIndexes.create.join('\n')}
+
+undo.sql:
+---------
+${missingIndexes.drop.join('\n')}`);
+
+	process.exit(1);
+});

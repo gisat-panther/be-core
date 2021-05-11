@@ -27,14 +27,17 @@ module.exports = {
                 email: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 name: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 phone: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 password: {
                     defaultValue: null,
@@ -88,6 +91,7 @@ module.exports = {
                 },
                 name: {
                     schema: Joi.string(),
+                    index: true
                 },
             },
         },
@@ -178,10 +182,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -253,10 +259,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -266,7 +274,8 @@ module.exports = {
                     defaultValue: null,
                     schema: Joi.object(),
                     selectExpr: function ({alias}) {
-                        return qb.expr.fn('ST_AsGeoJSON', alias);
+                        // todo this has to be fixed properly in future
+                        return qb.val.raw(SQL`ST_AsGeoJSON(t."geometry")::JSON AS "geometry"`);
                     },
                     modifyExpr: function ({value}) {
                         if (value == null) {
@@ -280,7 +289,8 @@ module.exports = {
                     defaultValue: null,
                     schema: Joi.object(),
                     selectExpr: function ({alias}) {
-                        return qb.expr.fn('ST_AsGeoJSON', alias);
+                        // todo this has to be fixed properly in future
+                        return qb.val.raw(SQL`ST_AsGeoJSON(t."bbox")::JSON AS "bbox"`);
                     },
                     modifyExpr: function ({value}) {
                         if (value == null) {
@@ -349,10 +359,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -366,6 +378,7 @@ module.exports = {
                         value: p.intervalToRange(value),
                         operator,
                     }),
+                    index: true
                 },
                 periodRange: {
                     inputs: ['period'],
@@ -375,6 +388,7 @@ module.exports = {
                             p.intervalToRange(record.period)
                         );
                     },
+                    index: true
                 },
             },
             relations: {
@@ -440,10 +454,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -517,10 +533,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -529,10 +547,12 @@ module.exports = {
                 type: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 unit: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 valueType: {
                     defaultValue: null,
@@ -540,7 +560,7 @@ module.exports = {
                 },
                 color: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string()
                 },
             },
             relations: {
@@ -598,10 +618,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -671,10 +693,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -736,10 +760,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -801,10 +827,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -877,16 +905,22 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
                     schema: Joi.string(),
                 },
-                level: {defaultValue: null, schema: Joi.number().integer()},
+                level: {
+                    defaultValue: null,
+                    schema: Joi.number().integer(),
+                    index: true
+                },
             },
             relations: {
                 application: {
@@ -980,10 +1014,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -991,7 +1027,7 @@ module.exports = {
                 },
                 color: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string()
                 },
             },
         },
@@ -1040,10 +1076,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -1052,10 +1090,12 @@ module.exports = {
                 source: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameGeoserver: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 definition: {
                     defaultValue: null,
@@ -1099,11 +1139,12 @@ module.exports = {
             columns: {
                 key: {
                     defaultValue: () => uuid.generate(),
-                    schema: Joi.string().uuid(),
+                    schema: Joi.string(),
                 },
                 name: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -1170,6 +1211,7 @@ module.exports = {
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 structure: {
                     defaultValue: null,
@@ -1239,6 +1281,7 @@ module.exports = {
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 attribution: {
                     defaultValue: null,
@@ -1247,14 +1290,17 @@ module.exports = {
                 tableName: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 columnName: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 fidColumnName: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
             },
         },
@@ -1264,7 +1310,7 @@ module.exports = {
                 dispatchColumn: 'type',
                 key: 'sourceKey',
                 types: {
-                    vector: {
+                    "tiledVector": {
                         context: {
                             list: {
                                 columns: ['layerName', 'tableName', 'fidColumnName', 'geometryColumnName'],
@@ -1280,18 +1326,22 @@ module.exports = {
                             layerName: {
                                 defaultValue: null,
                                 schema: Joi.string(),
+                                index: true
                             },
                             tableName: {
                                 defaultValue: null,
                                 schema: Joi.string(),
+                                index: true
                             },
                             fidColumnName: {
                                 defaultValue: null,
                                 schema: Joi.string(),
+                                index: true
                             },
                             geometryColumnName: {
                                 defaultValue: null,
                                 schema: Joi.string(),
+                                index: true
                             },
                         },
                     },
@@ -1311,10 +1361,12 @@ module.exports = {
                             layerName: {
                                 defaultValue: null,
                                 schema: Joi.string(),
+                                index: true
                             },
                             tableName: {
                                 defaultValue: null,
                                 schema: Joi.string(),
+                                index: true
                             },
                         },
                     },
@@ -1349,6 +1401,7 @@ module.exports = {
                             url: {
                                 defaultValue: null,
                                 schema: Joi.string(),
+                                index: true
                             },
                             layers: {
                                 defaultValue: null,
@@ -1404,6 +1457,7 @@ module.exports = {
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 attribution: {
                     defaultValue: null,
@@ -1414,10 +1468,11 @@ module.exports = {
                     schema: Joi.string().valid(
                         null,
                         'raster',
-                        'vector',
+                        'tiledVector',
                         'wms',
                         'wmts'
                     ),
+                    index: true
                 },
             },
         },
@@ -1478,6 +1533,7 @@ module.exports = {
                         resourceGroup: 'metadata',
                         resourceType: 'scopes',
                     },
+                    index: true
                 },
                 periodKey: {
                     defaultValue: null,
@@ -1486,6 +1542,7 @@ module.exports = {
                         resourceGroup: 'metadata',
                         resourceType: 'periods',
                     },
+                    index: true
                 },
                 placeKey: {
                     defaultValue: null,
@@ -1494,14 +1551,17 @@ module.exports = {
                         resourceGroup: 'metadata',
                         resourceType: 'places',
                     },
+                    index: true
                 },
                 spatialDataSourceKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid().allow(null),
+                    index: true
                 },
                 layerTemplateKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid().allow(null),
+                    index: true
                 },
                 scenarioKey: {
                     defaultValue: null,
@@ -1510,14 +1570,17 @@ module.exports = {
                         resourceGroup: 'metadata',
                         resourceType: 'scenarios',
                     },
+                    index: true
                 },
                 caseKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid().allow(null),
+                    index: true
                 },
                 applicationKey: {
                     defaultValue: null,
                     schema: Joi.string().allow(null),
+                    index: true
                 },
             },
         },
@@ -1585,6 +1648,7 @@ module.exports = {
                         resourceGroup: 'metadata',
                         resourceType: 'scopes',
                     },
+                    index: true
                 },
                 periodKey: {
                     defaultValue: null,
@@ -1593,6 +1657,7 @@ module.exports = {
                         resourceGroup: 'metadata',
                         resourceType: 'periods',
                     },
+                    index: true
                 },
                 placeKey: {
                     defaultValue: null,
@@ -1601,14 +1666,17 @@ module.exports = {
                         resourceGroup: 'metadata',
                         resourceType: 'places',
                     },
+                    index: true
                 },
                 attributeDataSourceKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid().allow(null),
+                    index: true
                 },
                 layerTemplateKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid().allow(null),
+                    index: true
                 },
                 scenarioKey: {
                     defaultValue: null,
@@ -1617,26 +1685,32 @@ module.exports = {
                         resourceGroup: 'metadata',
                         resourceType: 'scenarios',
                     },
+                    index: true
                 },
                 caseKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid().allow(null),
+                    index: true
                 },
                 attributeSetKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid().allow(null),
+                    index: true
                 },
                 attributeKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid().allow(null),
+                    index: true
                 },
                 areaTreeLevelKey: {
                     defaultValue: null,
                     schema: Joi.string().uuid().allow(null),
+                    index: true
                 },
                 applicationKey: {
                     defaultValue: null,
                     schema: Joi.string().allow(null),
+                    index: true
                 },
             },
         },
@@ -1783,19 +1857,21 @@ module.exports = {
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
+                    index: true
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 state: {
                     defaultValue: null,
-                    schema: Joi.object(),
+                    schema: Joi.object().allow(null),
                 },
             },
             relations: {
@@ -1850,10 +1926,12 @@ module.exports = {
                 nameDisplay: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 nameInternal: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 description: {
                     defaultValue: null,
@@ -1862,6 +1940,7 @@ module.exports = {
                 type: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
             },
             relations: {
@@ -1968,18 +2047,22 @@ module.exports = {
                 submitDate: {
                     defaultValue: null,
                     schema: Joi.date(),
+                    index: true
                 },
                 codeDpb: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 codeJi: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 caseKey: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 changeDescription: {
                     defaultValue: null,
@@ -1996,6 +2079,7 @@ module.exports = {
                 evaluationResult: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
                 evaluationDescription: {
                     defaultValue: null,
@@ -2040,6 +2124,7 @@ module.exports = {
                 status: {
                     defaultValue: null,
                     schema: Joi.string(),
+                    index: true
                 },
             },
             relations: {

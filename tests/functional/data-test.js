@@ -59,7 +59,7 @@ describe('/rest/data/filtered', () => {
 			}
 		});
 
-		await h.createRecord("\"dataSources\".vector", {
+		await h.createRecord("\"dataSources\".\"tiledVector\"", {
 			key: "75d88ed5-6ad0-4ddd-a9f6-b03b60ea7dcb",
 			tableName: "exampleSpatialAttributeData",
 			fidColumnName: "fid",
@@ -67,7 +67,7 @@ describe('/rest/data/filtered', () => {
 		});
 		await h.createRecord("\"dataSources\".\"dataSource\"", {
 			key: "cf55212e-2893-46d0-8a02-cbf10cb4471d",
-			type: "vector",
+			type: "tiledVector",
 			sourceKey: "75d88ed5-6ad0-4ddd-a9f6-b03b60ea7dcb"
 		});
 		await h.createRecord("\"dataSources\".\"attributeDataSource\"", {
@@ -200,30 +200,48 @@ describe('/rest/data/filtered', () => {
 		], "2d069e3a-f77f-4a1f-aeda-50fd06c8c35d");
 
 		await db.query(
-				`CREATE TABLE "public"."exampleSpatialAttributeData"
-                 (
-                     fid        uuid DEFAULT public.gen_random_uuid() NOT NULL,
-                     geom       GEOMETRY,
-                     attribute1 TEXT,
-                     attribute2 INT
-                 );`
+			`CREATE TABLE "public"."exampleSpatialAttributeData"
+             (
+                 fid        UUID PRIMARY KEY DEFAULT public.gen_random_uuid() NOT NULL,
+                 geom       GEOMETRY,
+                 attribute1 TEXT,
+                 attribute2 INT
+             );`
 		);
 
 		await db.query(
-				`INSERT INTO "public"."exampleSpatialAttributeData"
-                     ("fid", "geom", "attribute1", "attribute2")
-                 VALUES ('43c0dc2f-0c86-447f-9861-7969e1cbbe0a', ST_GeomFromText(
-                         'POLYGON((14.224435 50.17743, 14.706787 50.17743, 14.706787 49.941901, 14.224435 49.941901, 14.224435 50.17743))',
-                         4326), 'praha-wkt-bbox', 1),
-                        ('84657e95-8ba0-4c9c-bfd9-7725fa388dfb', ST_GeomFromText(
-                                'POLYGON((16.42799 49.294371, 16.727835 49.294371, 16.727835 49.10988, 16.42799 49.10988, 16.42799 49.294371))',
-                                4326), 'brno-wkt-bbox', 2);`
+			`INSERT INTO "public"."exampleSpatialAttributeData"
+                 ("fid", "geom", "attribute1", "attribute2")
+             VALUES ('43c0dc2f-0c86-447f-9861-7969e1cbbe0a', ST_GeomFromText(
+                     'POLYGON((14.224435 50.17743, 14.706787 50.17743, 14.706787 49.941901, 14.224435 49.941901, 14.224435 50.17743))',
+                     4326), 'praha-wkt-bbox', 1),
+                    ('84657e95-8ba0-4c9c-bfd9-7725fa388dfb', ST_GeomFromText(
+                            'POLYGON((16.42799 49.294371, 16.727835 49.294371, 16.727835 49.10988, 16.42799 49.10988, 16.42799 49.294371))',
+                            4326), 'brno-wkt-bbox', 2);`
+		)
+
+		await db.query(
+			`CREATE TABLE "public"."exampleSpatialAttributeData_simple"
+             (
+                 fid   UUID references "public"."exampleSpatialAttributeData" ("fid"),
+                 level INT,
+                 json  TEXT
+             );`
+		)
+
+		await db.query(
+			`INSERT INTO "public"."exampleSpatialAttributeData_simple"
+                 ("fid", "level", "json")
+             VALUES ('43c0dc2f-0c86-447f-9861-7969e1cbbe0a', 14, ST_AsGeoJSON(
+                     'POLYGON((14.224435 50.17743, 14.706787 50.17743, 14.706787 49.941901, 14.224435 49.941901, 14.224435 50.17743))')),
+                    ('84657e95-8ba0-4c9c-bfd9-7725fa388dfb', 14, ST_AsGeoJSON(
+                            'POLYGON((16.42799 49.294371, 16.727835 49.294371, 16.727835 49.10988, 16.42799 49.10988, 16.42799 49.294371))'));`
 		)
 	});
 
 	after(async () => {
 		await h.revertChanges();
-		await db.query(`DROP TABLE "public"."exampleSpatialAttributeData"`);
+		await db.query(`DROP TABLE "public"."exampleSpatialAttributeData", "public"."exampleSpatialAttributeData_simple";`);
 	});
 
 	describe("Spatial data endpoint", () => {
@@ -255,9 +273,9 @@ describe('/rest/data/filtered', () => {
 						key: "c67eaa05-64e0-4b60-8552-7adb4962e93a",
 						permissions: {
 							activeUser: {
-								create: false,
-								delete: false,
-								update: false,
+								create: true,
+								delete: true,
+								update: true,
 								view: true,
 							},
 							guest: {
@@ -307,20 +325,18 @@ describe('/rest/data/filtered', () => {
 						data: {
 							applicationKey: null,
 							description: null,
-							end: null,
 							nameDisplay: "2020",
 							nameInternal: null,
 							period: null,
 							scopeKey: null,
-							start: null,
 							tagKeys: null
 						},
 						key: "6eca6523-0756-49cb-b39d-405dcafd2386",
 						permissions: {
 							activeUser: {
-								create: false,
-								delete: false,
-								update: false,
+								create: true,
+								delete: true,
+								update: true,
 								view: true,
 							},
 							guest: {
@@ -603,7 +619,7 @@ describe('/rest/data/filtered', () => {
 							layerName: null,
 							nameInternal: null,
 							tableName: "exampleSpatialAttributeData",
-							type: "vector"
+							type: "tiledVector"
 						},
 						key: "cf55212e-2893-46d0-8a02-cbf10cb4471d",
 						permissions: {
@@ -813,106 +829,110 @@ describe('/rest/data/filtered', () => {
 								[14.3701171875, 50.086669921875], [14.381103515625, 50.086669921875], [14.39208984375, 50.086669921875], [14.403076171875, 50.086669921875], [14.4140625, 50.086669921875], [14.425048828125, 50.086669921875], [14.43603515625, 50.086669921875], [14.447021484375, 50.086669921875], [14.4580078125, 50.086669921875], [14.3701171875, 50.07568359375], [14.381103515625, 50.07568359375], [14.39208984375, 50.07568359375], [14.403076171875, 50.07568359375], [14.4140625, 50.07568359375], [14.425048828125, 50.07568359375], [14.43603515625, 50.07568359375], [14.447021484375, 50.07568359375], [14.4580078125, 50.07568359375], [14.3701171875, 50.064697265625], [14.381103515625, 50.064697265625], [14.39208984375, 50.064697265625], [14.403076171875, 50.064697265625], [14.4140625, 50.064697265625], [14.425048828125, 50.064697265625], [14.43603515625, 50.064697265625], [14.447021484375, 50.064697265625], [14.4580078125, 50.064697265625], [14.3701171875, 50.0537109375], [14.381103515625, 50.0537109375], [14.39208984375, 50.0537109375], [14.403076171875, 50.0537109375], [14.4140625, 50.0537109375], [14.425048828125, 50.0537109375], [14.43603515625, 50.0537109375], [14.447021484375, 50.0537109375], [14.4580078125, 50.0537109375]
 							]
 						},
-						geometry: true,
-						relations: true
+						geometry: true
 					}
 				})
 			};
 
 			const expectedStatus = 200;
 			const expectedResponse = {
-				"data": {
-					"spatialRelations": [{
-						"key": "352cf401-c44d-4f98-95b2-686621994aa3",
-						"data": {
-							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
-							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
-							"placeKey": null,
-							"spatialDataSourceKey": "cf55212e-2893-46d0-8a02-cbf10cb4471d",
-							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
-							"scenarioKey": null,
-							"caseKey": null,
-							"applicationKey": null
-						}
-					}],
-					"attributeRelations": [{
-						"key": "faa00c17-3fdc-4c25-bb49-91e1bbe0c137",
-						"data": {
-							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
-							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
-							"placeKey": null,
-							"attributeDataSourceKey": "7c11916a-20f4-4c6b-99a8-8b95bd1ec041",
-							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
-							"scenarioKey": null,
-							"caseKey": null,
-							"attributeSetKey": null,
-							"attributeKey": "f9f6dc0d-4b6a-4794-9243-5948d920239c",
-							"areaTreeLevelKey": null,
-							"applicationKey": null
-						}
-					}, {
-						"key": "ffcd6e38-7238-4f27-a41e-dd6d3a14ff59",
-						"data": {
-							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
-							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
-							"placeKey": null,
-							"attributeDataSourceKey": "d0329b4c-5214-4aea-8291-bc7443b643e7",
-							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
-							"scenarioKey": null,
-							"caseKey": null,
-							"attributeSetKey": null,
-							"attributeKey": "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc",
-							"areaTreeLevelKey": null,
-							"applicationKey": null
-						}
-					}],
-					"spatialDataSources": [{
-						"key": "cf55212e-2893-46d0-8a02-cbf10cb4471d",
-						"data": {
-							"nameInternal": null,
-							"attribution": null,
-							"type": "vector",
-							"layerName": null,
-							"tableName": "exampleSpatialAttributeData",
-							"fidColumnName": "fid",
-							"geometryColumnName": "geom"
-						}
-					}],
-					"attributeDataSources": [{
-						"key": "7c11916a-20f4-4c6b-99a8-8b95bd1ec041",
-						"data": {
-							"nameInternal": null,
-							"attribution": null,
-							"tableName": "exampleSpatialAttributeData",
-							"columnName": "attribute1",
-							"fidColumnName": "fid"
-						}
-					}, {
-						"key": "d0329b4c-5214-4aea-8291-bc7443b643e7",
-						"data": {
-							"nameInternal": null,
-							"attribution": null,
-							"tableName": "exampleSpatialAttributeData",
-							"columnName": "attribute2",
-							"fidColumnName": "fid"
-						}
-					}],
-					"spatialData": {
-						"cf55212e-2893-46d0-8a02-cbf10cb4471d": {
-							"data": {
-								"43c0dc2f-0c86-447f-9861-7969e1cbbe0a": {
-									"type": "Polygon",
-									"coordinates": [[[14.224435, 50.17743], [14.706787, 50.17743], [14.706787, 49.941901], [14.224435, 49.941901], [14.224435, 50.17743]]]
-								}
-							},
-							"spatialIndex": {"14": {"14.3701171875,50.086669921875": ["43c0dc2f-0c86-447f-9861-7969e1cbbe0a"]}}
-						}
+				"spatialAttributeRelationsDataSources": {
+					"total": {
+						"attributeRelations": 2,
+						"spatialRelations": 1
 					},
-					"attributeData": {
-						"d0329b4c-5214-4aea-8291-bc7443b643e7": {"43c0dc2f-0c86-447f-9861-7969e1cbbe0a": 1},
-						"7c11916a-20f4-4c6b-99a8-8b95bd1ec041": {"43c0dc2f-0c86-447f-9861-7969e1cbbe0a": "praha-wkt-bbox"}
+					"offset": 0,
+					"limit": 100,
+					"spatialRelations": [],
+					"attributeRelations": [],
+					"spatialDataSources": [],
+					"attributeDataSources": []
+				},
+				"spatialData": {
+					"cf55212e-2893-46d0-8a02-cbf10cb4471d": {
+						"data": {
+							"43c0dc2f-0c86-447f-9861-7969e1cbbe0a": {
+								"type": "Polygon",
+								"coordinates": [[[14.224435, 50.17743], [14.706787, 50.17743], [14.706787, 49.941901], [14.224435, 49.941901], [14.224435, 50.17743]]]
+							}
+						},
+						"spatialIndex": {"14": {"14.3701171875,50.086669921875": ["43c0dc2f-0c86-447f-9861-7969e1cbbe0a"]}}
 					}
-				}, "total": {"spatialRelations": 1, "attributeRelations": 2}, "limit": 100, "offset": 0
+				},
+				"attributeData": {"d0329b4c-5214-4aea-8291-bc7443b643e7": {"43c0dc2f-0c86-447f-9861-7969e1cbbe0a": 1}}
+			}
+
+			const response = await fetch(
+				url('/rest/data/filtered'),
+				{
+					method: 'POST',
+					headers: request.headers,
+					body: request.body
+				}
+			);
+
+			assert.strictEqual(response.status, expectedStatus);
+
+			let result = await response.json();
+
+			assert.deepStrictEqual(result, expectedResponse);
+
+		})
+
+		it("Get spatial and attribute data for Prague without styleKey defined", async () => {
+			const request = {
+				headers: new fetch.Headers({
+					Authorization: createAdminToken(),
+					'Content-Type': 'application/json',
+				}),
+				body: JSON.stringify({
+					modifiers: {
+						scopeKey: "c67eaa05-64e0-4b60-8552-7adb4962e93a",
+						periodKey: "6eca6523-0756-49cb-b39d-405dcafd2386"
+					},
+					layerTemplateKey: "b8cb9263-d656-4606-a326-a02e851ea0bb",
+					relations: {
+						offset: 0,
+						limit: 100
+					},
+					data: {
+						spatialFilter: {
+							level: 14,
+							tiles: [
+								[14.3701171875, 50.086669921875], [14.381103515625, 50.086669921875], [14.39208984375, 50.086669921875], [14.403076171875, 50.086669921875], [14.4140625, 50.086669921875], [14.425048828125, 50.086669921875], [14.43603515625, 50.086669921875], [14.447021484375, 50.086669921875], [14.4580078125, 50.086669921875], [14.3701171875, 50.07568359375], [14.381103515625, 50.07568359375], [14.39208984375, 50.07568359375], [14.403076171875, 50.07568359375], [14.4140625, 50.07568359375], [14.425048828125, 50.07568359375], [14.43603515625, 50.07568359375], [14.447021484375, 50.07568359375], [14.4580078125, 50.07568359375], [14.3701171875, 50.064697265625], [14.381103515625, 50.064697265625], [14.39208984375, 50.064697265625], [14.403076171875, 50.064697265625], [14.4140625, 50.064697265625], [14.425048828125, 50.064697265625], [14.43603515625, 50.064697265625], [14.447021484375, 50.064697265625], [14.4580078125, 50.064697265625], [14.3701171875, 50.0537109375], [14.381103515625, 50.0537109375], [14.39208984375, 50.0537109375], [14.403076171875, 50.0537109375], [14.4140625, 50.0537109375], [14.425048828125, 50.0537109375], [14.43603515625, 50.0537109375], [14.447021484375, 50.0537109375], [14.4580078125, 50.0537109375]
+							]
+						},
+						geometry: true
+					}
+				})
+			};
+
+			const expectedStatus = 200;
+			const expectedResponse = {
+				"spatialAttributeRelationsDataSources": {
+					"total": {
+						"attributeRelations": 0,
+						"spatialRelations": 1
+					},
+					"offset": 0,
+					"limit": 100,
+					"spatialRelations": [],
+					"attributeRelations": [],
+					"spatialDataSources": [],
+					"attributeDataSources": []
+				},
+				"spatialData": {
+					"cf55212e-2893-46d0-8a02-cbf10cb4471d": {
+						"data": {
+							"43c0dc2f-0c86-447f-9861-7969e1cbbe0a": {
+								"type": "Polygon",
+								"coordinates": [[[14.224435, 50.17743], [14.706787, 50.17743], [14.706787, 49.941901], [14.224435, 49.941901], [14.224435, 50.17743]]]
+							}
+						},
+						"spatialIndex": {"14": {"14.3701171875,50.086669921875": ["43c0dc2f-0c86-447f-9861-7969e1cbbe0a"]}}
+					}
+				},
+				"attributeData": {}
 			}
 
 			const response = await fetch(
@@ -951,111 +971,42 @@ describe('/rest/data/filtered', () => {
 					},
 					data: {
 						spatialFilter: {
-							level: 15,
+							level: 14,
 							tiles: [
 								[16.58935546875, 49.2022705078125], [16.5948486328125, 49.2022705078125], [16.600341796875, 49.2022705078125], [16.6058349609375, 49.2022705078125], [16.611328125, 49.2022705078125], [16.6168212890625, 49.2022705078125], [16.622314453125, 49.2022705078125], [16.6278076171875, 49.2022705078125], [16.58935546875, 49.19677734375], [16.5948486328125, 49.19677734375], [16.600341796875, 49.19677734375], [16.6058349609375, 49.19677734375], [16.611328125, 49.19677734375], [16.6168212890625, 49.19677734375], [16.622314453125, 49.19677734375], [16.6278076171875, 49.19677734375], [16.58935546875, 49.1912841796875], [16.5948486328125, 49.1912841796875], [16.600341796875, 49.1912841796875], [16.6058349609375, 49.1912841796875], [16.611328125, 49.1912841796875], [16.6168212890625, 49.1912841796875], [16.622314453125, 49.1912841796875], [16.6278076171875, 49.1912841796875], [16.58935546875, 49.185791015625], [16.5948486328125, 49.185791015625], [16.600341796875, 49.185791015625], [16.6058349609375, 49.185791015625], [16.611328125, 49.185791015625], [16.6168212890625, 49.185791015625], [16.622314453125, 49.185791015625], [16.6278076171875, 49.185791015625]
 							]
 						},
-						geometry: true,
-						relations: true
+						geometry: true
 					}
 				})
 			};
 
 			const expectedStatus = 200;
 			const expectedResponse = {
-				"data": {
-					"spatialRelations": [{
-						"key": "352cf401-c44d-4f98-95b2-686621994aa3",
-						"data": {
-							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
-							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
-							"placeKey": null,
-							"spatialDataSourceKey": "cf55212e-2893-46d0-8a02-cbf10cb4471d",
-							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
-							"scenarioKey": null,
-							"caseKey": null,
-							"applicationKey": null
-						}
-					}],
-					"attributeRelations": [{
-						"key": "faa00c17-3fdc-4c25-bb49-91e1bbe0c137",
-						"data": {
-							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
-							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
-							"placeKey": null,
-							"attributeDataSourceKey": "7c11916a-20f4-4c6b-99a8-8b95bd1ec041",
-							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
-							"scenarioKey": null,
-							"caseKey": null,
-							"attributeSetKey": null,
-							"attributeKey": "f9f6dc0d-4b6a-4794-9243-5948d920239c",
-							"areaTreeLevelKey": null,
-							"applicationKey": null
-						}
-					}, {
-						"key": "ffcd6e38-7238-4f27-a41e-dd6d3a14ff59",
-						"data": {
-							"scopeKey": "c67eaa05-64e0-4b60-8552-7adb4962e93a",
-							"periodKey": "6eca6523-0756-49cb-b39d-405dcafd2386",
-							"placeKey": null,
-							"attributeDataSourceKey": "d0329b4c-5214-4aea-8291-bc7443b643e7",
-							"layerTemplateKey": "b8cb9263-d656-4606-a326-a02e851ea0bb",
-							"scenarioKey": null,
-							"caseKey": null,
-							"attributeSetKey": null,
-							"attributeKey": "3e5c7002-e2a3-4fb5-b2eb-ddfd81751ecc",
-							"areaTreeLevelKey": null,
-							"applicationKey": null
-						}
-					}],
-					"spatialDataSources": [{
-						"key": "cf55212e-2893-46d0-8a02-cbf10cb4471d",
-						"data": {
-							"nameInternal": null,
-							"attribution": null,
-							"type": "vector",
-							"layerName": null,
-							"tableName": "exampleSpatialAttributeData",
-							"fidColumnName": "fid",
-							"geometryColumnName": "geom"
-						}
-					}],
-					"attributeDataSources": [{
-						"key": "7c11916a-20f4-4c6b-99a8-8b95bd1ec041",
-						"data": {
-							"nameInternal": null,
-							"attribution": null,
-							"tableName": "exampleSpatialAttributeData",
-							"columnName": "attribute1",
-							"fidColumnName": "fid"
-						}
-					}, {
-						"key": "d0329b4c-5214-4aea-8291-bc7443b643e7",
-						"data": {
-							"nameInternal": null,
-							"attribution": null,
-							"tableName": "exampleSpatialAttributeData",
-							"columnName": "attribute2",
-							"fidColumnName": "fid"
-						}
-					}],
-					"spatialData": {
-						"cf55212e-2893-46d0-8a02-cbf10cb4471d": {
-							"data": {
-								"84657e95-8ba0-4c9c-bfd9-7725fa388dfb": {
-									"type": "Polygon",
-									"coordinates": [[[16.42799, 49.294371], [16.727835, 49.294371], [16.727835, 49.10988], [16.42799, 49.10988], [16.42799, 49.294371]]]
-								}
-							},
-							"spatialIndex": {"15": {"16.58935546875,49.2022705078125": ["84657e95-8ba0-4c9c-bfd9-7725fa388dfb"]}}
-						}
+				"spatialAttributeRelationsDataSources": {
+					"total": {
+						"attributeRelations": 2,
+						"spatialRelations": 1
 					},
-					"attributeData": {
-						"d0329b4c-5214-4aea-8291-bc7443b643e7": {"84657e95-8ba0-4c9c-bfd9-7725fa388dfb": 2},
-						"7c11916a-20f4-4c6b-99a8-8b95bd1ec041": {"84657e95-8ba0-4c9c-bfd9-7725fa388dfb": "brno-wkt-bbox"}
+					"offset": 0,
+					"limit": 100,
+					"spatialRelations": [],
+					"attributeRelations": [],
+					"spatialDataSources": [],
+					"attributeDataSources": []
+				},
+				"spatialData": {
+					"cf55212e-2893-46d0-8a02-cbf10cb4471d": {
+						"data": {
+							"84657e95-8ba0-4c9c-bfd9-7725fa388dfb": {
+								"type": "Polygon",
+								"coordinates": [[[16.42799, 49.294371], [16.727835, 49.294371], [16.727835, 49.10988], [16.42799, 49.10988], [16.42799, 49.294371]]]
+							}
+						},
+						"spatialIndex": {"14": {"16.58935546875,49.2022705078125": ["84657e95-8ba0-4c9c-bfd9-7725fa388dfb"]}}
 					}
-				}, "total": {"spatialRelations": 1, "attributeRelations": 2}, "limit": 100, "offset": 0
+				},
+				"attributeData": {"d0329b4c-5214-4aea-8291-bc7443b643e7": {"84657e95-8ba0-4c9c-bfd9-7725fa388dfb": 2}}
 			}
 
 			const response = await fetch(

@@ -83,14 +83,21 @@ function mergeApplications(...applications) {
 function get() {
     const config = mergeApplications(
         require('./core/index'),
-        require('./demo/index')
+        require('./demo/index'),
+        require('./data/index')
     );
 
     config.plan = planCompiler.compile(config.plan);
-    config.generatedPermissions = generatedPermissionsCompiler.compile(
-        {plan: config.plan},
-        config.generatedPermissions({plan: config.plan})
-    );
+
+    /*
+    TODO fix bellow
+    - be wont start if there is no generatedPermissions in configuration
+    - there is error durring startup due to missing some definitions probably -> applications/demo/generatedPermissions.js
+     */
+    // config.generatedPermissions = generatedPermissionsCompiler.compile(
+    //     {plan: config.plan},
+    //     config.generatedPermissions({plan: config.plan})
+    // );
 
     return config;
 }

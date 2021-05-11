@@ -38,7 +38,7 @@ function normalizeInterval(input) {
     }
 
     const start = moment.utc(input);
-    const end = createEnd(start);
+    const end = start.isValid() ? createEnd(start) : moment.invalid();
 
     return momentInterval.interval(start, end);
 }
@@ -60,4 +60,5 @@ function intervalToRange(interval) {
 
 module.exports = {
     intervalToRange,
+    normalizeInterval
 };

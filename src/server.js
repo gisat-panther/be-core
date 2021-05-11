@@ -2,6 +2,7 @@ const cluster = require('cluster');
 const applicationsRouter = require('./applications/index').router;
 const config = require('../config');
 const db = require('./db');
+const shared = require("../src/util/shared");
 const migrations = require('./migrations');
 const permissions = require('./modules/permissions/index');
 const getAppConfig = require('./applications/config').get;
@@ -11,12 +12,13 @@ const express = require('express');
 const initMaster = async () => {
 	try {
 		await migrations.migrate();
-		initWorkers()
 		await db.init();
+		shared.init();
+		initWorkers()
 		const appConfig = getAppConfig();
 		const app = express();
 		prometheus.init({app});
-		permissions.run({
+		await permissions.run({
 			plan: appConfig.plan,
 			generatedPermissions: appConfig.generatedPermissions
 		});
@@ -53,19 +55,20 @@ const createWorker = (env) => {
 	let worker = cluster.fork(env);
 	worker.process.env = env;
 
-	if(config.keepAliveWorkers) {
-		worker.on("exit", () => {
-			console.log(`#NOTE# Worker ${worker.id} died`);
+	worker.on("exit", () => {
+		console.log(`#NOTE# Worker ${worker.id} died`);
+
+		if (config.keepAliveWorkers) {
 			createWorker(env);
-		})
-	}
+		}
+	})
 }
 
 process.on(`uncaughtException`, (error) => {
 	console.log(`#ERROR#`, error)
 });
 
-if(cluster.isMaster) {
+if (cluster.isMaster) {
 	initMaster();
 } else {
 	initWorker();
