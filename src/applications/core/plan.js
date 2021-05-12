@@ -318,6 +318,14 @@ module.exports = {
                     resourceGroup: 'metadata',
                     resourceType: 'tags',
                 },
+                scope: {
+                    type: 'manyToMany',
+                    relationTable: 'relations.placeRelation',
+                    ownKey: 'parentPlaceKey',
+                    inverseKey: 'scopeKey',
+                    resourceGroup: 'metadata',
+                    resourceType: 'scopes',
+                },
             },
         },
         periods: {
