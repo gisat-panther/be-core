@@ -1,3 +1,33 @@
+# v0.1.0 (Wed May 12 2021)
+
+#### 🚀 Enhancement
+
+- Feature/import geojson [#45](https://github.com/gisat-panther/be-core/pull/45) ([@mbabic84](https://github.com/mbabic84))
+
+#### 🐾 Patch
+
+- Feature/attribute data [#39](https://github.com/gisat-panther/be-core/pull/39) ([@mbabic84](https://github.com/mbabic84))
+- Feature/data [#38](https://github.com/gisat-panther/be-core/pull/38) ([@mbabic84](https://github.com/mbabic84))
+
+#### 🔩 Dependency Updates
+
+- Bump docker/login-action from 1 to 1.9.0 [#44](https://github.com/gisat-panther/be-core/pull/44) ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump mheap/github-action-required-labels from 1 to 1.1.2 [#43](https://github.com/gisat-panther/be-core/pull/43) ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump actions/checkout from 2 to 2.3.4 [#42](https://github.com/gisat-panther/be-core/pull/42) ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump docker/setup-buildx-action from 1 to 1.3.0 [#41](https://github.com/gisat-panther/be-core/pull/41) ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump docker/build-push-action from 2 to 2.4.0 [#40](https://github.com/gisat-panther/be-core/pull/40) ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump actions/cache from v2.1.3 to v2.1.5 [#37](https://github.com/gisat-panther/be-core/pull/37) ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump actions/setup-node from v2.1.4 to v2.1.5 [#36](https://github.com/gisat-panther/be-core/pull/36) ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump actions/setup-node from v1 to v2.1.4 [#34](https://github.com/gisat-panther/be-core/pull/34) ([@dependabot[bot]](https://github.com/dependabot[bot]))
+- Bump actions/cache from v1 to v2.1.3 [#30](https://github.com/gisat-panther/be-core/pull/30) ([@dependabot[bot]](https://github.com/dependabot[bot]))
+
+#### Authors: 2
+
+- [@dependabot[bot]](https://github.com/dependabot[bot])
+- [@mbabic84](https://github.com/mbabic84)
+
+---
+
 # v0.0.21 (Mon Jan 11 2021)
 
 #### 🐾 Patch
