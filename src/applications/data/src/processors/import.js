@@ -55,21 +55,25 @@ const getFiles = (importKey) => {
 const importVerifiedFiles = (importKey, verifiedFiles, options) => {
 	let imports = [];
 	_.forIn(verifiedFiles, (value, name) => {
-		if (_.isArray(value)) {
+		if (value && value.type === "shp") {
 			imports.push(
-				processShapefile(importKey, name, value, options)
+				processVector(importKey, name, value, options)
 			)
-		} else if (_.isObject(value) && value.type === "gpkg") {
+		} else if (value && value.type === "gpkg") {
 			imports.push(
 				processGeoPackage(importKey, value, options)
 			)
-		} else if (_.isObject(value) && value.type === "raster") {
+		} else if (value && value.type === "raster") {
 			imports.push(
 				processRaster(importKey, value, options)
 			)
-		} else if (_.isObject(value) && value.type === "msmap") {
+		} else if (value && value.type === "msmap") {
 			imports.push(
 				processMsMapFile(importKey, value, options)
+			)
+		} else if (value && value.type === "geojson") {
+			imports.push(
+				processVector(importKey, name, value, options)
 			)
 		}
 	})
@@ -77,7 +81,7 @@ const importVerifiedFiles = (importKey, verifiedFiles, options) => {
 	return Promise.all(imports);
 }
 
-const importSpatialDataToPostgres = (importKey, path) => {
+const importVectorDataToPostgres = (importKey, path) => {
 	let {host, user, password, database} = config.pgConfig.normal;
 	return new Promise((resolve, reject) => {
 		chp.exec(
@@ -290,16 +294,12 @@ const processGeoPackage = (importKey, data) => {
 				})
 		})
 		.then(() => {
-			return importSpatialDataToPostgres(importKey, path)
+			return importVectorDataToPostgres(importKey, path)
 		})
 }
 
-const processShapefile = (importKey, name, files, options) => {
-	let shp = _.find(files, (file) => {
-		return file.toLowerCase().endsWith(".shp");
-	});
-
-	let path = `${basePath}${importKey}/${shp}`;
+const processVector = (importKey, name, data, options) => {
+	let path = `${basePath}${importKey}/${data.file}`;
 
 	return Promise
 		.resolve()
@@ -320,7 +320,7 @@ const processShapefile = (importKey, name, files, options) => {
 			}
 		})
 		.then(() => {
-			return importSpatialDataToPostgres(importKey, path)
+			return importVectorDataToPostgres(importKey, path)
 				.then(() => {
 					log(importKey, `layer ${name} created`);
 				})
@@ -541,7 +541,15 @@ const verifyFiles = (files) => {
 			})
 
 			if (dbf && prj && shx) {
-				verifiedFiles[baseName] = relatedFiles;
+				verifiedFiles[baseName] = {
+					type: "shp",
+					file: file,
+					related: {
+						dbf,
+						prj,
+						shx
+					}
+				};
 			}
 		} else if (extName.toLowerCase() === ".gpkg") {
 			verifiedFiles[baseName] = {
@@ -556,6 +564,11 @@ const verifyFiles = (files) => {
 		} else if (extName.toLowerCase() === ".map") {
 			verifiedFiles[baseName] = {
 				type: "msmap",
+				file
+			};
+		} else if (extName.toLowerCase() === ".geojson") {
+			verifiedFiles[baseName] = {
+				type: "geojson",
 				file
 			};
 		}
