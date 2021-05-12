@@ -55,25 +55,25 @@ const getFiles = (importKey) => {
 const importVerifiedFiles = (importKey, verifiedFiles, options) => {
 	let imports = [];
 	_.forIn(verifiedFiles, (value, name) => {
-		if (_.isArray(value)) {
+		if (value && value.type === "shp") {
 			imports.push(
-				processShapefile(importKey, name, value, options)
+				processSpatialfile(importKey, name, value, options)
 			)
-		} else if (_.isObject(value) && value.type === "gpkg") {
+		} else if (value && value.type === "gpkg") {
 			imports.push(
 				processGeoPackage(importKey, value, options)
 			)
-		} else if (_.isObject(value) && value.type === "raster") {
+		} else if (value && value.type === "raster") {
 			imports.push(
 				processRaster(importKey, value, options)
 			)
-		} else if (_.isObject(value) && value.type === "msmap") {
+		} else if (value && value.type === "msmap") {
 			imports.push(
 				processMsMapFile(importKey, value, options)
 			)
-		} else if (_.isObject(value) && value.type === "geojson") {
+		} else if (value && value.type === "geojson") {
 			imports.push(
-				processGeoJsonFile(importKey, value, options)
+				processSpatialfile(importKey, name, value, options)
 			)
 		}
 	})
@@ -240,10 +240,6 @@ const processMsMapFile = (importKey, data, options) => {
 		})
 }
 
-const processGeoJsonFile = (importKey, data, options) => {
-
-}
-
 const processRaster = (importKey, data, options) => {
 	const sourcePath = `${basePath}${importKey}/${data.file}`;
 	const srid = options.srid || 4326;
@@ -302,12 +298,8 @@ const processGeoPackage = (importKey, data) => {
 		})
 }
 
-const processShapefile = (importKey, name, files, options) => {
-	let shp = _.find(files, (file) => {
-		return file.toLowerCase().endsWith(".shp");
-	});
-
-	let path = `${basePath}${importKey}/${shp}`;
+const processSpatialfile = (importKey, name, data, options) => {
+	let path = `${basePath}${importKey}/${data.file}`;
 
 	return Promise
 		.resolve()
@@ -549,7 +541,15 @@ const verifyFiles = (files) => {
 			})
 
 			if (dbf && prj && shx) {
-				verifiedFiles[baseName] = relatedFiles;
+				verifiedFiles[baseName] = {
+					type: "shp",
+					file: file,
+					related: {
+						dbf,
+						prj,
+						shx
+					}
+				};
 			}
 		} else if (extName.toLowerCase() === ".gpkg") {
 			verifiedFiles[baseName] = {
