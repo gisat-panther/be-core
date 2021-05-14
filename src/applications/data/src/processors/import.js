@@ -76,6 +76,10 @@ const importVerifiedFiles = (importKey, verifiedFiles, options) => {
 			imports.push(
 				processVector(importKey, name, value, options)
 			)
+		} else if (value && value.type === "json") {
+			imports.push(
+				processJson(importKey, name, value, options)
+			)
 		}
 	})
 
@@ -344,6 +348,45 @@ const processVector = (importKey, name, data, options) => {
 		})
 }
 
+const processJson = async (importKey, name, data, options) => {
+	const path = `${basePath}${importKey}/${data.file}`;
+	const json = await fse.readJson(path);
+
+	return db
+		.transactional(async (client) => {
+			if (options.overwrite) {
+				await client.query(`DROP TABLE IF EXISTS "${name}" CASCADE;`);
+			}
+
+			const sql = [];
+			sql.push(`CREATE TABLE "${name}" (`);
+
+			let index = 0;
+			_.forOwn(json[0], (value, property) => {
+				sql.push(`${index++ ? ', ' : ''}"${property}" ${typeof value === "number" ? 'NUMERIC' : 'TEXT'} ${property === options.fidColumnName ? 'PRIMARY KEY' : ''}`)
+			})
+
+			sql.push(`);`)
+
+			await client.query(sql.join(" "));
+
+			for (const jsonLine of json) {
+				const values = [];
+				for (const property of _.keys(jsonLine)) {
+					values.push(`${typeof jsonLine[property] === "number" ? `${jsonLine[property]}` : `'${jsonLine[property]}'`}`);
+				}
+
+				await client.query(`INSERT INTO "${name}" VALUES (${values.join("), (")})`);
+			}
+
+			for (const property of _.keys(json[0])) {
+				if (property !== options.fidColumnName) {
+					await client.query(`CREATE INDEX ON "${name}" ("${property}")`);
+				}
+			}
+		})
+}
+
 const clearLayerData = (layerName) => {
 	return Promise
 		.resolve()
@@ -570,6 +613,11 @@ const verifyFiles = (files) => {
 		} else if (extName.toLowerCase() === ".geojson") {
 			verifiedFiles[baseName] = {
 				type: "geojson",
+				file
+			};
+		} else if (extName.toLowerCase() === ".json") {
+			verifiedFiles[baseName] = {
+				type: "json",
 				file
 			};
 		}
