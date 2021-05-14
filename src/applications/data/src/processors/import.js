@@ -643,14 +643,9 @@ const importFile = (file, user, options) => {
 
 const importMetadataByGroupType = async (group, type, metadata) => {
 	await db
-		.transactional((client) => {
-			return query.create({group, type, client}, metadata);
-		})
-		.catch(() => {
-			return db
-				.transactional((client) => {
-					return query.update({group, type, client}, metadata);
-				})
+		.transactional(async (client) => {
+			await query.deleteRecords({group, type, client}, metadata);
+			await query.create({group, type, client}, metadata);
 		})
 }
 
