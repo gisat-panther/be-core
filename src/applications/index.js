@@ -40,7 +40,7 @@ function apiRouter() {
 
 const router = express.Router();
 router.use(cookieParser());
-router.use(bodyParser.json({limit: '1024kb'}));
+router.use(bodyParser.json({limit: '5120kb'}));
 router.use(apiRouter());
 router.use(errorMiddleware);
 
