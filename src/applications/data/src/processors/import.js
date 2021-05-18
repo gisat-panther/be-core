@@ -372,11 +372,14 @@ const processJson = async (importKey, name, data, options) => {
 
 			for (const jsonLine of json) {
 				const values = [];
+				const columns = [];
+
 				for (const property of _.keys(jsonLine)) {
+					columns.push(`"${property}"`);
 					values.push(`${typeof jsonLine[property] === "number" ? `${jsonLine[property]}` : `'${jsonLine[property]}'`}`);
 				}
 
-				await client.query(`INSERT INTO "${name}" VALUES (${values.join("), (")})`);
+				await client.query(`INSERT INTO "${name}" (${columns.join(", ")}) VALUES (${values.join(", ")})`);
 			}
 
 			for (const property of _.keys(json[0])) {
