@@ -6,13 +6,14 @@ const path = require('path');
 const _ = require('lodash');
 const chp = require('child_process');
 const ptrTileGrid = require('@gisatcz/ptr-tile-grid');
-const {exec} = require('child_process');
+const { exec } = require('child_process');
 
 const config = require('../../../../../config');
 
 const cache = require('../../../../cache');
 const db = require('../../../../db');
 const query = require('../../../../modules/rest/query');
+const { val } = require('@imatic/pgqb');
 
 const basePath = "/tmp/ptr_import_";
 
@@ -21,7 +22,7 @@ const mapFileStaticPath = config.import.raster.paths.mapfile || `/srv/msmaps`;
 
 const cleanUp = (importKey) => {
 	return new Promise((resolve, reject) => {
-		fs.rmdir(`${basePath}${importKey}`, {recursive: true}, () => {
+		fs.rmdir(`${basePath}${importKey}`, { recursive: true }, () => {
 			log(importKey, "cleaned up");
 			resolve();
 		})
@@ -75,6 +76,10 @@ const importVerifiedFiles = (importKey, verifiedFiles, options) => {
 			imports.push(
 				processVector(importKey, name, value, options)
 			)
+		} else if (value && value.type === "json") {
+			imports.push(
+				processJson(importKey, name, value, options)
+			)
 		}
 	})
 
@@ -82,7 +87,7 @@ const importVerifiedFiles = (importKey, verifiedFiles, options) => {
 }
 
 const importVectorDataToPostgres = (importKey, path) => {
-	let {host, user, password, database} = config.pgConfig.normal;
+	let { host, user, password, database } = config.pgConfig.normal;
 	return new Promise((resolve, reject) => {
 		chp.exec(
 			`ogr2ogr -f "PostgreSQL" "PG:host=${host} user=${user} password=${password} dbname=${database}" -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -lco GEOMETRY_NAME=geom -lco LAUNDER=NO ${path}`,
@@ -343,6 +348,48 @@ const processVector = (importKey, name, data, options) => {
 		})
 }
 
+const processJson = async (importKey, name, data, options) => {
+	const path = `${basePath}${importKey}/${data.file}`;
+	const json = await fse.readJson(path);
+
+	return db
+		.transactional(async (client) => {
+			if (options.overwrite) {
+				await client.query(`DROP TABLE IF EXISTS "${name}" CASCADE;`);
+			}
+
+			const sql = [];
+			sql.push(`CREATE TABLE "${name}" (`);
+
+			let index = 0;
+			_.forOwn(json[0], (value, property) => {
+				sql.push(`${index++ ? ', ' : ''}"${property}" ${typeof value === "number" ? 'NUMERIC' : 'TEXT'} ${property === options.fidColumnName ? 'PRIMARY KEY' : ''}`)
+			})
+
+			sql.push(`);`)
+
+			await client.query(sql.join(" "));
+
+			for (const jsonLine of json) {
+				const values = [];
+				const columns = [];
+
+				for (const property of _.keys(jsonLine)) {
+					columns.push(`"${property}"`);
+					values.push(`${typeof jsonLine[property] === "number" ? `${jsonLine[property]}` : `'${jsonLine[property]}'`}`);
+				}
+
+				await client.query(`INSERT INTO "${name}" (${columns.join(", ")}) VALUES (${values.join(", ")})`);
+			}
+
+			for (const property of _.keys(json[0])) {
+				if (property !== options.fidColumnName) {
+					await client.query(`CREATE INDEX ON "${name}" ("${property}")`);
+				}
+			}
+		})
+}
+
 const clearLayerData = (layerName) => {
 	return Promise
 		.resolve()
@@ -571,6 +618,11 @@ const verifyFiles = (files) => {
 				type: "geojson",
 				file
 			};
+		} else if (extName.toLowerCase() === ".json") {
+			verifiedFiles[baseName] = {
+				type: "json",
+				file
+			};
 		}
 	});
 
@@ -587,7 +639,7 @@ const importFile = (file, user, options) => {
 
 	log(importKey, "started");
 
-	cache.set(`import_${importKey}`, {status: "running"})
+	cache.set(`import_${importKey}`, { status: "running" })
 		.then(() => {
 			if (
 				file
@@ -624,11 +676,11 @@ const importFile = (file, user, options) => {
 		})
 		.then(() => {
 			log(importKey, `done`);
-			return cache.set(`import_${importKey}`, {status: "done"});
+			return cache.set(`import_${importKey}`, { status: "done" });
 		})
 		.catch((error) => {
 			log(importKey, `failed with error ${error.message}`);
-			return cache.set(`import_${importKey}`, {status: "failed", message: error.message});
+			return cache.set(`import_${importKey}`, { status: "failed", message: error.message });
 		})
 		.finally(() => {
 			return cleanUp(importKey);
@@ -644,8 +696,8 @@ const importFile = (file, user, options) => {
 const importMetadataByGroupType = async (group, type, metadata) => {
 	await db
 		.transactional(async (client) => {
-			await query.deleteRecords({group, type, client}, metadata);
-			await query.create({group, type, client}, metadata);
+			await query.deleteRecords({ group, type, client }, metadata);
+			await query.create({ group, type, client }, metadata);
 		})
 }
 
@@ -666,17 +718,17 @@ const importMetadata = (metadata, user) => {
 
 	log(importKey, "started");
 
-	cache.set(`import_${importKey}`, {status: "running"})
+	cache.set(`import_${importKey}`, { status: "running" })
 		.then(() => {
 			return importMetadataForEach(metadata, user);
 		})
 		.then(() => {
 			log(importKey, `done`);
-			return cache.set(`import_${importKey}`, {status: "done"});
+			return cache.set(`import_${importKey}`, { status: "done" });
 		})
 		.catch((error) => {
 			log(importKey, `failed with error ${error.message}`);
-			return cache.set(`import_${importKey}`, {status: "failed", message: error.message});
+			return cache.set(`import_${importKey}`, { status: "failed", message: error.message });
 		})
 
 	return Promise
