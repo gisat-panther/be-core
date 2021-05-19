@@ -43,28 +43,44 @@ function formatData(rawData, filter) {
 
 
 	if (filter.relations && filter.relations.spatial) {
+		const usedSpatialDataSources = [];
+
 		rawData.spatial.forEach((spatialRelation) => {
+			formattedResponse.spatialAttributeRelationsDataSources.spatialRelations.push(spatialRelation);
+
+			if (usedSpatialDataSources.includes(spatialRelation.spatialDataSource.key)) {
+				return;
+			}
+
 			formattedResponse.spatialAttributeRelationsDataSources.spatialDataSources.push({
 				key: spatialRelation.spatialDataSource.key,
 				data: {
 					..._.pick(spatialRelation.spatialDataSource, _.without(_.keys(spatialRelation.spatialDataSource), 'key'))
 				}
-			});
+			});			
 
-			formattedResponse.spatialAttributeRelationsDataSources.spatialRelations.push(spatialRelation);
+			usedSpatialDataSources.push(spatialRelation.spatialDataSource.key);
 		})
 	}
 
 	if (filter.relations && filter.relations.attribute) {
+		const usedAttributeDataSources = [];
+
 		rawData.attribute.forEach((attributeRelation) => {
+			formattedResponse.spatialAttributeRelationsDataSources.attributeRelations.push(attributeRelation);
+
+			if (usedAttributeDataSources.includes(attributeRelation.attributeDataSource.key)) {
+				return;
+			}
+
 			formattedResponse.spatialAttributeRelationsDataSources.attributeDataSources.push({
 				key: attributeRelation.attributeDataSource.key,
 				data: {
 					..._.pick(attributeRelation.attributeDataSource, _.without(_.keys(attributeRelation.attributeDataSource), 'key'))
 				}
-			});
+			});			
 
-			formattedResponse.spatialAttributeRelationsDataSources.attributeRelations.push(attributeRelation);
+			usedAttributeDataSources.push(attributeRelation.attributeDataSource.key);
 		})
 	}
 
@@ -133,8 +149,16 @@ const getSqlForRelationsAndFilter = (relations, filter) => {
 	sql.append(`SELECT`);
 	sql.append(` "bFid" AS "fid", "geometry", "spatialDataSourceKey", "tile", "level"`);
 
+	const usedAttributeDataSources = [];
 	_.each(relations.attribute, (attributeRelation) => {
-		let attributeDataSource = attributeRelation.attributeDataSource;
+		const attributeDataSource = attributeRelation.attributeDataSource;
+
+		if (usedAttributeDataSources.includes(attributeDataSource.key)) {
+			return;
+		}
+
+		usedAttributeDataSources.push(attributeDataSource.key);
+
 		sql.append(`, '${attributeDataSource.key}' AS "attributeDataSourceKey"`);
 		sql.append(`, "${attributeDataSource.key}"."${attributeDataSource.columnName}" AS "value"`);
 		sql.append(`, "${attributeDataSource.key}"."${attributeDataSource.fidColumnName}" AS "fid2"`)
@@ -142,8 +166,15 @@ const getSqlForRelationsAndFilter = (relations, filter) => {
 
 	sql.append(` FROM (`);
 
+	const usedSpatialDataSources = [];
 	_.each(relations.spatial, (spatialRelation, index) => {
-		let spatialDataSource = spatialRelation.spatialDataSource;
+		const spatialDataSource = spatialRelation.spatialDataSource;
+
+		if (usedSpatialDataSources.includes(spatialDataSource.key)) {
+			return;
+		}
+
+		usedSpatialDataSources.push(spatialDataSource.key);
 
 		// todo find better solution for supported types
 		if (spatialDataSource.type !== "tiledVector") {
