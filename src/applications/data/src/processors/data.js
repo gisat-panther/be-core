@@ -1,6 +1,6 @@
 const _ = require('lodash');
 const SQL = require('sql-template-strings');
-const {v4: uuid} = require('uuid');
+const { v4: uuid } = require('uuid');
 
 const ptrTileGrid = require('@gisatcz/ptr-tile-grid');
 
@@ -9,7 +9,7 @@ const plan = require('../../../plan');
 const query = require('../../../../modules/rest/query');
 
 async function getData(group, type, user, filter) {
-	let data = await query.list({group, type, user}, {filter});
+	let data = await query.list({ group, type, user }, { filter });
 	let compiledPlan = plan.get();
 
 	data = _.map(data.rows, (resource) => {
@@ -233,7 +233,7 @@ async function populateRelationsWithDataSources(relations, user) {
 		return relation.spatialDataSourceKey
 	});
 	if (spatialDataSourceKeys.length) {
-		let spatialDataSources = await getData(`dataSources`, `spatial`, user, {key: {in: spatialDataSourceKeys}});
+		let spatialDataSources = await getData(`dataSources`, `spatial`, user, { key: { in: spatialDataSourceKeys } });
 		_.each(spatialDataSources, (dataSource) => {
 			_.each(relations.spatial, (relation) => {
 				if (relation.spatialDataSourceKey === dataSource.key) {
@@ -277,7 +277,7 @@ async function getRelationsByFilter(filter, user) {
 	}
 
 	if (filter.data.hasOwnProperty('dataSourceKeys')) {
-		_.set(spatialRelationsFilter, 'spatialDataSourceKey', {in: filter.data.dataSourceKeys});
+		_.set(spatialRelationsFilter, 'spatialDataSourceKey', { in: filter.data.dataSourceKeys });
 	}
 
 	relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
@@ -285,10 +285,10 @@ async function getRelationsByFilter(filter, user) {
 	let attributeRelationsFilter = filter.modifiers || {};
 	if (filter.hasOwnProperty('styleKey')) {
 		if (filter.data.hasOwnProperty('dataSourceKeys')) {
-			_.set(attributeRelationsFilter, 'attributeDataSourceKey', {in: filter.data.dataSourceKeys});
+			_.set(attributeRelationsFilter, 'attributeDataSourceKey', { in: filter.data.dataSourceKeys });
 		}
 
-		let styles = await getData(`metadata`, `styles`, user, {key: filter.styleKey});
+		let styles = await getData(`metadata`, `styles`, user, { key: filter.styleKey });
 		let style = styles && styles.length && styles[0];
 
 		if (style) {
@@ -299,7 +299,7 @@ async function getRelationsByFilter(filter, user) {
 			})));
 
 			if (attributeKeys && attributeKeys.length) {
-				_.set(attributeRelationsFilter, 'attributeKey', {in: attributeKeys});
+				_.set(attributeRelationsFilter, 'attributeKey', { in: attributeKeys });
 			}
 		}
 
