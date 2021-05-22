@@ -253,15 +253,33 @@ async function getDataForRelations(relations, filter) {
 }
 
 async function populateRelationsWithDataSources(relations, user) {
-	for (const relation of relations.spatial) {
-		let spatialDataSource = await getData(`dataSources`, `spatial`, user, {key: relation.spatialDataSourceKey});
-		relation.spatialDataSource = spatialDataSource[0];
-	}
+	const spatialDataSourceKeys = _.map(relations.spatial, (spatialRelation) => {
+		return spatialRelation.spatialDataSourceKey;
+	});
 
-	for (const relation of relations.attribute) {
-		let attributeDataSource = await getData(`dataSources`, `attribute`, user, {key: relation.attributeDataSourceKey});
-		relation.attributeDataSource = attributeDataSource[0];
-	}
+	const spatialDataSources = await getData("dataSources", "spatial", user, { key: { in: spatialDataSourceKeys } });
+
+	_.each(relations.spatial, (spatialRelation) => {
+		_.each(spatialDataSources, (spatialDataSource) => {
+			if (spatialRelation.spatialDataSourceKey === spatialDataSource.key) {
+				spatialRelation.spatialDataSource = spatialDataSource;
+			}
+		})
+	});
+
+	const attributeDataSourceKeys = _.map(relations.attribute, (attributeRelation) => {
+		return attributeRelation.attributeDataSourceKey;
+	});
+
+	const attributeDataSources = await getData(`dataSources`, `attribute`, user, { key: { in: attributeDataSourceKeys } });
+
+	_.each(relations.attribute, (attributeRelation) => {
+		_.each(attributeDataSources, (attributeDataSource) => {
+			if (attributeRelation.attributeDataSourceKey === attributeRelation.key) {
+				attributeRelation.attributeDataSource = attributeDataSource;
+			}
+		})
+	});
 }
 
 async function getRelationsByFilter(filter, user) {
