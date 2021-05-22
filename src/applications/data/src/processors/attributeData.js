@@ -9,7 +9,7 @@ const corePlan = require('../../../../applications/core/plan');
 
 
 async function getData(group, type, user, filter) {
-	let data = await query.list({group, type, user}, {filter});
+	let data = await query.list({ group, type, user }, { filter });
 	let compiledPlan = plan.get();
 
 	data = _.map(data.rows, (resource) => {
@@ -279,11 +279,11 @@ async function getRelationsByFilter(filter, user) {
 	}
 
 	if (filter.data.hasOwnProperty('dataSourceKeys') && filter.data.dataSourceKeys.length) {
-		_.set(spatialRelationsFilter, 'spatialDataSourceKey', {in: filter.data.dataSourceKeys});
+		_.set(spatialRelationsFilter, 'spatialDataSourceKey', { in: filter.data.dataSourceKeys });
 	}
 
 	if (filter.hasOwnProperty("attributeKeys") && filter.attributeKeys.length) {
-		_.set(attributeRelationsFilter, "attributeKey", {in: filter.attributeKeys});
+		_.set(attributeRelationsFilter, "attributeKey", { in: filter.attributeKeys });
 	}
 
 	relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
