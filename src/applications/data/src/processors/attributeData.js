@@ -271,7 +271,7 @@ async function populateRelationsWithDataSources(relations, user) {
 		return attributeRelation.attributeDataSourceKey;
 	});
 
-	const attributeDataSources = await getData(`dataSources`, `attribute`, user, { key: { in: attributeDataSourceKeys } });
+	const attributeDataSources = await getData("dataSources", "attribute", user, { key: { in: attributeDataSourceKeys } });
 
 	_.each(relations.attribute, (attributeRelation) => {
 		_.each(attributeDataSources, (attributeDataSource) => {
