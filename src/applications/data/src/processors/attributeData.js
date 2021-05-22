@@ -275,7 +275,7 @@ async function populateRelationsWithDataSources(relations, user) {
 
 	_.each(relations.attribute, (attributeRelation) => {
 		_.each(attributeDataSources, (attributeDataSource) => {
-			if (attributeRelation.attributeDataSourceKey === attributeRelation.key) {
+			if (attributeRelation.attributeDataSourceKey === attributeDataSource.key) {
 				attributeRelation.attributeDataSource = attributeDataSource;
 			}
 		})
