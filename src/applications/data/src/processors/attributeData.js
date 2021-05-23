@@ -194,7 +194,7 @@ async function getDataForRelations(relations, filter) {
 					_.each(pgResult.rows, (row) => {
 						const featureKey = row.featureKey;
 
-						data.pagination.data.total = row.total;
+						data.pagination.data.total = Number(row.total);
 
 						_.unset(row, "featureKey");
 						_.unset(row, "total");
