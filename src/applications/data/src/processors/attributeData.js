@@ -257,6 +257,7 @@ async function populateRelationsWithDataSources(relations, user) {
 		return spatialRelation.spatialDataSourceKey;
 	});
 
+	if (spatialDataSourceKeys.length) {
 	const spatialDataSources = await getData("dataSources", "spatial", user, { key: { in: spatialDataSourceKeys } });
 
 	_.each(relations.spatial, (spatialRelation) => {
@@ -266,11 +267,13 @@ async function populateRelationsWithDataSources(relations, user) {
 			}
 		})
 	});
+	}
 
 	const attributeDataSourceKeys = _.map(relations.attribute, (attributeRelation) => {
 		return attributeRelation.attributeDataSourceKey;
 	});
 
+	if (attributeDataSourceKeys.length) {
 	const attributeDataSources = await getData("dataSources", "attribute", user, { key: { in: attributeDataSourceKeys } });
 
 	_.each(relations.attribute, (attributeRelation) => {
@@ -280,6 +283,7 @@ async function populateRelationsWithDataSources(relations, user) {
 			}
 		})
 	});
+}
 }
 
 async function getRelationsByFilter(filter, user) {
