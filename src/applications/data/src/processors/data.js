@@ -57,7 +57,7 @@ function formatData(rawData, filter) {
 				data: {
 					..._.pick(spatialRelation.spatialDataSource, _.without(_.keys(spatialRelation.spatialDataSource), 'key'))
 				}
-			});			
+			});
 
 			usedSpatialDataSources.push(spatialRelation.spatialDataSource.key);
 		})
@@ -78,7 +78,7 @@ function formatData(rawData, filter) {
 				data: {
 					..._.pick(attributeRelation.attributeDataSource, _.without(_.keys(attributeRelation.attributeDataSource), 'key'))
 				}
-			});			
+			});
 
 			usedAttributeDataSources.push(attributeRelation.attributeDataSource.key);
 		})
@@ -237,23 +237,34 @@ const getDataForRelations = async (relations, filter) => {
 	await db
 		.query(sql)
 		.then((pgResult) => {
-			_.each(pgResult.rows, (row) => {
-				data.spatial[row.spatialDataSourceKey] = data.spatial[row.spatialDataSourceKey] || {
-					data: {},
-					spatialIndex: {}
-				};
+			_.each(relations.spatial, (spatialRelation) => {
+				_.each(pgResult.rows, (row) => {
+					if (spatialRelation.spatialDataSource.key === row.spatialDataSourceKey) {
+						data.spatial[row.spatialDataSourceKey] = data.spatial[row.spatialDataSourceKey] || {
+							data: {},
+							spatialIndex: {}
+						};
 
-				data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] = data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] || {};
-				data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile] = data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile] || [];
-				data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile].push(row.fid);
+						data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] = data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] || {};
+						data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile] = data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile] || [];
+						data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile].push(row.fid);
 
-				data.spatial[row.spatialDataSourceKey].data[row.fid] = JSON.parse(row.geometry);
+						data.spatial[row.spatialDataSourceKey].data[row.fid] = JSON.parse(row.geometry);
 
-				if (row.attributeDataSourceKey && row.fid2) {
-					data.attribute[row.attributeDataSourceKey] = data.attribute[row.attributeDataSourceKey] || {}
-					data.attribute[row.attributeDataSourceKey][row.fid2] = row.value;
+						if (row.attributeDataSourceKey && row.fid2) {
+							data.attribute[row.attributeDataSourceKey] = data.attribute[row.attributeDataSourceKey] || {}
+							data.attribute[row.attributeDataSourceKey][row.fid2] = row.value;
+						}
+					}
+				});
+
+				if (!data.spatial[spatialRelation.spatialDataSource.key]) {
+					data.spatial[spatialRelation.spatialDataSource.key] = {
+						data: {},
+						spatialIndex: {}
+					};
 				}
-			});
+			})
 		})
 
 	return data;
