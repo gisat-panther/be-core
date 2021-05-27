@@ -90,7 +90,7 @@ async function getDataForRelations(relations, filter) {
 			data: {
 				limit: filter.data.limit || 100,
 				offset: filter.data.offset || 0,
-				total: null
+				total: 0
 			}
 		},
 		index: []
@@ -193,8 +193,11 @@ async function getDataForRelations(relations, filter) {
 				_.each(pgResults, (pgResult) => {
 					_.each(pgResult.rows, (row) => {
 						const featureKey = row.featureKey;
+						const total = Number(row.total);
 
-						data.pagination.data.total = Number(row.total);
+						if (total > data.pagination.data.total) {
+							data.pagination.data.total = total;
+						}
 
 						_.unset(row, "featureKey");
 						_.unset(row, "total");
