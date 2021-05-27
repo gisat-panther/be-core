@@ -156,6 +156,7 @@ async function init() {
 
     pool = new Pool(config.pgConfig.normal);
     types.setTypeParser(await hstoreOid(), parseHstore);
+    types.setTypeParser(1700, Number);
 }
 
 module.exports = {
