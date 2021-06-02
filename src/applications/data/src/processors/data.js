@@ -203,7 +203,28 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 	featureKeys = _.uniq(featureKeys);
 
 	if (featureKeys.length) {
+		for (const [property, queryData] of Object.entries(queryOptions.attribute)) {
+			let columns = _.map(queryData.dataSources, (dataSource, key) => {
+				return `"${dataSource.columnName}" AS "${key}"`
+			});
 
+			let params = _.map(featureKeys, (value, index) => {
+				return `$${index + 1}`;
+			});
+
+			let sql = `SELECT "${queryData.fidColumnName}" AS "featureKey", ${columns.join(", ")} FROM "${queryData.tableName}" WHERE "${queryData.fidColumnName}" IN (${params.join(", ")})`
+
+			await db
+				.query(sql, featureKeys)
+				.then((pgResult) => {
+					_.each(queryData.dataSources, (dataSource, key) => {
+						data.attribute[key] = data.attribute[key] || {};
+						_.each(pgResult.rows, (row) => {
+							data.attribute[key][row.featureKey] = row[key];
+						})
+					})
+				})
+		}
 	}
 
 	return data;
@@ -228,12 +249,17 @@ const getQueryOptionsForRelationsAndFilter = (relations, filter) => {
 
 	_.each(relations.attribute, (attributeRelation) => {
 		const dataSource = attributeRelation.attributeDataSource;
-		if (!queryOptions.attribute[dataSource.tableName]) {
-			queryOptions.attribute[dataSource.tableName] = {};
+		const property = `${dataSource.tableName}_${dataSource.fidColumnName}`;
+		if (!queryOptions.attribute[property] && dataSource.tableName && dataSource.fidColumnName) {
+			queryOptions.attribute[property] = {
+				tableName: dataSource.tableName,
+				fidColumnName: dataSource.fidColumnName,
+				dataSources: {}
+			};
 		}
 
-		if (!queryOptions.attribute[dataSource.tableName][dataSource.key]) {
-			queryOptions.attribute[dataSource.tableName][dataSource.key] = {
+		if (!queryOptions.attribute[property].dataSources[dataSource.key] && dataSource.tableName && dataSource.fidColumnName) {
+			queryOptions.attribute[property].dataSources[dataSource.key] = {
 				...dataSource
 			}
 		}
