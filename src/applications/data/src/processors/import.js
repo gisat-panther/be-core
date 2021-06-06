@@ -53,37 +53,22 @@ const getFiles = (importKey) => {
 	})
 }
 
-const importVerifiedFiles = (importKey, verifiedFiles, options) => {
-	let imports = [];
-	_.forIn(verifiedFiles, (value, name) => {
+const importVerifiedFiles = async (importKey, verifiedFiles, options) => {
+	for (const [name, value] of Object.entries(verifiedFiles)) {
 		if (value && value.type === "shp") {
-			imports.push(
-				processVector(importKey, name, value, options)
-			)
+			await processVector(importKey, name, value, options);
 		} else if (value && value.type === "gpkg") {
-			imports.push(
-				processGeoPackage(importKey, value, options)
-			)
+			await processGeoPackage(importKey, value, options);
 		} else if (value && value.type === "raster") {
-			imports.push(
-				processRaster(importKey, value, options)
-			)
+			await processRaster(importKey, value, options);
 		} else if (value && value.type === "msmap") {
-			imports.push(
-				processMsMapFile(importKey, value, options)
-			)
+			await processMsMapFile(importKey, value, options);
 		} else if (value && value.type === "geojson") {
-			imports.push(
-				processVector(importKey, name, value, options)
-			)
+			await processVector(importKey, name, value, options);
 		} else if (value && value.type === "json") {
-			imports.push(
-				processJson(importKey, name, value, options)
-			)
+			await processJson(importKey, name, value, options);
 		}
-	})
-
-	return Promise.all(imports);
+	}
 }
 
 const importVectorDataToPostgres = (importKey, path) => {
