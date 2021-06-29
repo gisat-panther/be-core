@@ -67,7 +67,7 @@ module.exports = (plan) => [
         },
         responses: {200: {}},
         handler: function (request, response) {
-            response.status(200).end();
+            response.status(200).json({});
         },
     },
     {
