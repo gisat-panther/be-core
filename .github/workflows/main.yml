@@ -8,6 +8,8 @@ on:
 jobs:
   docker-repository-check:
     runs-on: ubuntu-latest
+    outputs:
+      DOCKER_LABEL: ${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
     steps:
       -
         name: "Convert repository name to docker hub repository name"
