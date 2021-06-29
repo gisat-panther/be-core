@@ -93,7 +93,7 @@ jobs:
     needs: [docker-repository-check, tests, build]
     steps:
       -
-        name: "Deploy application on server"
+        name: "Deploy application on remote server"
         run: |
-          echo "There is no deployment needed at this moment"
-          exit 0
+          curl --location --fail https://ptr.gisat.cz/webhook/hooks/deploy?token=102aeeb9-233d-4e29-97c4-91cdc8852d97&service=be
+  
