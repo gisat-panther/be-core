@@ -60,14 +60,6 @@ jobs:
         name: "Checkout"
         uses: actions/checkout@v2
       - 
-        name: "Install dependencies"
-        run: |
-          npm ci
-      - 
-        name: "Build application"
-        run: |
-          npm run build
-      - 
         name: "Get docker image metadata"
         id: meta
         uses: docker/metadata-action@v3
