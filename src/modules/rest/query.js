@@ -1086,8 +1086,7 @@ function list(
     const keysSqlMap = qb.merge(
         sqlMap,
         qb.select(['t.key']),
-        sortQuery,
-        pageToQuery(page)
+        sortQuery
     );
 
     const resultSqlMap = qb.merge(

@@ -31,12 +31,12 @@ module.exports = {
                 },
                 name: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 phone: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 password: {
@@ -181,21 +181,21 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 configuration: {
                     defaultValue: null,
-                    schema: Joi.object(),
+                    schema: Joi.object().allow(null),
                 },
             },
             relations: {
@@ -258,21 +258,21 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 geometry: {
                     defaultValue: null,
-                    schema: Joi.object(),
+                    schema: Joi.object().allow(null),
                     selectExpr: function ({alias}) {
                         // todo this has to be fixed properly in future
                         return qb.val.raw(SQL`ST_AsGeoJSON(t."geometry")::JSON AS "geometry"`);
@@ -287,7 +287,7 @@ module.exports = {
                 },
                 bbox: {
                     defaultValue: null,
-                    schema: Joi.object(),
+                    schema: Joi.object().allow(null),
                     selectExpr: function ({alias}) {
                         // todo this has to be fixed properly in future
                         return qb.val.raw(SQL`ST_AsGeoJSON(t."bbox")::JSON AS "bbox"`);
@@ -318,6 +318,14 @@ module.exports = {
                     resourceGroup: 'metadata',
                     resourceType: 'tags',
                 },
+                scope: {
+                    type: 'manyToOne',
+                    relationTable: 'relations.placeRelation',
+                    ownKey: 'parentPlaceKey',
+                    inverseKey: 'scopeKey',
+                    resourceGroup: 'metadata',
+                    resourceType: 'scopes',
+                }
             },
         },
         periods: {
@@ -358,21 +366,21 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 period: {
                     defaultValue: null,
-                    schema: Joi.isoDuration(),
+                    schema: Joi.isoDuration().allow(null),
                     filter: ({alias, value, operator}) => ({
                         column: alias + '.periodRange',
                         value: p.intervalToRange(value),
@@ -453,17 +461,17 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
             },
             relations: {
@@ -532,35 +540,35 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 type: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 unit: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 valueType: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 color: {
                     defaultValue: null,
-                    schema: Joi.string()
+                    schema: Joi.string().allow(null)
                 },
             },
             relations: {
@@ -617,17 +625,17 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
             },
             relations: {
@@ -692,17 +700,17 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
             },
             relations: {
@@ -759,17 +767,17 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
             },
             relations: {
@@ -826,17 +834,17 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
             },
             relations: {
@@ -904,21 +912,21 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 level: {
                     defaultValue: null,
-                    schema: Joi.number().integer(),
+                    schema: Joi.number().integer().allow(null),
                     index: true
                 },
             },
@@ -1013,21 +1021,21 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 color: {
                     defaultValue: null,
-                    schema: Joi.string()
+                    schema: Joi.string().allow(null)
                 },
             },
         },
@@ -1075,31 +1083,31 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 source: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameGeoserver: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 definition: {
                     defaultValue: null,
-                    schema: Joi.object(),
+                    schema: Joi.object().allow(null),
                 },
             },
             relations: {
@@ -1143,16 +1151,16 @@ module.exports = {
                 },
                 name: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 color: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
             },
         },
@@ -1176,7 +1184,7 @@ module.exports = {
                 },
                 data: {
                     defaultValue: null,
-                    schema: Joi.object(),
+                    schema: Joi.object().allow(null),
                 },
             },
             relations: {
@@ -1280,26 +1288,26 @@ module.exports = {
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 attribution: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 tableName: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 columnName: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 fidColumnName: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
             },
@@ -1325,22 +1333,22 @@ module.exports = {
                         columns: {
                             layerName: {
                                 defaultValue: null,
-                                schema: Joi.string(),
+                                schema: Joi.string().allow(null),
                                 index: true
                             },
                             tableName: {
                                 defaultValue: null,
-                                schema: Joi.string(),
+                                schema: Joi.string().allow(null),
                                 index: true
                             },
                             fidColumnName: {
                                 defaultValue: null,
-                                schema: Joi.string(),
+                                schema: Joi.string().allow(null),
                                 index: true
                             },
                             geometryColumnName: {
                                 defaultValue: null,
-                                schema: Joi.string(),
+                                schema: Joi.string().allow(null),
                                 index: true
                             },
                         },
@@ -1360,12 +1368,12 @@ module.exports = {
                         columns: {
                             layerName: {
                                 defaultValue: null,
-                                schema: Joi.string(),
+                                schema: Joi.string().allow(null),
                                 index: true
                             },
                             tableName: {
                                 defaultValue: null,
-                                schema: Joi.string(),
+                                schema: Joi.string().allow(null),
                                 index: true
                             },
                         },
@@ -1400,20 +1408,20 @@ module.exports = {
                         columns: {
                             url: {
                                 defaultValue: null,
-                                schema: Joi.string(),
+                                schema: Joi.string().allow(null),
                                 index: true
                             },
                             layers: {
                                 defaultValue: null,
-                                schema: Joi.string(),
+                                schema: Joi.string().allow(null),
                             },
                             styles: {
                                 defaultValue: null,
-                                schema: Joi.string(),
+                                schema: Joi.string().allow(null),
                             },
                             configuration: {
                                 defaultValue: null,
-                                schema: Joi.object(),
+                                schema: Joi.object().allow(null),
                             },
                         },
                     },
@@ -1432,7 +1440,7 @@ module.exports = {
                         columns: {
                             urls: {
                                 defaultValue: null,
-                                schema: Joi.array().items(Joi.string()),
+                                schema: Joi.array().items(Joi.string()).allow(null),
                             },
                         },
                     },
@@ -1456,12 +1464,12 @@ module.exports = {
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 attribution: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 type: {
                     defaultValue: null,
@@ -1925,21 +1933,21 @@ module.exports = {
                 },
                 nameDisplay: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 nameInternal: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 description: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 type: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
             },
@@ -2046,56 +2054,56 @@ module.exports = {
                 },
                 submitDate: {
                     defaultValue: null,
-                    schema: Joi.date(),
+                    schema: Joi.date().allow(null),
                     index: true
                 },
                 codeDpb: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 codeJi: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 caseKey: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 changeDescription: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 changeDescriptionPlace: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 changeDescriptionOther: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 evaluationResult: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
                 evaluationDescription: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 evaluationDescriptionOther: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 evaluationUsedSources: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                 },
                 geometryBefore: {
                     defaultValue: null,
-                    schema: Joi.object(),
+                    schema: Joi.object().allow(null),
                     selectExpr: function ({alias}) {
                         return qb.expr.fn('ST_AsGeoJSON', alias);
                     },
@@ -2109,7 +2117,7 @@ module.exports = {
                 },
                 geometryAfter: {
                     defaultValue: null,
-                    schema: Joi.object(),
+                    schema: Joi.object().allow(null),
                     selectExpr: function ({alias}) {
                         return qb.expr.fn('ST_AsGeoJSON', alias);
                     },
@@ -2123,7 +2131,7 @@ module.exports = {
                 },
                 status: {
                     defaultValue: null,
-                    schema: Joi.string(),
+                    schema: Joi.string().allow(null),
                     index: true
                 },
             },

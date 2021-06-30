@@ -1,6 +1,6 @@
 const _ = require('lodash');
 const SQL = require('sql-template-strings');
-const {v4: uuid} = require('uuid');
+const { v4: uuid } = require('uuid');
 
 const ptrTileGrid = require('@gisatcz/ptr-tile-grid');
 
@@ -8,8 +8,10 @@ const db = require('../../../../db');
 const plan = require('../../../plan');
 const query = require('../../../../modules/rest/query');
 
+const supportedSpatialDataTypes = ["tiledVector", "vector"];
+
 async function getData(group, type, user, filter) {
-	let data = await query.list({group, type, user}, {filter});
+	let data = await query.list({ group, type, user }, { filter });
 	let compiledPlan = plan.get();
 
 	data = _.map(data.rows, (resource) => {
@@ -43,7 +45,15 @@ function formatData(rawData, filter) {
 
 
 	if (filter.relations && filter.relations.spatial) {
+		const usedSpatialDataSources = [];
+
 		rawData.spatial.forEach((spatialRelation) => {
+			formattedResponse.spatialAttributeRelationsDataSources.spatialRelations.push(spatialRelation);
+
+			if (usedSpatialDataSources.includes(spatialRelation.spatialDataSource.key)) {
+				return;
+			}
+
 			formattedResponse.spatialAttributeRelationsDataSources.spatialDataSources.push({
 				key: spatialRelation.spatialDataSource.key,
 				data: {
@@ -51,12 +61,20 @@ function formatData(rawData, filter) {
 				}
 			});
 
-			formattedResponse.spatialAttributeRelationsDataSources.spatialRelations.push(spatialRelation);
+			usedSpatialDataSources.push(spatialRelation.spatialDataSource.key);
 		})
 	}
 
 	if (filter.relations && filter.relations.attribute) {
+		const usedAttributeDataSources = [];
+
 		rawData.attribute.forEach((attributeRelation) => {
+			formattedResponse.spatialAttributeRelationsDataSources.attributeRelations.push(attributeRelation);
+
+			if (usedAttributeDataSources.includes(attributeRelation.attributeDataSource.key)) {
+				return;
+			}
+
 			formattedResponse.spatialAttributeRelationsDataSources.attributeDataSources.push({
 				key: attributeRelation.attributeDataSource.key,
 				data: {
@@ -64,7 +82,7 @@ function formatData(rawData, filter) {
 				}
 			});
 
-			formattedResponse.spatialAttributeRelationsDataSources.attributeRelations.push(attributeRelation);
+			usedAttributeDataSources.push(attributeRelation.attributeDataSource.key);
 		})
 	}
 
@@ -123,109 +141,136 @@ async function getPopulatedRelationsByFilter(filter, user) {
 	return relations;
 }
 
-const getSqlForRelationsAndFilter = (relations, filter) => {
-	let sql = SQL``;
-
-	const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
-	const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.level);
-	const geometryTolerance = gridSize / tileSize;
-
-	sql.append(`SELECT`);
-	sql.append(` "bFid" AS "fid", "geometry", "spatialDataSourceKey", "tile", "level"`);
-
-	_.each(relations.attribute, (attributeRelation) => {
-		let attributeDataSource = attributeRelation.attributeDataSource;
-		sql.append(`, '${attributeDataSource.key}' AS "attributeDataSourceKey"`);
-		sql.append(`, "${attributeDataSource.key}"."${attributeDataSource.columnName}" AS "value"`);
-		sql.append(`, "${attributeDataSource.key}"."${attributeDataSource.fidColumnName}" AS "fid2"`)
-	});
-
-	sql.append(` FROM (`);
-
-	_.each(relations.spatial, (spatialRelation, index) => {
-		let spatialDataSource = spatialRelation.spatialDataSource;
-
-		// todo find better solution for supported types
-		if (spatialDataSource.type !== "tiledVector") {
-			return;
-		}
-
-		if (index > 0) {
-			sql.append(` UNION `);
-		}
-
-		let tile;
-		if (filter.data.spatialIndex && filter.data.spatialIndex.tiles && filter.data.spatialIndex.tiles.length) {
-			tile = filter.data.spatialIndex.tiles[0]
-		} else if (filter.data.spatialFilter && filter.data.spatialFilter.tiles && filter.data.spatialFilter.tiles.length) {
-			tile = filter.data.spatialFilter.tiles[0];
-		}
-
-		if (tile) {
-			let tileAsPolygon = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
-
-			sql.append(`SELECT`)
-			sql.append(` "base"."${spatialDataSource.fidColumnName}" AS "bFid"`)
-			sql.append(`, "simple"."json" AS "geometry"`)
-			sql.append(`, '${spatialDataSource.key}' AS "spatialDataSourceKey"`)
-			sql.append(`, '${tile}' AS "tile"`)
-			sql.append(`, '${filter.data.spatialFilter.level}' AS "level"`)
-			sql.append(` FROM "${spatialDataSource.tableName}" AS base`)
-			sql.append(` LEFT JOIN "${spatialDataSource.tableName}_simple" AS simple ON "base"."${spatialDataSource.fidColumnName}" = "simple"."${spatialDataSource.fidColumnName}"`)
-			sql.append(` WHERE "simple"."level" = ${filter.data.spatialFilter.level} AND "base"."${spatialDataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`)
-		}
-	})
-
-	sql.append(`) AS "spatial"`);
-
-	_.each(relations.attribute, (attributeRelation, index) => {
-		let attributeDataSource = attributeRelation.attributeDataSource;
-		sql.append(` LEFT JOIN "${attributeDataSource.tableName}" AS "${attributeDataSource.key}" ON "spatial"."bFid" = "${attributeDataSource.key}"."${attributeDataSource.fidColumnName}"`)
-	})
-
-	sql.setName(`ptr_${uuid()}`);
-
-	return sql;
-}
-
-const getDataForRelations = async (relations, filter) => {
+const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 	const data = {
 		spatial: {},
 		attribute: {}
 	};
 
-	const validSpatialSourceTypes = ["tiledVector"];
-	if (!_.find(relations.spatial, (spatialRelation) => {
-		return validSpatialSourceTypes.includes(spatialRelation.spatialDataSource.type);
-	})) {
-		return data;
+	const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
+	const level = filter.data.spatialFilter.level;
+	const gridSize = ptrTileGrid.utils.getGridSizeForLevel(level);
+	const geometryTolerance = gridSize / tileSize;
+
+	let tile;
+	if (filter.data.spatialIndex && filter.data.spatialIndex.tiles && filter.data.spatialIndex.tiles.length) {
+		tile = filter.data.spatialIndex.tiles[0]
+	} else if (filter.data.spatialFilter && filter.data.spatialFilter.tiles && filter.data.spatialFilter.tiles.length) {
+		tile = filter.data.spatialFilter.tiles[0];
 	}
 
-	const sql = getSqlForRelationsAndFilter(relations, filter);
+	let featureKeys = [];
+	for (const [key, dataSource] of Object.entries(queryOptions.spatial)) {
+		if (tile) {
+			const tileAsPolygon = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
+			const isSimple = await db
+				.query(`SELECT EXISTS (SELECT FROM "pg_tables" WHERE "schemaname" = 'public' AND "tablename" = '${dataSource.tableName}_simple');`)
+				.then((pgResult) => {
+					return pgResult.rows[0].exists;
+				});
 
-	await db
-		.query(sql)
-		.then((pgResult) => {
-			_.each(pgResult.rows, (row) => {
-				data.spatial[row.spatialDataSourceKey] = data.spatial[row.spatialDataSourceKey] || {
-					data: {},
-					spatialIndex: {}
-				};
+			let sql;
+			if (isSimple) {
+				sql =
+					`SELECT "base"."${dataSource.fidColumnName}" AS "featureKey", "simple"."json"::JSON AS geometry 
+					FROM "${dataSource.tableName}" AS "base"
+					LEFT JOIN "${dataSource.tableName}_simple" AS "simple" ON "simple"."fid" = "base"."${dataSource.fidColumnName}"
+					WHERE "simple"."level" = ${level} AND "base"."${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
+			} else {
+				sql =
+					`SELECT "${dataSource.fidColumnName}" AS "featureKey", "${dataSource.geometryColumnName}"::JSON AS geometry 
+					FROM "${dataSource.tableName}" 
+					WHERE "${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
+			}
 
-				data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] = data.spatial[row.spatialDataSourceKey].spatialIndex[row.level] || {};
-				data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile] = data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile] || [];
-				data.spatial[row.spatialDataSourceKey].spatialIndex[row.level][row.tile].push(row.fid);
+			await db
+				.query(sql)
+				.then((pgResult) => {
+					featureKeys = _.concat(featureKeys, _.map(pgResult.rows, "featureKey"));
+					data.spatial[key] = {
+						data: _.zipObject(_.map(pgResult.rows, "featureKey"), _.map(pgResult.rows, "geometry")),
+						spatialIndex: {
+							[level]: {
+								[tile]: _.map(pgResult.rows, 'featureKey')
+							}
+						}
+					}
+				})
+		} else {
+			throw new Error("no tile");
+		}
+	}
+	featureKeys = _.uniq(featureKeys);
 
-				data.spatial[row.spatialDataSourceKey].data[row.fid] = JSON.parse(row.geometry);
-
-				if (row.attributeDataSourceKey && row.fid2) {
-					data.attribute[row.attributeDataSourceKey] = data.attribute[row.attributeDataSourceKey] || {}
-					data.attribute[row.attributeDataSourceKey][row.fid2] = row.value;
-				}
+	if (featureKeys.length) {
+		for (const [property, queryData] of Object.entries(queryOptions.attribute)) {
+			let columns = _.map(queryData.dataSources, (dataSource, key) => {
+				return `"${dataSource.columnName}" AS "${key}"`
 			});
-		})
+
+			let params = _.map(featureKeys, (value, index) => {
+				return `$${index + 1}`;
+			});
+
+			let sql = `SELECT "${queryData.fidColumnName}" AS "featureKey", ${columns.join(", ")} FROM "${queryData.tableName}" WHERE "${queryData.fidColumnName}" IN (${params.join(", ")})`
+
+			await db
+				.query(sql, featureKeys)
+				.then((pgResult) => {
+					_.each(queryData.dataSources, (dataSource, key) => {
+						data.attribute[key] = data.attribute[key] || {};
+						_.each(pgResult.rows, (row) => {
+							data.attribute[key][row.featureKey] = row[key];
+						})
+					})
+				})
+		}
+	}
 
 	return data;
+}
+
+const getQueryOptionsForRelationsAndFilter = (relations, filter) => {
+	const queryOptions = {
+		spatial: {},
+		attribute: {}
+	}
+
+	_.each(relations.spatial, (spatialRelation) => {
+		const dataSource = spatialRelation.spatialDataSource;
+		if (supportedSpatialDataTypes.includes(dataSource.type)) {
+			if (!queryOptions.spatial[dataSource.key]) {
+				queryOptions.spatial[dataSource.key] = {
+					...dataSource
+				}
+			}
+		}
+	});
+
+	_.each(relations.attribute, (attributeRelation) => {
+		const dataSource = attributeRelation.attributeDataSource;
+		const property = `${dataSource.tableName}_${dataSource.fidColumnName}`;
+		if (!queryOptions.attribute[property] && dataSource.tableName && dataSource.fidColumnName) {
+			queryOptions.attribute[property] = {
+				tableName: dataSource.tableName,
+				fidColumnName: dataSource.fidColumnName,
+				dataSources: {}
+			};
+		}
+
+		if (!queryOptions.attribute[property].dataSources[dataSource.key] && dataSource.tableName && dataSource.fidColumnName) {
+			queryOptions.attribute[property].dataSources[dataSource.key] = {
+				...dataSource
+			}
+		}
+	});
+
+	return queryOptions;
+}
+
+const getDataForRelations = async (relations, filter) => {
+	const queryOptions = getQueryOptionsForRelationsAndFilter(relations, filter);
+	return getDataForQueryOptionsAndFilter(queryOptions, filter);
 }
 
 async function populateRelationsWithDataSources(relations, user) {
@@ -233,7 +278,7 @@ async function populateRelationsWithDataSources(relations, user) {
 		return relation.spatialDataSourceKey
 	});
 	if (spatialDataSourceKeys.length) {
-		let spatialDataSources = await getData(`dataSources`, `spatial`, user, {key: {in: spatialDataSourceKeys}});
+		let spatialDataSources = await getData(`dataSources`, `spatial`, user, { key: { in: spatialDataSourceKeys } });
 		_.each(spatialDataSources, (dataSource) => {
 			_.each(relations.spatial, (relation) => {
 				if (relation.spatialDataSourceKey === dataSource.key) {
@@ -277,7 +322,7 @@ async function getRelationsByFilter(filter, user) {
 	}
 
 	if (filter.data.hasOwnProperty('dataSourceKeys')) {
-		_.set(spatialRelationsFilter, 'spatialDataSourceKey', {in: filter.data.dataSourceKeys});
+		_.set(spatialRelationsFilter, 'spatialDataSourceKey', { in: filter.data.dataSourceKeys });
 	}
 
 	relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
@@ -285,10 +330,10 @@ async function getRelationsByFilter(filter, user) {
 	let attributeRelationsFilter = filter.modifiers || {};
 	if (filter.hasOwnProperty('styleKey')) {
 		if (filter.data.hasOwnProperty('dataSourceKeys')) {
-			_.set(attributeRelationsFilter, 'attributeDataSourceKey', {in: filter.data.dataSourceKeys});
+			_.set(attributeRelationsFilter, 'attributeDataSourceKey', { in: filter.data.dataSourceKeys });
 		}
 
-		let styles = await getData(`metadata`, `styles`, user, {key: filter.styleKey});
+		let styles = await getData(`metadata`, `styles`, user, { key: filter.styleKey });
 		let style = styles && styles.length && styles[0];
 
 		if (style) {
@@ -299,7 +344,7 @@ async function getRelationsByFilter(filter, user) {
 			})));
 
 			if (attributeKeys && attributeKeys.length) {
-				_.set(attributeRelationsFilter, 'attributeKey', {in: attributeKeys});
+				_.set(attributeRelationsFilter, 'attributeKey', { in: attributeKeys });
 			}
 		}
 
