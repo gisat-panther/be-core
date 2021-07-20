@@ -1512,6 +1512,7 @@ module.exports = {
                         null,
                         'raster',
                         'tiledVector',
+                        'vector',
                         'wms',
                         'wmts'
                     ),
