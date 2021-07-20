@@ -30,23 +30,24 @@ function formatData(rawData, filter) {
 		spatialAttributeRelationsDataSources: {
 			total: {
 				attributeRelations: rawData.attribute.length,
-				spatialRelations: rawData.spatial.length
+				spatialRelations: rawData.spatial.length,
+				areaRelations: rawData.area.length
 			},
 			offset: (filter.relations && filter.relations.offset) || 0,
 			limit: (filter.relations && filter.relations.limit) || 100,
 			spatialRelations: [],
+			areaRelations: [],
 			attributeRelations: [],
 			spatialDataSources: [],
-			attributeDataSources: [],
+			attributeDataSources: []
 		},
 		spatialData: rawData.data.spatial,
 		attributeData: rawData.data.attribute
 	}
 
+	const usedSpatialDataSources = [];
 
 	if (filter.relations && filter.relations.spatial) {
-		const usedSpatialDataSources = [];
-
 		rawData.spatial.forEach((spatialRelation) => {
 			formattedResponse.spatialAttributeRelationsDataSources.spatialRelations.push(spatialRelation);
 
@@ -62,6 +63,27 @@ function formatData(rawData, filter) {
 			});
 
 			usedSpatialDataSources.push(spatialRelation.spatialDataSource.key);
+		})
+	}
+
+	if (filter.relations && filter.relations.area) {
+		rawData.area.forEach((relation) => {
+			formattedResponse.spatialAttributeRelationsDataSources.areaRelations.push(relation);
+
+			if (usedSpatialDataSources.includes(relation.spatialDataSource.key)) {
+				return;
+			}
+
+			console.log(relation);
+
+			formattedResponse.spatialAttributeRelationsDataSources.spatialDataSources.push({
+				key: relation.spatialDataSource.key,
+				data: {
+					..._.pick(relation.spatialDataSource, _.without(_.keys(relation.spatialDataSource), 'key'))
+				}
+			});
+
+			usedSpatialDataSources.push(relation.spatialDataSource.key);
 		})
 	}
 
@@ -90,27 +112,48 @@ function formatData(rawData, filter) {
 	formattedResponse.spatialAttributeRelationsDataSources.attributeRelations = _.slice(formattedResponse.spatialAttributeRelationsDataSources.attributeRelations, formattedResponse.spatialAttributeRelationsDataSources.offset, formattedResponse.spatialAttributeRelationsDataSources.offset + formattedResponse.spatialAttributeRelationsDataSources.limit);
 
 	formattedResponse.spatialAttributeRelationsDataSources.spatialDataSources = _.filter(formattedResponse.spatialAttributeRelationsDataSources.spatialDataSources, (spatialDataSource) => {
-		return _.map(formattedResponse.spatialAttributeRelationsDataSources.spatialRelations, 'spatialDataSourceKey').includes(spatialDataSource.key);
+		let spatialAreaRelations = _.concat(
+			[],
+			formattedResponse.spatialAttributeRelationsDataSources.spatialRelations,
+			formattedResponse.spatialAttributeRelationsDataSources.areaRelations
+		);
+		return _.map(spatialAreaRelations, 'spatialDataSourceKey').includes(spatialDataSource.key);
 	});
 
 	formattedResponse.spatialAttributeRelationsDataSources.attributeDataSources = _.filter(formattedResponse.spatialAttributeRelationsDataSources.attributeDataSources, (attributeDataSource) => {
 		return _.map(formattedResponse.spatialAttributeRelationsDataSources.attributeRelations, 'attributeDataSourceKey').includes(attributeDataSource.key);
 	});
 
-	formattedResponse.spatialAttributeRelationsDataSources.spatialRelations = _.map(formattedResponse.spatialAttributeRelationsDataSources.spatialRelations, (spatialRelation) => {
-		let clearSpatialRelation = {
-			key: spatialRelation.key,
+	formattedResponse.spatialAttributeRelationsDataSources.spatialRelations = _.map(formattedResponse.spatialAttributeRelationsDataSources.spatialRelations, (relation) => {
+		let clearRelation = {
+			key: relation.key,
 			data: {
-				...spatialRelation
+				...relation
 			}
 		};
 
-		delete clearSpatialRelation.data.key;
-		delete clearSpatialRelation.data.data;
-		delete clearSpatialRelation.data.spatialDataSource;
-		delete clearSpatialRelation.data.spatialIndex;
+		delete clearRelation.data.key;
+		delete clearRelation.data.data;
+		delete clearRelation.data.spatialDataSource;
+		delete clearRelation.data.spatialIndex;
 
-		return clearSpatialRelation;
+		return clearRelation;
+	});
+
+	formattedResponse.spatialAttributeRelationsDataSources.areaRelations = _.map(formattedResponse.spatialAttributeRelationsDataSources.areaRelations, (relation) => {
+		let clearRelation = {
+			key: relation.key,
+			data: {
+				...relation
+			}
+		};
+
+		delete clearRelation.data.key;
+		delete clearRelation.data.data;
+		delete clearRelation.data.spatialDataSource;
+		delete clearRelation.data.spatialIndex;
+
+		return clearRelation;
 	});
 
 	formattedResponse.spatialAttributeRelationsDataSources.attributeRelations = _.map(formattedResponse.spatialAttributeRelationsDataSources.attributeRelations, (attributeRelation) => {
@@ -165,7 +208,7 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 	}
 
 	let featureKeys = [];
-	for (const [key, dataSource] of Object.entries(queryOptions.spatial)) {
+	for (const [key, dataSource] of Object.entries({ ...queryOptions.spatial, ...queryOptions.area })) {
 		if (tileAsPolygon) {
 			const isSimple = await db
 				.query(`SELECT EXISTS (SELECT FROM "pg_tables" WHERE "schemaname" = 'public' AND "tablename" = '${dataSource.tableName}_simple');`)
@@ -245,9 +288,21 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 
 const getQueryOptionsForRelationsAndFilter = (relations, filter) => {
 	const queryOptions = {
+		area: {},
 		spatial: {},
 		attribute: {}
 	}
+
+	_.each(relations.area, (areaRelation) => {
+		const dataSource = areaRelation.spatialDataSource;
+		if (supportedSpatialDataTypes.includes(dataSource.type)) {
+			if (!queryOptions.area[dataSource.key]) {
+				queryOptions.area[dataSource.key] = {
+					...dataSource
+				}
+			}
+		}
+	});
 
 	_.each(relations.spatial, (spatialRelation) => {
 		const dataSource = spatialRelation.spatialDataSource;
@@ -287,13 +342,14 @@ const getDataForRelations = async (relations, filter) => {
 }
 
 async function populateRelationsWithDataSources(relations, user) {
-	let spatialDataSourceKeys = _.map(relations.spatial, (relation) => {
+	let spatialAndAreaRealations = _.concat([], relations.spatial, relations.area);
+	let spatialDataSourceKeys = _.map(spatialAndAreaRealations, (relation) => {
 		return relation.spatialDataSourceKey
 	});
 	if (spatialDataSourceKeys.length) {
 		let spatialDataSources = await getData(`dataSources`, `spatial`, user, { key: { in: spatialDataSourceKeys } });
 		_.each(spatialDataSources, (dataSource) => {
-			_.each(relations.spatial, (relation) => {
+			_.each(spatialAndAreaRealations, (relation) => {
 				if (relation.spatialDataSourceKey === dataSource.key) {
 					relation.spatialDataSource = dataSource;
 				}
@@ -326,19 +382,39 @@ async function populateRelationsWithDataSources(relations, user) {
 async function getRelationsByFilter(filter, user) {
 	let relations = {
 		attribute: [],
-		spatial: []
+		spatial: [],
+		area: []
 	};
 
-	let spatialRelationsFilter = filter.modifiers || {};
-	if (filter.hasOwnProperty('layerTemplateKey')) {
-		_.set(spatialRelationsFilter, 'layerTemplateKey', filter.layerTemplateKey);
-	}
+	if (filter.hasOwnProperty('areaTreeKey') || filter.hasOwnProperty('areaTreeLevelKey')) {
+		let areaRelationsFilter = filter.modifiers || {};
 
-	if (filter.data.hasOwnProperty('dataSourceKeys')) {
-		_.set(spatialRelationsFilter, 'spatialDataSourceKey', { in: filter.data.dataSourceKeys });
-	}
+		if (filter.hasOwnProperty('areaTreeKey')) {
+			_.set(areaRelationsFilter, 'areaTreeKey', filter.areaTreeKey);
+		}
 
-	relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
+		if (filter.data.hasOwnProperty('areaTreeLevelKey')) {
+			_.set(areaRelationsFilter, 'areaTreeLevelKey', filter.areaTreeKey);
+		}
+
+		if (filter.data.hasOwnProperty('dataSourceKeys')) {
+			_.set(areaRelationsFilter, 'spatialDataSourceKey', { in: filter.data.dataSourceKeys });
+		}
+
+		relations.area = await getData(`relations`, 'area', user, areaRelationsFilter);
+
+	} else {
+		let spatialRelationsFilter = filter.modifiers || {};
+		if (filter.hasOwnProperty('layerTemplateKey')) {
+			_.set(spatialRelationsFilter, 'layerTemplateKey', filter.layerTemplateKey);
+		}
+
+		if (filter.data.hasOwnProperty('dataSourceKeys')) {
+			_.set(spatialRelationsFilter, 'spatialDataSourceKey', { in: filter.data.dataSourceKeys });
+		}
+
+		relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
+	}
 
 	let attributeRelationsFilter = filter.modifiers || {};
 	if (filter.hasOwnProperty('styleKey')) {
@@ -374,5 +450,5 @@ async function getFormattedResponse(filter, user) {
 }
 
 module.exports = async function (filter, user) {
-	return await getFormattedResponse(filter, user)
+	return await getFormattedResponse(filter, user);
 }
