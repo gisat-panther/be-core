@@ -159,10 +159,14 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 		tile = filter.data.spatialFilter.tiles[0];
 	}
 
+	let tileAsPolygon;
+	if (tile) {
+		tileAsPolygon = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
+	}
+
 	let featureKeys = [];
 	for (const [key, dataSource] of Object.entries(queryOptions.spatial)) {
-		if (tile) {
-			const tileAsPolygon = ptrTileGrid.utils.getTileAsPolygon(tile, gridSize);
+		if (tileAsPolygon) {
 			const isSimple = await db
 				.query(`SELECT EXISTS (SELECT FROM "pg_tables" WHERE "schemaname" = 'public' AND "tablename" = '${dataSource.tableName}_simple');`)
 				.then((pgResult) => {
@@ -174,13 +178,19 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 				sql =
 					`SELECT "base"."${dataSource.fidColumnName}" AS "featureKey", "simple"."json"::JSON AS geometry 
 					FROM "${dataSource.tableName}" AS "base"
-					LEFT JOIN "${dataSource.tableName}_simple" AS "simple" ON "simple"."fid" = "base"."${dataSource.fidColumnName}"
-					WHERE "simple"."level" = ${level} AND "base"."${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
+					LEFT JOIN "${dataSource.tableName}_simple" AS "simple" ON "simple"."fid" = "base"."${dataSource.fidColumnName}"`;
+
+				if (dataSource.type === "tiledVector") {
+					sql += ` WHERE "simple"."level" = ${level} AND "base"."${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
+				}
 			} else {
 				sql =
 					`SELECT "${dataSource.fidColumnName}" AS "featureKey", "${dataSource.geometryColumnName}"::JSON AS geometry 
-					FROM "${dataSource.tableName}" 
-					WHERE "${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
+					FROM "${dataSource.tableName}"`;
+
+				if (dataSource.type === "tiledVector") {
+					sql += ` WHERE "${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
+				}
 			}
 
 			await db
@@ -188,8 +198,11 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 				.then((pgResult) => {
 					featureKeys = _.concat(featureKeys, _.map(pgResult.rows, "featureKey"));
 					data.spatial[key] = {
-						data: _.zipObject(_.map(pgResult.rows, "featureKey"), _.map(pgResult.rows, "geometry")),
-						spatialIndex: {
+						data: _.zipObject(_.map(pgResult.rows, "featureKey"), _.map(pgResult.rows, "geometry"))
+					}
+
+					if (dataSource.type === "tiledVector") {
+						data.spatial[key].spatialIndex = {
 							[level]: {
 								[tile]: _.map(pgResult.rows, 'featureKey')
 							}
