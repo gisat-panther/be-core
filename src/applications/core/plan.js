@@ -1318,6 +1318,41 @@ module.exports = {
                 dispatchColumn: 'type',
                 key: 'sourceKey',
                 types: {
+                    "vector": {
+                        context: {
+                            list: {
+                                columns: ['layerName', 'tableName', 'fidColumnName', 'geometryColumnName'],
+                            },
+                            create: {
+                                columns: ['layerName', 'tableName', 'fidColumnName', 'geometryColumnName'],
+                            },
+                            update: {
+                                columns: ['layerName', 'tableName', 'fidColumnName', 'geometryColumnName'],
+                            },
+                        },
+                        columns: {
+                            layerName: {
+                                defaultValue: null,
+                                schema: Joi.string().allow(null),
+                                index: true
+                            },
+                            tableName: {
+                                defaultValue: null,
+                                schema: Joi.string().allow(null),
+                                index: true
+                            },
+                            fidColumnName: {
+                                defaultValue: null,
+                                schema: Joi.string().allow(null),
+                                index: true
+                            },
+                            geometryColumnName: {
+                                defaultValue: null,
+                                schema: Joi.string().allow(null),
+                                index: true
+                            },
+                        },
+                    },
                     "tiledVector": {
                         context: {
                             list: {
