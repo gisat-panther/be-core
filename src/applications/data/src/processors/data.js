@@ -393,7 +393,7 @@ async function getRelationsByFilter(filter, user) {
 			_.set(areaRelationsFilter, 'areaTreeKey', filter.areaTreeKey);
 		}
 
-		if (filter.data.hasOwnProperty('areaTreeLevelKey')) {
+		if (filter.hasOwnProperty('areaTreeLevelKey')) {
 			_.set(areaRelationsFilter, 'areaTreeLevelKey', filter.areaTreeLevelKey);
 		}
 
