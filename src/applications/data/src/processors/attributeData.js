@@ -275,6 +275,10 @@ async function getRelationsByFilter(filter, user) {
 		_.set(attributeRelationsFilter, "attributeKey", { in: filter.attributeKeys });
 	}
 
+	if (filter.hasOwnProperty('areaTreeLevelKey')) {
+		_.set(attributeRelationsFilter, 'areaTreeLevelKey', filter.areaTreeLevelKey);
+	}
+
 	relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
 	relations.attribute = await getData(`relations`, 'attribute', user, attributeRelationsFilter);
 
