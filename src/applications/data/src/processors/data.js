@@ -422,6 +422,10 @@ async function getRelationsByFilter(filter, user) {
 			_.set(attributeRelationsFilter, 'attributeDataSourceKey', { in: filter.data.dataSourceKeys });
 		}
 
+		if (filter.hasOwnProperty('areaTreeLevelKey')) {
+			_.set(attributeRelationsFilter, 'areaTreeLevelKey', filter.areaTreeLevelKey);
+		}
+
 		let styles = await getData(`metadata`, `styles`, user, { key: filter.styleKey });
 		let style = styles && styles.length && styles[0];
 
