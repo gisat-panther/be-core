@@ -74,8 +74,6 @@ function formatData(rawData, filter) {
 				return;
 			}
 
-			console.log(relation);
-
 			formattedResponse.spatialAttributeRelationsDataSources.spatialDataSources.push({
 				key: relation.spatialDataSource.key,
 				data: {
