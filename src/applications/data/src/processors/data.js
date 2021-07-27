@@ -221,10 +221,11 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 				sql =
 					`SELECT "base"."${dataSource.fidColumnName}" AS "featureKey", "simple"."json"::JSON AS geometry 
 					FROM "${dataSource.tableName}" AS "base"
-					LEFT JOIN "${dataSource.tableName}_simple" AS "simple" ON "simple"."${dataSource.fidColumnName}" = "base"."${dataSource.fidColumnName}"`;
+					LEFT JOIN "${dataSource.tableName}_simple" AS "simple" ON "simple"."${dataSource.fidColumnName}" = "base"."${dataSource.fidColumnName}"
+					WHERE "simple"."level" = ${level}`;
 
 				if (dataSource.type === "tiledVector") {
-					sql += ` WHERE "simple"."level" = ${level} AND "base"."${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
+					sql += ` AND "base"."${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
 				}
 			} else {
 				sql =
