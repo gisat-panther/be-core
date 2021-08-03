@@ -911,12 +911,14 @@ describe('/rest/data/filtered', () => {
 			const expectedResponse = {
 				"spatialAttributeRelationsDataSources": {
 					"total": {
+						"areaRelations": 0,
 						"attributeRelations": 0,
 						"spatialRelations": 1
 					},
 					"offset": 0,
 					"limit": 100,
 					"spatialRelations": [],
+					"areaRelations": [],
 					"attributeRelations": [],
 					"spatialDataSources": [],
 					"attributeDataSources": []
