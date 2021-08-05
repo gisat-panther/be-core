@@ -1047,8 +1047,6 @@ function list(
             qb.from(`${group}.${table}`, 't'),
             qb.groupBy(['t.key'])
         ),
-        listPermissionQuery({user, group, type}, 't'),
-        listPermissionRelationQuery({user, plan, group, type}, 't'),
         listUserPermissionsQuery({user, plan, group, type}, 't'),
         listDependentTypeQuery({plan, group, type}, 't'),
         filtersToSqlExpr(
@@ -1066,9 +1064,14 @@ function list(
         cf.listQuery('t')
     );
 
+    const permissionsQuery = qb.append(
+        listPermissionQuery({user, group, type}, 't'),
+        listPermissionRelationQuery({user, plan, group, type}, 't')
+    );
+
     const countSqlMap = qb.merge(
         qb.select([qb.expr.as(qb.expr.fn('COUNT', qb.val.raw(1)), 'count')]),
-        qb.from(qb.merge(sqlMap, qb.select(['t.key'])), '_gt')
+        qb.from(qb.merge(qb.append(sqlMap, permissionsQuery), qb.select(['t.key'])), '_gt')
     );
 
     const db = getDb(client);
@@ -1083,10 +1086,13 @@ function list(
         )
     );
 
-    const keysSqlMap = qb.merge(
-        sqlMap,
-        qb.select(['t.key']),
-        sortQuery
+    const keysSqlMap = qb.append(
+        qb.merge(
+            sqlMap,
+            qb.select(['t.key']),
+            sortQuery
+        ),
+        permissionsQuery
     );
 
     const resultSqlMap = qb.merge(
