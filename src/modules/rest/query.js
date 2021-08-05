@@ -1090,10 +1090,8 @@ function list(
     );
 
     const resultSqlMap = qb.merge(
-        qb.append(
-            sqlMap,
-            qb.where(qb.expr.in('t.key', keysSqlMap)),
-        ),
+        sqlMap,
+        qb.where(qb.expr.in('t.key', keysSqlMap)),
         sortQuery,
         pageToQuery(page)
     );
