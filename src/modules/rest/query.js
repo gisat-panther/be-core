@@ -974,15 +974,16 @@ function listPermissionsQuery(
  * Returns list data.
  *
  * @param {{plan: import('./compiler').Plan, group: string, type: string, client?: import('../../db').Client, user: object}} context
- * @param {{sort: [string, 'ascending'|'descending'][], filter: Object<string, any>, page?: {limit: number, offset: number}}} params
+ * @param {{sort: [string, 'ascending'|'descending'][], filter: Object<string, any>, page?: {limit: number, offset: number}, updateSqlMap?: (sqlMap: import('@imatic/pgqb').Sql, alias: string) => import('@imatic/pgqb').Sql}} params
  *
  * @returns {Promise<{rows: object[], count: number}>}
  */
 function list(
     {plan, group, type, client, user, customFields},
-    {sort, filter, page, translations}
+    {sort, filter, page, translations, updateSqlMap}
 ) {
     plan = getPlan(plan);
+    updateSqlMap = updateSqlMap || _.identity;
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
     const table = _.getOr(type, 'table', typeSchema);
@@ -1055,29 +1056,32 @@ function list(
         _.keys(plan[group][type].relations)
     );
 
-    const sqlMap = qb.append(
-        qb.merge(
-            qb.select(
-                columns.map((c) => columnsConfig[c].selectExpr({alias: 't'}))
+    const sqlMap = updateSqlMap(
+        qb.append(
+            qb.merge(
+                qb.select(
+                    columns.map((c) => columnsConfig[c].selectExpr({alias: 't'}))
+                ),
+                qb.from(`${group}.${table}`, 't'),
+                qb.groupBy(['t.key'])
             ),
-            qb.from(`${group}.${table}`, 't'),
-            qb.groupBy(['t.key'])
+            listUserPermissionsQuery({user, plan, group, type}, 't'),
+            listDependentTypeQuery({plan, group, type}, 't'),
+            filtersToSqlExpr(
+                createFilters(
+                    {plan, group, type, translations, customFields},
+                    filter,
+                    columnToAliases,
+                    columnToField,
+                    columnsConfig,
+                    translations
+                )
+            ),
+            relationsQuery({plan, group, type}, 't'),
+            translation.listTranslationsQuery({group, type, translations}, 't'),
+            cf.listQuery('t')
         ),
-        listUserPermissionsQuery({user, plan, group, type}, 't'),
-        listDependentTypeQuery({plan, group, type}, 't'),
-        filtersToSqlExpr(
-            createFilters(
-                {plan, group, type, translations, customFields},
-                filter,
-                columnToAliases,
-                columnToField,
-                columnsConfig,
-                translations
-            )
-        ),
-        relationsQuery({plan, group, type}, 't'),
-        translation.listTranslationsQuery({group, type, translations}, 't'),
-        cf.listQuery('t')
+        't'
     );
 
     const permissionsQuery = listPermissionsQuery({plan, user, group, type}, 't');

@@ -11,8 +11,8 @@ const query = require('../../../../modules/rest/query');
 
 const supportedSpatialDataTypes = ["tiledVector", "vector"];
 
-async function getData(group, type, user, filter) {
-	let data = await query.list({ group, type, user }, { filter });
+async function getData(group, type, user, filter, updateSqlMap) {
+	let data = await query.list({ group, type, user }, { filter, updateSqlMap });
 	let compiledPlan = plan.get();
 
 	data = _.map(data.rows, (resource) => {
@@ -424,36 +424,39 @@ async function getAttributeRelatons(filter, user) {
 
 		const compiledPlan = plan.get();
 		const attributeKeysSqlMap = qb.merge(
-			qb.select([qb.val.raw(`"t2"."style"->>'attributeKey' "attributeKey"`)]),
+			qb.select([qb.val.raw(`("_t2"."style"->>'attributeKey')::uuid "attributeKey"`)]),
 			qb.from(
 				qb.merge(
-					qb.select([qb.val.raw(`JSONB_ARRAY_ELEMENTS("t1"."rule"->'styles') "style"`)]),
+					qb.select([qb.val.raw(`JSONB_ARRAY_ELEMENTS("_t1"."rule"->'styles') "style"`)]),
 					qb.from(
 						qb.append(
 							qb.merge(
-								qb.select([qb.val.raw(`JSONB_ARRAY_ELEMENTS("t"."definition"->'rules') "rule"`)]),
-								qb.from('metadata.style', 't'),
-								qb.where(qb.expr.eq('t.key', qb.val.inlineParam(filter.styleKey))),
+								qb.select([qb.val.raw(`JSONB_ARRAY_ELEMENTS("_t"."definition"->'rules') "rule"`)]),
+								qb.from('metadata.style', '_t'),
+								qb.where(qb.expr.eq('_t.key', qb.val.inlineParam(filter.styleKey))),
 							),
-							query.listPermissionsQuery({plan: compiledPlan, group: 'metadata', type: 'styles'}),
+							query.listPermissionsQuery({plan: compiledPlan, group: 'metadata', type: 'styles'}, '_t'),
 						),
-						't1'
+						'_t1'
 					)
 				),
-				't2'
+				'_t2'
 			),
-			qb.where(qb.expr.notNull(qb.val.raw(`"t2"."style"->>'attributeKey'`)))
+			qb.where(qb.expr.notNull(qb.val.raw(`"_t2"."style"->>'attributeKey'`)))
 		);
 
-		const attributeKeys = _.map(
-			(await db.query(qb.toSql(attributeKeysSqlMap))).rows,
-			r => r.attributeKey
-		);
-		if (attributeKeys && attributeKeys.length) {
-			_.set(attributeRelationsFilter, 'attributeKey', { in: attributeKeys });
-		}
-
-		return getData(`relations`, `attribute`, user, attributeRelationsFilter);
+		const updateSqlMap = function(sqlMap, alias) {
+			return qb.append(
+				sqlMap,
+				qb.where(
+					qb.expr.or(
+						qb.expr.not(qb.expr.fn('EXISTS', attributeKeysSqlMap)),
+						qb.expr.in(`${alias}.attributeKey`, attributeKeysSqlMap)
+					)
+				)
+			);
+		};
+		return getData(`relations`, `attribute`, user, attributeRelationsFilter, updateSqlMap);
 	}
 
 	return [];
