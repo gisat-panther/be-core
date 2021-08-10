@@ -6,7 +6,6 @@ const shared = require("../src/util/shared");
 const migrations = require('./migrations');
 const permissions = require('./modules/permissions/index');
 const getAppConfig = require('./applications/config').get;
-const prometheus = require('./modules/prometheus/index');
 const express = require('express');
 
 const initMaster = async () => {
@@ -17,7 +16,6 @@ const initMaster = async () => {
 		initWorkers()
 		const appConfig = getAppConfig();
 		const app = express();
-		prometheus.init({app});
 		await permissions.run({
 			plan: appConfig.plan,
 			generatedPermissions: appConfig.generatedPermissions
@@ -44,7 +42,6 @@ const initWorkers = () => {
 const initWorker = async () => {
 	await db.init();
 	const app = express();
-	prometheus.init({app});
 	app.use(applicationsRouter);
 	app.listen(process.env.port, () => {
 		console.log(`#NOTE# Cluster worker id ${cluster.worker.id} is listening on port ${process.env.port}`);
