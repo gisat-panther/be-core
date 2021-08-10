@@ -12,10 +12,10 @@ const query = require('../../../../modules/rest/query');
 const supportedSpatialDataTypes = ["tiledVector", "vector"];
 
 async function getData(group, type, user, filter, updateSqlMap) {
-	let data = await query.list({ group, type, user }, { filter, updateSqlMap });
-	let compiledPlan = plan.get();
+	const compiledPlan = plan.get();
+	const rows = await query.listRows({ plan: compiledPlan, group, type, user }, { filter, updateSqlMap });
 
-	data = _.map(data.rows, (resource) => {
+	const data = _.map(rows, (resource) => {
 		if (!compiledPlan[group][type].hasOwnProperty("type")) {
 			return _.pick(resource, _.keys(compiledPlan[group][type].columns));
 		} else {

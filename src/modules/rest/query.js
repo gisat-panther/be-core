@@ -976,13 +976,12 @@ function listPermissionsQuery(
  * @param {{plan: import('./compiler').Plan, group: string, type: string, client?: import('../../db').Client, user: object}} context
  * @param {{sort: [string, 'ascending'|'descending'][], filter: Object<string, any>, page?: {limit: number, offset: number}, updateSqlMap?: (sqlMap: import('@imatic/pgqb').Sql, alias: string) => import('@imatic/pgqb').Sql}} params
  *
- * @returns {Promise<{rows: object[], count: number}>}
+ * @returns {{rows: import('@imatic/pgqb').Sql, count: import('@imatic/pgqb').Sql}}
  */
-function list(
+function listQueries(
     {plan, group, type, client, user, customFields},
     {sort, filter, page, translations, updateSqlMap}
 ) {
-    plan = getPlan(plan);
     updateSqlMap = updateSqlMap || _.identity;
     const typeSchema = plan[group][type];
     const columns = typeSchema.context.list.columns;
@@ -1091,8 +1090,6 @@ function list(
         qb.from(qb.merge(qb.append(sqlMap, permissionsQuery), qb.select(['t.key'])), '_gt')
     );
 
-    const db = getDb(client);
-
     const sortQuery = createSortQuery(
         {group, table},
         't',
@@ -1119,10 +1116,61 @@ function list(
         pageToQuery(page)
     );
 
+    return {
+        rows: resultSqlMap,
+        count: countSqlMap,
+    };
+}
+
+/**
+ * Returns list data.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client?: import('../../db').Client, user: object}} context
+ * @param {{sort: [string, 'ascending'|'descending'][], filter: Object<string, any>, page?: {limit: number, offset: number}, updateSqlMap?: (sqlMap: import('@imatic/pgqb').Sql, alias: string) => import('@imatic/pgqb').Sql}} params
+ *
+ * @returns {Promise<object[]>}}
+ */
+ async function listRows(
+    {plan, group, type, client, user, customFields},
+    {sort, filter, page, translations, updateSqlMap}
+) {
+    plan = getPlan(plan);
+    const queries = listQueries(
+        {plan, group, type, client, user, customFields},
+        {sort, filter, page, translations, updateSqlMap}
+    );
+
+    const db = getDb(client);
+
+    const rows = await db.query(qb.toSql(queries.rows)).then((res) => res.rows);
+
+    return cleanDependentTypeCols({plan, group, type}, rows);
+}
+
+/**
+ * Returns list data.
+ *
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, client?: import('../../db').Client, user: object}} context
+ * @param {{sort: [string, 'ascending'|'descending'][], filter: Object<string, any>, page?: {limit: number, offset: number}, updateSqlMap?: (sqlMap: import('@imatic/pgqb').Sql, alias: string) => import('@imatic/pgqb').Sql}} params
+ *
+ * @returns {Promise<{rows: object[], count: number}>}
+ */
+function list(
+    {plan, group, type, client, user, customFields},
+    {sort, filter, page, translations, updateSqlMap}
+) {
+    plan = getPlan(plan);
+    const queries = listQueries(
+        {plan, group, type, client, user, customFields},
+        {sort, filter, page, translations, updateSqlMap}
+    );
+
+    const db = getDb(client);
+
     return Promise.all([
-        db.query(qb.toSql(resultSqlMap)).then((res) => res.rows),
+        db.query(qb.toSql(queries.rows)).then((res) => res.rows),
         db
-            .query(qb.toSql(countSqlMap))
+            .query(qb.toSql(queries.count))
             .then((res) => _.getOr(0, 'count', res.rows[0])),
     ]).then(([rows, count]) => ({
         rows: cleanDependentTypeCols({plan, group, type}, rows),
@@ -1689,6 +1737,7 @@ module.exports = {
     typeColumns,
     listPermissionsQuery,
     list,
+    listRows,
     create,
     update,
     deleteRecords,
