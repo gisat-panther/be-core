@@ -5,6 +5,7 @@ const { v4: uuid } = require('uuid');
 const ptrTileGrid = require('@gisatcz/ptr-tile-grid');
 
 const db = require('../../../../db');
+const qb = require('@imatic/pgqb');
 const plan = require('../../../plan');
 const query = require('../../../../modules/rest/query');
 
@@ -421,11 +422,21 @@ async function getAttributeRelatons(filter, user) {
 			_.set(attributeRelationsFilter, 'areaTreeLevelKey', filter.areaTreeLevelKey);
 		}
 
-		let styles = await getData(`metadata`, `styles`, user, { key: filter.styleKey });
-		let style = styles && styles.length && styles[0];
+		const compiledPlan = plan.get();
+		const styleSqlMap = qb.append(
+			qb.merge(
+				qb.select(['t.definition']),
+				qb.from('metadata.style', 't'),
+				qb.where(qb.expr.eq('t.key', qb.val.inlineParam(filter.styleKey))),
+			),
+			query.listPermissionsQuery({plan: compiledPlan, group: 'metadata', type: 'styles'}),
+		);
+
+		const styles = await db.query(qb.toSql(styleSqlMap));
+		const style = styles && styles.length && styles[0];
 
 		if (style) {
-			let attributeKeys = _.compact(_.flatten(_.map(style.definition.rules, (rule) => {
+			const attributeKeys = _.compact(_.flatten(_.map(style.definition.rules, (rule) => {
 				return _.map(rule.styles, (style) => {
 					return style.attributeKey;
 				})

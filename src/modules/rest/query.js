@@ -955,6 +955,22 @@ function createSortQuery({group, table}, alias, sortExpr) {
 }
 
 /**
+ * @param {{plan: import('./compiler').Plan, group: string, type: string, user: object}} context
+ * @param {string} alias
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
+function listPermissionsQuery(
+    {plan, group, type, user},
+    alias
+) {
+    return qb.append(
+        listPermissionQuery({user, group, type}, alias),
+        listPermissionRelationQuery({user, plan, group, type}, alias)
+    );
+}
+
+/**
  * Returns list data.
  *
  * @param {{plan: import('./compiler').Plan, group: string, type: string, client?: import('../../db').Client, user: object}} context
@@ -1064,10 +1080,7 @@ function list(
         cf.listQuery('t')
     );
 
-    const permissionsQuery = qb.append(
-        listPermissionQuery({user, group, type}, 't'),
-        listPermissionRelationQuery({user, plan, group, type}, 't')
-    );
+    const permissionsQuery = listPermissionsQuery({plan, user, group, type}, 't');
 
     const countSqlMap = qb.merge(
         qb.select([qb.expr.as(qb.expr.fn('COUNT', qb.val.raw(1)), 'count')]),
@@ -1670,6 +1683,7 @@ function typeColumns({plan, group, type}, records) {
 
 module.exports = {
     typeColumns,
+    listPermissionsQuery,
     list,
     create,
     update,
