@@ -423,28 +423,34 @@ async function getAttributeRelatons(filter, user) {
 		}
 
 		const compiledPlan = plan.get();
-		const styleSqlMap = qb.append(
-			qb.merge(
-				qb.select(['t.definition']),
-				qb.from('metadata.style', 't'),
-				qb.where(qb.expr.eq('t.key', qb.val.inlineParam(filter.styleKey))),
+		const attributeKeysSqlMap = qb.merge(
+			qb.select([qb.val.raw(`"t2"."style"->>'attributeKey' "attributeKey"`)]),
+			qb.from(
+				qb.merge(
+					qb.select([qb.val.raw(`JSONB_ARRAY_ELEMENTS("t1"."rule"->'styles') "style"`)]),
+					qb.from(
+						qb.append(
+							qb.merge(
+								qb.select([qb.val.raw(`JSONB_ARRAY_ELEMENTS("t"."definition"->'rules') "rule"`)]),
+								qb.from('metadata.style', 't'),
+								qb.where(qb.expr.eq('t.key', qb.val.inlineParam(filter.styleKey))),
+							),
+							query.listPermissionsQuery({plan: compiledPlan, group: 'metadata', type: 'styles'}),
+						),
+						't1'
+					)
+				),
+				't2'
 			),
-			query.listPermissionsQuery({plan: compiledPlan, group: 'metadata', type: 'styles'}),
+			qb.where(qb.expr.notNull(qb.val.raw(`"t2"."style"->>'attributeKey'`)))
 		);
 
-		const styles = await db.query(qb.toSql(styleSqlMap));
-		const style = styles && styles.length && styles[0];
-
-		if (style) {
-			const attributeKeys = _.compact(_.flatten(_.map(style.definition.rules, (rule) => {
-				return _.map(rule.styles, (style) => {
-					return style.attributeKey;
-				})
-			})));
-
-			if (attributeKeys && attributeKeys.length) {
-				_.set(attributeRelationsFilter, 'attributeKey', { in: attributeKeys });
-			}
+		const attributeKeys = _.map(
+			(await db.query(qb.toSql(attributeKeysSqlMap))).rows,
+			r => r.attributeKey
+		);
+		if (attributeKeys && attributeKeys.length) {
+			_.set(attributeRelationsFilter, 'attributeKey', { in: attributeKeys });
 		}
 
 		return getData(`relations`, `attribute`, user, attributeRelationsFilter);
