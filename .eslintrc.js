@@ -4,6 +4,14 @@ module.exports = {
         es2021: true,
         node: true,
     },
+    globals: {
+        describe: 'readonly',
+        it: 'readonly',
+        before: 'readonly',
+        after: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+    },
     extends: 'eslint:recommended',
     parserOptions: {
         ecmaVersion: 12,

@@ -1,10 +1,9 @@
 const chai = require('chai');
-const {assert, expect} = chai;
+const {assert} = chai;
 
 const fetch = require('node-fetch');
 const jwt = require('jsonwebtoken');
 const config = require('../../config');
-const _ = require('lodash/fp');
 const db = require('../../src/db');
 const h = require('../../tests/helper');
 
@@ -835,32 +834,6 @@ describe('/rest/data/filtered', () => {
 			};
 
 			const expectedStatus = 200;
-			const expectedResponse = {
-				"spatialAttributeRelationsDataSources": {
-					"total": {
-						"attributeRelations": 2,
-						"spatialRelations": 1
-					},
-					"offset": 0,
-					"limit": 100,
-					"spatialRelations": [],
-					"attributeRelations": [],
-					"spatialDataSources": [],
-					"attributeDataSources": []
-				},
-				"spatialData": {
-					"cf55212e-2893-46d0-8a02-cbf10cb4471d": {
-						"data": {
-							"43c0dc2f-0c86-447f-9861-7969e1cbbe0a": {
-								"type": "Polygon",
-								"coordinates": [[[14.224435, 50.17743], [14.706787, 50.17743], [14.706787, 49.941901], [14.224435, 49.941901], [14.224435, 50.17743]]]
-							}
-						},
-						"spatialIndex": {"14": {"14.3701171875,50.086669921875": ["43c0dc2f-0c86-447f-9861-7969e1cbbe0a"]}}
-					}
-				},
-				"attributeData": {"d0329b4c-5214-4aea-8291-bc7443b643e7": {"43c0dc2f-0c86-447f-9861-7969e1cbbe0a": 1}}
-			}
 
 			const response = await fetch(
 				url('/rest/data/filtered'),
@@ -984,32 +957,6 @@ describe('/rest/data/filtered', () => {
 			};
 
 			const expectedStatus = 200;
-			const expectedResponse = {
-				"spatialAttributeRelationsDataSources": {
-					"total": {
-						"attributeRelations": 2,
-						"spatialRelations": 1
-					},
-					"offset": 0,
-					"limit": 100,
-					"spatialRelations": [],
-					"attributeRelations": [],
-					"spatialDataSources": [],
-					"attributeDataSources": []
-				},
-				"spatialData": {
-					"cf55212e-2893-46d0-8a02-cbf10cb4471d": {
-						"data": {
-							"84657e95-8ba0-4c9c-bfd9-7725fa388dfb": {
-								"type": "Polygon",
-								"coordinates": [[[16.42799, 49.294371], [16.727835, 49.294371], [16.727835, 49.10988], [16.42799, 49.10988], [16.42799, 49.294371]]]
-							}
-						},
-						"spatialIndex": {"14": {"16.58935546875,49.2022705078125": ["84657e95-8ba0-4c9c-bfd9-7725fa388dfb"]}}
-					}
-				},
-				"attributeData": {"d0329b4c-5214-4aea-8291-bc7443b643e7": {"84657e95-8ba0-4c9c-bfd9-7725fa388dfb": 2}}
-			}
 
 			const response = await fetch(
 				url('/rest/data/filtered'),

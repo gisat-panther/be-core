@@ -62,7 +62,7 @@
     "start": "node src/server.js",
     "permissions:start": "node src/permissions.js",
     "start:watch": "nodemon src/server.js",
-    "test": "eslint src && ./bin/load-fixtures && mocha -b --full-trace -t 60000 && ./bin/check-indexes && ./bin/check-custom-columns",
+    "test": "eslint src/ && eslint tests/ && ./bin/load-fixtures && mocha -b --full-trace -t 60000 && ./bin/check-indexes && ./bin/check-custom-columns",
     "test:wait": "wait-port -t 30000 localhost:9850 && npm run test",
     "test:watch": "npm-watch test:wait",
     "db:migrations:create": "version=$(date +%Y%m%d%H%M) && touch \"migrations/${version}.do.sql\" && touch \"migrations/${version}.undo.sql\"",
