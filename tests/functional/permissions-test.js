@@ -100,7 +100,7 @@ describe('modules/permissions', function () {
             // assign target group
             await assingGroup(USER2_KEY, TARGET_GROUP_KEY);
             await ensurePermissionsAreGenerated();
-            assert.isFalse(await hasPermission());
+            assert.isTrue(await hasPermission());
 
             // unassign source group
             await unassignGroup(USER1_KEY, SOURCE_GROUP_KEY);
@@ -110,7 +110,7 @@ describe('modules/permissions', function () {
             // assign source group
             await assingGroup(USER1_KEY, SOURCE_GROUP_KEY);
             await ensurePermissionsAreGenerated();
-            assert.isFalse(await hasPermission());
+            assert.isTrue(await hasPermission());
 
             // unassign target group
             await unassignGroup(USER1_KEY, SOURCE_GROUP_KEY);
@@ -156,15 +156,15 @@ describe('modules/permissions', function () {
                 permission.userHasAllPermissions({realKey: sourceUser}, [
                     {
                         resourceGroup: 'user',
-                        resourceType: 'user',
+                        resourceType: 'users',
                         resourceKey: [targetUser],
                         permission: 'view',
                     },
                 ]);
 
             await ensurePermissionsAreGenerated();
-            assert.isFalse(await userHasPermissionTo(USER1_KEY, USER2_KEY));
-            assert.isFalse(await userHasPermissionTo(USER2_KEY, USER1_KEY));
+            assert.isTrue(await userHasPermissionTo(USER1_KEY, USER2_KEY));
+            assert.isTrue(await userHasPermissionTo(USER2_KEY, USER1_KEY));
             assert.isFalse(await userHasPermissionTo(USER1_KEY, USER3_KEY));
             assert.isFalse(await userHasPermissionTo(USER2_KEY, USER3_KEY));
             assert.isFalse(await userHasPermissionTo(USER3_KEY, USER1_KEY));
@@ -217,25 +217,25 @@ describe('modules/permissions', function () {
                 permission.userHasAllPermissions({realKey: USER_KEY}, [
                     {
                         resourceGroup: 'metadata',
-                        resourceType: 'case',
+                        resourceType: 'cases',
                         resourceKey: [CASE_KEY],
                         permission: 'view',
                     },
                     {
                         resourceGroup: 'metadata',
-                        resourceType: 'case',
+                        resourceType: 'cases',
                         resourceKey: [CASE_KEY],
                         permission: 'create',
                     },
                     {
                         resourceGroup: 'metadata',
-                        resourceType: 'case',
+                        resourceType: 'cases',
                         resourceKey: [CASE_KEY],
                         permission: 'update',
                     },
                     {
                         resourceGroup: 'metadata',
-                        resourceType: 'case',
+                        resourceType: 'cases',
                         resourceKey: [CASE_KEY],
                         permission: 'delete',
                     },
@@ -254,7 +254,7 @@ describe('modules/permissions', function () {
                 applicationKey: APPLICATION_KEY,
             });
             await ensurePermissionsAreGenerated();
-            assert.isFalse(await hasPermission());
+            assert.isTrue(await hasPermission());
 
             // delete application relation
             await db.query(
