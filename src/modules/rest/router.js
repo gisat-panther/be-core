@@ -231,6 +231,7 @@ async function fetchOldData({plan, group, user}, data) {
 const RESULT_FORBIDDEN = 'forbidden';
 const RESULT_CREATED = 'created';
 const RESULT_UPDATED = 'updated';
+const RESULT_DELETED = 'deleted';
 
 async function createData({plan, group, client}, request) {
     const data = request.parameters.body.data;
@@ -356,12 +357,19 @@ async function updateData({plan, group, client}, request) {
     };
 }
 
+/**
+ * @param {{type: string, data: any}} result
+ *
+ * @returns {{status: number, body: any}}
+ */
 function resultToResponse(result) {
     switch (result.type) {
         case RESULT_CREATED:
             return {status: 201, body: result.data};
         case RESULT_UPDATED:
             return {status: 200, body: result.data};
+        case RESULT_DELETED:
+            return {status: 200, body: {}};
         case RESULT_FORBIDDEN:
             return {status: 403, body: {success: false}};
     }
@@ -371,6 +379,235 @@ function resultToResponse(result) {
 
 function sendResponse(responseData, response) {
     return response.status(responseData.status).json(responseData.body);
+}
+
+/**
+ * @param {object} context
+ * @param {import('./compiler').Plan} context.plan
+ * @param {string} context.group
+ * @param {object} request
+ * @param {import('./custom-fields').CustomField} request.customFields
+ * @param {object} request.user
+ * @param {object} request.parameters
+ * @param {string[]} request.parameters.types
+ * @param {object} request.parameters.body
+ * @param {number} request.parameters.body.limit
+ * @param {number} request.parameters.body.offset
+ * @param {[string, 'ascending'|'descending'][]} request.parameters.body.order
+ * @param {Object<string, any>} request.parameters.body.filter
+ * @param {string[]} request.parameters.body.translations
+ *
+ * @returns {Promise<object>}
+ */
+async function list({plan, group}, request) {
+    const types = request.parameters.path.types;
+    const parameters = request.parameters.body;
+    const page = {
+        limit: parameters.limit,
+        offset: parameters.offset,
+    };
+
+    const records = await Promise.all(
+        _.map(async function (type) {
+            return await q.list(
+                {
+                    plan,
+                    group,
+                    type,
+                    user: request.user,
+                    customFields: request.customFields,
+                },
+                {
+                    sort: parameters.order,
+                    filter: parameters.filter,
+                    page: page,
+                    translations: parameters.translations,
+                }
+            );
+        }, types)
+    );
+    const recordsByType = _.zipObject(types, records);
+
+    const changes = await Promise.all(
+        mapWithKey(async function (res, type) {
+            return await q.lastChange(
+                {plan, group, type},
+                _.map((record) => record.key, res.rows)
+            );
+        }, recordsByType)
+    );
+    const changeByType = _.zipObject(types, changes);
+
+    return Object.assign(
+        {},
+        {changes: changeByType},
+        formatList({plan, group}, recordsByType, page)
+    );
+}
+
+/**
+ * @param {object} context
+ * @param {import('./compiler').Plan} context.plan
+ * @param {string} context.group
+ * @param {object} request
+ * @param {object} request.user
+ * @param {{new: CustomFields}} request.customFields
+ * @param {object} request.parameters
+ * @param {object} request.parameters.body
+ * @param {object} request.parameters.body.data
+ *
+ * @returns {Promise<{type: string, data: object}>}
+ */
+async function create({plan, group}, request) {
+    return await db.transactional(async (client) => {
+        await client.setUser(request.user.realKey);
+        await customFields.storeNew({client, group}, request.customFields);
+
+        return await createData({plan, group, client}, request);
+    });
+}
+
+/**
+ * @param {object} context
+ * @param {import('./compiler').Plan} context.plan
+ * @param {string} context.group
+ * @param {object} request
+ * @param {object} request.user
+ * @param {{new: CustomFields}} request.customFields
+ * @param {object} request.parameters
+ * @param {object} request.parameters.body
+ * @param {object} request.parameters.body.data
+ *
+ * @returns {Promise<{type: string, data: object}>}
+ */
+async function update({plan, group}, request) {
+    return await db.transactional(async (client) => {
+        await client.setUser(request.user.realKey);
+        await customFields.storeNew({client, group}, request.customFields);
+
+        const updatedResult = await updateData({plan, group, client}, request);
+        if (updatedResult.type !== RESULT_UPDATED) {
+            return updatedResult;
+        }
+
+        const isHttpRequest = request.body !== undefined;
+        const inputData = isHttpRequest
+            ? request.body.data
+            : request.parameters.body.data;
+
+        const newData = _.pickBy(
+            (records) => !_.isEmpty(records),
+            mapValuesWithKey((records, type) => {
+                const updatedKeys = _.map(
+                    (record) => record.key,
+                    updatedResult.data.data[type]
+                );
+                const requestedKeys = _.map(
+                    (record) => record.key,
+                    request.parameters.body.data[type]
+                );
+                const missingKeys = new Set(
+                    _.difference(requestedKeys, updatedKeys)
+                );
+
+                return _.filter(
+                    (record) => missingKeys.has(record.key),
+                    inputData[type]
+                );
+            }, request.parameters.body.data)
+        );
+
+        if (_.isEmpty(newData)) {
+            return updatedResult;
+        }
+
+        if (isHttpRequest) {
+            request.body = {data: newData};
+            request.match = _.set(
+                ['data', 'parameters'],
+                {
+                    body: schema.createBody(plan, group),
+                },
+                request.match
+            );
+
+            await new Promise((resolve, reject) => {
+                parameters(request, null, (err) => {
+                    if (err) {
+                        return reject(err);
+                    }
+
+                    resolve();
+                });
+            });
+        } else {
+            request = _.set(['parameters', 'body', 'data'], newData, request);
+        }
+
+        const createdResult = await createData({plan, group, client}, request);
+        if (createdResult.type !== RESULT_CREATED) {
+            return createdResult;
+        }
+
+        return {
+            type: RESULT_UPDATED,
+            data: mergeListsWithoutPage(updatedResult.data, createdResult.data),
+        };
+    });
+}
+
+/**
+ * @param {object} context
+ * @param {import('./compiler').Plan} context.plan
+ * @param {string} context.group
+ * @param {object} request
+ * @param {object} request.user
+ * @param {object} request.parameters
+ * @param {object} request.parameters.body
+ * @param {object} request.parameters.body.data
+ */
+async function deleteRecords({plan, group}, request) {
+    const data = request.parameters.body.data;
+
+    const requiredResourcePermissions = Object.keys(data).map((k) => ({
+        resourceGroup: group,
+        resourceType: k,
+        permission: 'delete',
+        resourceKey: data[k].map((m) => m.key),
+    }));
+
+    const oldData = await fetchOldData({plan, group, user: request.user}, data);
+    const requiredOldColumnPermissions = util.requiredColumnPermissions(
+        plan,
+        group,
+        oldData,
+        'update'
+    );
+
+    const requiredPermissions = _.concat(
+        requiredResourcePermissions,
+        requiredOldColumnPermissions
+    );
+
+    if (
+        !(await permission.userHasAllPermissions(
+            request.user,
+            requiredPermissions
+        ))
+    ) {
+        return {type: RESULT_FORBIDDEN};
+    }
+
+    await db.transactional(async function (client) {
+        await client.setUser(request.user.realKey);
+        await Promise.all(
+            mapWithKey(async function (records, type) {
+                await q.deleteRecords({plan, group, type, client}, records);
+            }, data)
+        );
+    });
+
+    return {type: RESULT_DELETED};
 }
 
 /**
@@ -401,53 +638,7 @@ function createGroup(plan, group) {
                 hashMiddleware,
             ],
             handler: async function (request, response) {
-                const types = request.parameters.path.types;
-                const parameters = request.parameters.body;
-                const page = {
-                    limit: parameters.limit,
-                    offset: parameters.offset,
-                };
-
-                const records = await Promise.all(
-                    _.map(async function (type) {
-                        return await q.list(
-                            {
-                                plan,
-                                group,
-                                type,
-                                user: request.user,
-                                customFields: request.customFields,
-                            },
-                            {
-                                sort: parameters.order,
-                                filter: parameters.filter,
-                                page: page,
-                                translations: parameters.translations,
-                            }
-                        );
-                    }, types)
-                );
-                const recordsByType = _.zipObject(types, records);
-
-                const changes = await Promise.all(
-                    mapWithKey(async function (res, type) {
-                        return await q.lastChange(
-                            {plan, group, type},
-                            _.map((record) => record.key, res.rows)
-                        );
-                    }, recordsByType)
-                );
-                const changeByType = _.zipObject(types, changes);
-
-                response
-                    .status(200)
-                    .json(
-                        Object.assign(
-                            {},
-                            {changes: changeByType},
-                            formatList({plan, group}, recordsByType, page)
-                        )
-                    );
+                response.status(200).json(await list({plan, group}, request));
             },
         },
         {
@@ -470,15 +661,7 @@ function createGroup(plan, group) {
             ],
             handler: async function (request, response) {
                 const responseData = resultToResponse(
-                    await db.transactional(async (client) => {
-                        await client.setUser(request.user.realKey);
-                        await customFields.storeNew(
-                            {client, group},
-                            request.customFields
-                        );
-
-                        return await createData({plan, group, client}, request);
-                    })
+                    await create({plan, group}, request)
                 );
 
                 sendResponse(responseData, response);
@@ -504,82 +687,9 @@ function createGroup(plan, group) {
                 translation.modifyTranslationMiddleware({plan, group}),
             ],
             handler: async function (request, response) {
-                const responseData = await db.transactional(async (client) => {
-                    await client.setUser(request.user.realKey);
-                    await customFields.storeNew(
-                        {client, group},
-                        request.customFields
-                    );
-
-                    const updatedResult = await updateData(
-                        {plan, group, client},
-                        request
-                    );
-                    if (updatedResult.type !== RESULT_UPDATED) {
-                        return resultToResponse(updatedResult);
-                    }
-
-                    const newData = _.pickBy(
-                        (records) => !_.isEmpty(records),
-                        mapValuesWithKey((records, type) => {
-                            const updatedKeys = _.map(
-                                (record) => record.key,
-                                updatedResult.data.data[type]
-                            );
-                            const requestedKeys = _.map(
-                                (record) => record.key,
-                                request.parameters.body.data[type]
-                            );
-                            const missingKeys = new Set(
-                                _.difference(requestedKeys, updatedKeys)
-                            );
-
-                            return _.filter(
-                                (record) => missingKeys.has(record.key),
-                                request.body.data[type]
-                            );
-                        }, request.parameters.body.data)
-                    );
-
-                    if (_.isEmpty(newData)) {
-                        return resultToResponse(updatedResult);
-                    }
-
-                    request.body = {data: newData};
-                    request.match = _.set(
-                        ['data', 'parameters'],
-                        {
-                            body: schema.createBody(plan, group),
-                        },
-                        request.match
-                    );
-
-                    await new Promise((resolve, reject) => {
-                        parameters(request, response, (err) => {
-                            if (err) {
-                                return reject(err);
-                            }
-
-                            resolve();
-                        });
-                    });
-
-                    const createdResult = await createData(
-                        {plan, group, client},
-                        request
-                    );
-                    if (createdResult.type !== RESULT_CREATED) {
-                        return resultToResponse(createdResult);
-                    }
-
-                    return resultToResponse({
-                        type: RESULT_UPDATED,
-                        data: mergeListsWithoutPage(
-                            updatedResult.data,
-                            createdResult.data
-                        ),
-                    });
-                });
+                const responseData = resultToResponse(
+                    await update({plan, group}, request)
+                );
 
                 sendResponse(responseData, response);
             },
@@ -599,55 +709,11 @@ function createGroup(plan, group) {
                 authMiddleware,
             ],
             handler: async function (request, response) {
-                const data = request.parameters.body.data;
-
-                const requiredResourcePermissions = Object.keys(data).map(
-                    (k) => ({
-                        resourceGroup: group,
-                        resourceType: k,
-                        permission: 'delete',
-                        resourceKey: data[k].map((m) => m.key),
-                    })
+                const responseData = resultToResponse(
+                    await deleteRecords({plan, group}, request)
                 );
 
-                const oldData = await fetchOldData(
-                    {plan, group, user: request.user},
-                    data
-                );
-                const requiredOldColumnPermissions = util.requiredColumnPermissions(
-                    plan,
-                    group,
-                    oldData,
-                    'update'
-                );
-
-                const requiredPermissions = _.concat(
-                    requiredResourcePermissions,
-                    requiredOldColumnPermissions
-                );
-
-                if (
-                    !(await permission.userHasAllPermissions(
-                        request.user,
-                        requiredPermissions
-                    ))
-                ) {
-                    return response.status(403).json({success: false});
-                }
-
-                await db.transactional(async function (client) {
-                    await client.setUser(request.user.realKey);
-                    await Promise.all(
-                        mapWithKey(async function (records, type) {
-                            await q.deleteRecords(
-                                {plan, group, type, client},
-                                records
-                            );
-                        }, data)
-                    );
-                });
-
-                response.status(200).json({});
+                sendResponse(responseData, response);
             },
         },
     ];
