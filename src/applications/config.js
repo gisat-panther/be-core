@@ -88,16 +88,10 @@ function get() {
     );
 
     config.plan = planCompiler.compile(config.plan);
-
-    /*
-    TODO fix bellow
-    - be wont start if there is no generatedPermissions in configuration
-    - there is error durring startup due to missing some definitions probably -> applications/demo/generatedPermissions.js
-     */
-    // config.generatedPermissions = generatedPermissionsCompiler.compile(
-    //     {plan: config.plan},
-    //     config.generatedPermissions({plan: config.plan})
-    // );
+    config.generatedPermissions = generatedPermissionsCompiler.compile(
+        {plan: config.plan},
+        config.generatedPermissions({plan: config.plan})
+    );
 
     return config;
 }
