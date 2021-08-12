@@ -16,7 +16,7 @@ const testedPermissions = [
 ];
 
 function url(path) {
-    return 'http://localhost:' + config.clusterPorts[0] + path;
+    return 'http://localhost:' + config.masterPort + path;
 }
 
 function createToken(payload) {

@@ -1,0 +1,24 @@
+on: [push]
+
+jobs:
+    run_tests:
+        name: Run tests
+        runs-on: ubuntu-latest
+        services:
+            postgres:
+                image: mdillon/postgis:11
+                ports:
+                    - '5432:5432'
+                env:
+                    POSTGRES_PASSWORD: postgres
+                    POSTGRES_DB: panther
+        steps:
+            - uses: actions/checkout@v2
+            - uses: actions/setup-node@v1
+              with:
+                  node-version: '12.x'
+            - run: 'npm ci'
+            - run: 'npm run permissions:start &'
+            - run: 'npm run start &'
+            - run: './node_modules/.bin/wait-port -t 5000 localhost:9850'
+            - run: 'npm test'

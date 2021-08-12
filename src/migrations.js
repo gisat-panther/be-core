@@ -2,8 +2,16 @@ const config = require('../config');
 const db = require('./db');
 const Postgrator = require('postgrator');
 
+async function ensureNormalDb() {
+    const pgClient = db.getNormalUserClient();
+    await pgClient.connect();
+    await pgClient.query('CREATE EXTENSION IF NOT EXISTS hstore;')
+    await pgClient.end();
+}
+
 async function ensureDb() {
     if (!config.pgConfig.superuser) {
+        await ensureNormalDb();
         return;
     }
 
@@ -41,6 +49,7 @@ async function ensureDb() {
         });
 
     await pgClient.end();
+    await ensureNormalDb();
 }
 
 function createPostgrator() {
@@ -64,10 +73,18 @@ function createPostgrator() {
  */
 async function migrate(version = 'max') {
     await ensureDb();
-    const appliedMigrations = await createPostgrator().migrate(version);
-    if (appliedMigrations.length > 0) {
-        console.log(appliedMigrations);
+    await db.init();
+    const client = await db.connect();
+    await db.obtainMigrationsLock(client);
+    try {
+        const appliedMigrations = await createPostgrator().migrate(version);
+        if (appliedMigrations.length > 0) {
+            console.log(appliedMigrations);
+        }
+    } finally {
+        await db.releaseMigrationsLock(client);
     }
+    client.release();
 }
 
 module.exports = {

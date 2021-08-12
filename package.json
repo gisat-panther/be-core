@@ -26,7 +26,6 @@
     "moment": "^2.29.1",
     "moment-interval": "^0.2.1",
     "multer": "^1.4.2",
-    "node-ipc": "^9.1.4",
     "object-hash": "^2.0.3",
     "passport": "^0.4.1",
     "passport-facebook": "^3.0.0",
@@ -60,6 +59,7 @@
   },
   "scripts": {
     "start": "node src/server.js",
+    "permissions:start": "node src/permissions.js",
     "start:watch": "nodemon src/server.js",
     "test": "./bin/load-fixtures && mocha -b --full-trace -t 60000 && ./bin/check-indexes && ./bin/check-custom-columns",
     "test:wait": "wait-port -t 30000 localhost:9850 && npm run test",
