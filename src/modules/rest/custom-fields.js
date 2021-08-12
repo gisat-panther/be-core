@@ -336,7 +336,7 @@ function columnDbType(column) {
             return 'jsonb';
     }
 
-    throw new Error(`Cannot convert schema type ${type} to db type.`);
+    throw new Error(`Cannot convert schema type ${Schema.type} to db type.`);
 }
 
 /**

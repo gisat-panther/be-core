@@ -7,7 +7,6 @@ const swaggerUi = require('swagger-ui-express');
 const {errorMiddleware} = require('../modules/error/index');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
-const _ = require('lodash/fp');
 const p = require('./plan');
 const getConfig = require('./config').get;
 

@@ -1,4 +1,3 @@
-const Joi = require('joi');
 const apiUtil = require('../util/api');
 const {HttpError} = require('../modules/error');
 

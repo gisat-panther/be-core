@@ -1,6 +1,4 @@
 const _ = require('lodash');
-const SQL = require('sql-template-strings');
-const { v4: uuid } = require('uuid');
 
 const ptrTileGrid = require('@gisatcz/ptr-tile-grid');
 
@@ -188,10 +186,8 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 		attribute: {}
 	};
 
-	const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
 	const level = filter.data.spatialFilter.level;
 	const gridSize = ptrTileGrid.utils.getGridSizeForLevel(level);
-	const geometryTolerance = gridSize / tileSize;
 
 	let tile;
 	if (filter.data.spatialIndex && filter.data.spatialIndex.tiles && filter.data.spatialIndex.tiles.length) {
@@ -258,7 +254,7 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 	featureKeys = _.uniq(featureKeys);
 
 	if (featureKeys.length) {
-		for (const [property, queryData] of Object.entries(queryOptions.attribute)) {
+		for (const [, queryData] of Object.entries(queryOptions.attribute)) {
 			let columns = _.map(queryData.dataSources, (dataSource, key) => {
 				return `"${dataSource.columnName}" AS "${key}"`
 			});

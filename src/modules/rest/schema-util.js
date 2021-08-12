@@ -85,7 +85,7 @@ function colFilterSchema(col) {
             );
         case 'object':
             return null;
-        case 'array':
+        case 'array': {
             const itemSchema = Joi.alternatives().try(
                 ..._.get(['$_terms', 'items'], schema)
             );
@@ -95,6 +95,7 @@ function colFilterSchema(col) {
                 in: Joi.array().items(itemSchema.allow(null)).min(1),
                 notin: Joi.array().items(itemSchema.allow(null)).min(1),
             });
+        }
     }
 
     throw new Error(`Type "${type}" is not supported in filter.`);

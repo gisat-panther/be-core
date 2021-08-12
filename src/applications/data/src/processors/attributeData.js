@@ -5,7 +5,6 @@ const ptrTileGrid = require('@gisatcz/ptr-tile-grid');
 const db = require('../../../../db');
 const plan = require('../../../plan');
 const query = require('../../../../modules/rest/query');
-const corePlan = require('../../../../applications/core/plan');
 
 
 async function getData(group, type, user, filter) {
@@ -100,7 +99,6 @@ async function getDataForRelations(relations, filter) {
 
 	if (filter.data.spatialFilter && _.keys(filter.data.spatialFilter).length) {
 		if (filter.data.spatialFilter.tiles) {
-			const tileSize = ptrTileGrid.constants.PIXEL_TILE_SIZE;
 			const gridSize = ptrTileGrid.utils.getGridSizeForLevel(filter.data.spatialFilter.tiles.level);
 
 			const gridAsGeoJson = ptrTileGrid.utils.getTileGridAsGeoJSON([filter.data.spatialFilter.tiles.tiles], gridSize);
@@ -113,8 +111,6 @@ async function getDataForRelations(relations, filter) {
 			if (featureGeometrySql.length) {
 				geometrySql = `ST_Collect(ARRAY[${featureGeometrySql.join(", ")}])`;
 			}
-		} else if (filter.data.spatialFilter.geoJson) {
-
 		}
 	}
 

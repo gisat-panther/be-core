@@ -86,7 +86,7 @@ async function* runAuditQuery(client, sqlMap) {
             )
             .then((res) => res.rows);
 
-        for (row of rows) {
+        for (let row of rows) {
             yield row;
         }
 
@@ -656,6 +656,8 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                             );
                         }
 
+                        const requiredPermissions =
+                            permission.targetPermissions;
                         const permissions = _.map(
                             (perm) =>
                                 _.merge(permissionType, {
@@ -664,15 +666,12 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                             requiredPermissions
                         );
 
-                        const [
-                            groupKeys,
-                            permissionKeys,
-                            oldGroupKeys,
-                        ] = await Promise.all([
-                            ensureGroups(client, [newGroup]),
-                            ensurePermissions(client, permissions),
-                            groupKeys(client, [oldGroup]),
-                        ]);
+                        const [groupKeys, permissionKeys, oldGroupKeys] =
+                            await Promise.all([
+                                ensureGroups(client, [newGroup]),
+                                ensurePermissions(client, permissions),
+                                groupKeys(client, [oldGroup]),
+                            ]);
 
                         await Promise.all([
                             deleteGroupsPermissions(

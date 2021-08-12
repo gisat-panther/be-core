@@ -2,12 +2,10 @@ const db = require('../../db');
 const qb = require('@imatic/pgqb');
 const _ = require('lodash/fp');
 const {SQL} = require('sql-template-strings');
-const {Client} = require('pg');
 const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
 const translation = require('./translation');
 const cf = require('./custom-fields');
-const debug = require('../../debug');
 
 const mapWithKey = _.map.convert({cap: false});
 const forEachWithKey = _.forEach.convert({cap: false});
@@ -1083,11 +1081,7 @@ function list(
         )
     );
 
-    const keysSqlMap = qb.merge(
-        sqlMap,
-        qb.select(['t.key']),
-        sortQuery
-    );
+    const keysSqlMap = qb.merge(sqlMap, qb.select(['t.key']), sortQuery);
 
     const resultSqlMap = qb.merge(
         sqlMap,
@@ -1475,7 +1469,7 @@ async function updateRecordRelation({plan, group, type, client}, record) {
 
             switch (rel.type) {
                 case 'manyToMany':
-                case 'manyToOne':
+                case 'manyToOne': {
                     if (relKey == null || relKey.length === 0) {
                         acc.push(
                             SQL`DELETE FROM `
@@ -1502,24 +1496,26 @@ async function updateRecordRelation({plan, group, type, client}, record) {
                             .append(SQL` = ANY(${relKey}))`)
                     );
 
-                    const values = _.map((rk) => {
-                        return [
-                            qb.val.inlineParam(record.key),
-                            qb.val.inlineParam(rk),
-                        ];
-                    }, relKey);
-
                     // todo find out how to do this using imatic pgqb
                     const parentTableName = plan[group][type].table || type;
                     acc.push(
-						SQL`INSERT INTO `
-							.append(`${quoteIdentifier(rel.relationTable)} ("${rel.ownKey}", "${rel.inverseKey}") `)
-							.append(`SELECT '${record.key}', '${relKey}' WHERE EXISTS `)
-							.append(`(SELECT * FROM "${group}"."${parentTableName}" `)
-							.append(`WHERE "key" = '${record.key}')`)
+                        SQL`INSERT INTO `
+                            .append(
+                                `${quoteIdentifier(rel.relationTable)} ("${
+                                    rel.ownKey
+                                }", "${rel.inverseKey}") `
+                            )
+                            .append(
+                                `SELECT '${record.key}', '${relKey}' WHERE EXISTS `
+                            )
+                            .append(
+                                `(SELECT * FROM "${group}"."${parentTableName}" `
+                            )
+                            .append(`WHERE "key" = '${record.key}')`)
                     );
 
                     return acc;
+                }
             }
 
             throw new Error(`Unspported relation type: ${rel.type}`);

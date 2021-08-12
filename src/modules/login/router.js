@@ -2,7 +2,6 @@ const userMiddleware = require('../../middlewares/user');
 const authMiddleware = require('../../middlewares/auth');
 const autoLoginMiddleware = require('../../middlewares/auto-login');
 const parametersMiddleware = require('../../middlewares/parameters');
-const _ = require('lodash');
 const q = require('./query');
 const Joi = require('../../joi');
 const sso = require('./sso');
