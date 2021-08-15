@@ -5,16 +5,17 @@ const { v4: uuid } = require('uuid');
 const ptrTileGrid = require('@gisatcz/ptr-tile-grid');
 
 const db = require('../../../../db');
+const qb = require('@imatic/pgqb');
 const plan = require('../../../plan');
 const query = require('../../../../modules/rest/query');
 
 const supportedSpatialDataTypes = ["tiledVector", "vector"];
 
-async function getData(group, type, user, filter) {
-	let data = await query.list({ group, type, user }, { filter });
-	let compiledPlan = plan.get();
+async function getData(group, type, user, filter, updateSqlMap) {
+	const compiledPlan = plan.get();
+	const rows = await query.listRows({ plan: compiledPlan, group, type, user }, { filter, updateSqlMap });
 
-	data = _.map(data.rows, (resource) => {
+	const data = _.map(rows, (resource) => {
 		if (!compiledPlan[group][type].hasOwnProperty("type")) {
 			return _.pick(resource, _.keys(compiledPlan[group][type].columns));
 		} else {
@@ -340,7 +341,7 @@ const getDataForRelations = async (relations, filter) => {
 	return getDataForQueryOptionsAndFilter(queryOptions, filter);
 }
 
-async function populateRelationsWithDataSources(relations, user) {
+async function populateRelationsWithSpatalDataSources(relations, user) {
 	let spatialAndAreaRealations = _.concat([], relations.spatial, relations.area);
 	let spatialDataSourceKeys = _.map(spatialAndAreaRealations, (relation) => {
 		return relation.spatialDataSourceKey
@@ -355,7 +356,9 @@ async function populateRelationsWithDataSources(relations, user) {
 			})
 		})
 	}
+}
 
+async function popuplateRelationsWithAttributeDataSources(relations, user) {
 	let attributeDataSourceKeys = _.map(relations.attribute, (relation) => {
 		return relation.attributeDataSourceKey
 	});
@@ -378,13 +381,14 @@ async function populateRelationsWithDataSources(relations, user) {
 	}
 }
 
-async function getRelationsByFilter(filter, user) {
-	let relations = {
-		attribute: [],
-		spatial: [],
-		area: []
-	};
+async function populateRelationsWithDataSources(relations, user) {
+	await Promise.all([
+		populateRelationsWithSpatalDataSources(relations, user),
+		popuplateRelationsWithAttributeDataSources(relations, user)
+	]);
+}
 
+function getAreaRelations(filter, user) {
 	if (filter.hasOwnProperty('areaTreeKey') || filter.hasOwnProperty('areaTreeLevelKey')) {
 		let areaRelationsFilter = filter.modifiers || {};
 
@@ -400,21 +404,14 @@ async function getRelationsByFilter(filter, user) {
 			_.set(areaRelationsFilter, 'spatialDataSourceKey', { in: filter.data.dataSourceKeys });
 		}
 
-		relations.area = await getData(`relations`, 'area', user, areaRelationsFilter);
+		return getData(`relations`, 'area', user, areaRelationsFilter);
 
-	} else {
-		let spatialRelationsFilter = filter.modifiers || {};
-		if (filter.hasOwnProperty('layerTemplateKey')) {
-			_.set(spatialRelationsFilter, 'layerTemplateKey', filter.layerTemplateKey);
-		}
-
-		if (filter.data.hasOwnProperty('dataSourceKeys')) {
-			_.set(spatialRelationsFilter, 'spatialDataSourceKey', { in: filter.data.dataSourceKeys });
-		}
-
-		relations.spatial = await getData(`relations`, 'spatial', user, spatialRelationsFilter);
 	}
 
+	return [];
+}
+
+async function getAttributeRelatons(filter, user) {
 	let attributeRelationsFilter = filter.modifiers || {};
 	if (filter.hasOwnProperty('styleKey')) {
 		if (filter.data.hasOwnProperty('dataSourceKeys')) {
@@ -425,26 +422,71 @@ async function getRelationsByFilter(filter, user) {
 			_.set(attributeRelationsFilter, 'areaTreeLevelKey', filter.areaTreeLevelKey);
 		}
 
-		let styles = await getData(`metadata`, `styles`, user, { key: filter.styleKey });
-		let style = styles && styles.length && styles[0];
+		const compiledPlan = plan.get();
+		const attributeKeysSqlMap = qb.merge(
+			qb.select([qb.val.raw(`("_t2"."style"->>'attributeKey')::uuid "attributeKey"`)]),
+			qb.from(
+				qb.merge(
+					qb.select([qb.val.raw(`JSONB_ARRAY_ELEMENTS("_t1"."rule"->'styles') "style"`)]),
+					qb.from(
+						qb.append(
+							qb.merge(
+								qb.select([qb.val.raw(`JSONB_ARRAY_ELEMENTS("_t"."definition"->'rules') "rule"`)]),
+								qb.from('metadata.style', '_t'),
+								qb.where(qb.expr.eq('_t.key', qb.val.inlineParam(filter.styleKey))),
+							),
+							query.listPermissionsQuery({plan: compiledPlan, group: 'metadata', type: 'styles'}, '_t'),
+						),
+						'_t1'
+					)
+				),
+				'_t2'
+			),
+			qb.where(qb.expr.notNull(qb.val.raw(`"_t2"."style"->>'attributeKey'`)))
+		);
 
-		if (style) {
-			let attributeKeys = _.compact(_.flatten(_.map(style.definition.rules, (rule) => {
-				return _.map(rule.styles, (style) => {
-					return style.attributeKey;
-				})
-			})));
-
-			if (attributeKeys && attributeKeys.length) {
-				_.set(attributeRelationsFilter, 'attributeKey', { in: attributeKeys });
-			}
-		}
-
-		relations.attribute = await getData(`relations`, `attribute`, user, attributeRelationsFilter);
-
+		const updateSqlMap = function(sqlMap, alias) {
+			return qb.append(
+				sqlMap,
+				qb.where(
+					qb.expr.or(
+						qb.expr.not(qb.expr.fn('EXISTS', attributeKeysSqlMap)),
+						qb.expr.in(`${alias}.attributeKey`, attributeKeysSqlMap)
+					)
+				)
+			);
+		};
+		return getData(`relations`, `attribute`, user, attributeRelationsFilter, updateSqlMap);
 	}
 
-	return relations;
+	return [];
+}
+
+function getSpatialRelations(filter, user) {
+	if (filter.hasOwnProperty('areaTreeKey') || filter.hasOwnProperty('areaTreeLevelKey')) {
+		return [];
+	}
+
+	let spatialRelationsFilter = filter.modifiers || {};
+	if (filter.hasOwnProperty('layerTemplateKey')) {
+		_.set(spatialRelationsFilter, 'layerTemplateKey', filter.layerTemplateKey);
+	}
+
+	if (filter.data.hasOwnProperty('dataSourceKeys')) {
+		_.set(spatialRelationsFilter, 'spatialDataSourceKey', { in: filter.data.dataSourceKeys });
+	}
+
+	return getData(`relations`, 'spatial', user, spatialRelationsFilter);
+}
+
+async function getRelationsByFilter(filter, user) {
+	const relations = await Promise.all([
+		getAttributeRelatons(filter, user),
+		getSpatialRelations(filter, user),
+		getAreaRelations(filter, user)
+	]);
+
+	return _.zipObject(['attribute', 'spatial', 'area'], relations);
 }
 
 async function getFormattedResponse(filter, user) {
