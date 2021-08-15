@@ -11,7 +11,7 @@ const h = require('../../tests/helper');
 db.init();
 
 function url(path) {
-	return 'http://localhost:' + config.clusterPorts[0] + path;
+	return 'http://localhost:' + config.masterPort + path;
 }
 
 function createAdminToken() {

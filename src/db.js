@@ -3,8 +3,31 @@ const hstore = require('pg-hstore')();
 const config = require('../config');
 
 const ADVISORY_LOCK_PERMISSIONS = 1;
+const ADVISORY_LOCK_MIGRATONS = 2;
 
 let pool;
+
+/**
+ * @param {import('pg').Client} client
+ *
+ * @returns {Promise}
+ */
+async function obtainMigrationsLock(client) {
+    await client.query('SELECT pg_advisory_lock($1)', [
+        ADVISORY_LOCK_MIGRATONS,
+    ]);
+}
+
+/**
+ * @param {import('pg').Client} client
+ *
+ * @returns {Promise}
+ */
+ async function releaseMigrationsLock(client) {
+    await client.query('SELECT pg_advisory_unlock($1)', [
+        ADVISORY_LOCK_MIGRATONS,
+    ]);
+}
 
 /**
  * @param {import('pg').Client} client
@@ -65,7 +88,7 @@ async function setUser(client, user) {
 }
 
 /**
- * @returns {import('pg')}
+ * @returns {import('pg').Client}
  */
 function connect() {
     return pool.connect();
@@ -134,6 +157,13 @@ function getSuperUserClient() {
     return new Client(config.pgConfig.superuser || config.pgConfig.normal);
 }
 
+/**
+ * @returns {import('pg').Client}
+ */
+function getNormalUserClient() {
+    return new Client(config.pgConfig.normal);
+}
+
 function hstoreOid() {
     return query(`SELECT oid FROM "pg_type" WHERE "typname" = 'hstore'`).then(
         (res) => res.rows[0].oid
@@ -165,7 +195,10 @@ module.exports = {
     connect,
     obtainPermissionsLock,
     releasePermissionsLock,
+    obtainMigrationsLock,
+    releaseMigrationsLock,
     transaction,
     transactional,
     getSuperUserClient,
+    getNormalUserClient,
 };

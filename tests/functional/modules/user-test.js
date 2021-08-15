@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 db.init();
 
 function url(path) {
-    return 'http://localhost:' + config.clusterPorts[0] + path;
+    return 'http://localhost:' + config.masterPort + path;
 }
 
 function userExists(key) {

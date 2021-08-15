@@ -12,7 +12,7 @@ const HASH_KEY = '2fe36872-e8e2-4b11-949b-19a7cb2abd6d';
 db.init();
 
 function url(path) {
-    return 'http://localhost:' + config.clusterPorts[0] + path;
+    return 'http://localhost:' + config.masterPort + path;
 }
 
 function createUserToken() {
