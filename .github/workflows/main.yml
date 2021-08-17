@@ -6,7 +6,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    if: contains(['dev, performance'], github.ref)
+    if: ${{ github.ref == 'dev' || github.ref == 'performance' }}
     outputs:
       DOCKER_LABEL: ${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
     steps:
@@ -55,7 +55,7 @@ jobs:
   
   build:
     runs-on: ubuntu-latest
-    if: contains(['dev, performance'], github.ref)
+    if: ${{ github.ref == 'dev' || github.ref == 'performance' }}
     needs: [check, test]
     steps:
       - 
@@ -90,6 +90,7 @@ jobs:
   
   deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.ref == 'dev'}}
     needs: [check, test, build]
     steps:
       -
