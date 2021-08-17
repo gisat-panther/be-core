@@ -2,12 +2,11 @@ name: ci
 
 on:
   push:
-    branches:
-      - 'dev'
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    if: contains(['dev, performance'], github.ref)
     outputs:
       DOCKER_LABEL: ${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
     steps:
@@ -56,6 +55,7 @@ jobs:
   
   build:
     runs-on: ubuntu-latest
+    if: contains(['dev, performance'], github.ref)
     needs: [check, test]
     steps:
       - 
@@ -94,6 +94,7 @@ jobs:
     steps:
       -
         name: "Deploy application on remote server"
+        if: ${{ github.ref == 'dev' }}
         run: |
           curl --location --fail "https://ptr.gisat.cz/webhook/hooks/deploy?token=102aeeb9-233d-4e29-97c4-91cdc8852d97&service=be"
   
