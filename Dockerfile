@@ -14,6 +14,6 @@ COPY . .
 
 RUN npm ci --production-only
 
-EXPOSE 9850-9859
+EXPOSE 9850
 
 CMD [ "node", "./src/server.js" ]
