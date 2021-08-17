@@ -26,7 +26,7 @@ function verifyToken(token) {
                 return resolve(token);
             }
 
-            return resolve(nil);
+            return resolve(null);
         });
     });
 }
@@ -53,7 +53,7 @@ async function userMiddleware(request, response, next) {
 
     try {
         const verifiedToken = await verifyToken(token);
-        if (verifyToken == null) {
+        if (verifiedToken == null) {
             return response.status(401).end();
         }
 

@@ -1,5 +1,4 @@
 const Joi = require('joi');
-const momentInterval = require('moment-interval');
 const {normalizeInterval} = require('./postgres');
 
 const extensions = [

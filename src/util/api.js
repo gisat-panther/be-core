@@ -1,4 +1,3 @@
-const qb = require('@imatic/pgqb');
 const _ = require('lodash');
 
 /**

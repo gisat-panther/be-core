@@ -13,7 +13,6 @@ const config = require('../../../../../config');
 const cache = require('../../../../cache');
 const db = require('../../../../db');
 const query = require('../../../../modules/rest/query');
-const { val } = require('@imatic/pgqb');
 
 const basePath = "/tmp/ptr_import_";
 
