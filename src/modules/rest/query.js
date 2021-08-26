@@ -6,6 +6,7 @@ const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
 const translation = require('./translation');
 const cf = require('./custom-fields');
+const objectHash = require('object-hash');
 
 const mapWithKey = _.map.convert({cap: false});
 const forEachWithKey = _.forEach.convert({cap: false});
@@ -1101,7 +1102,10 @@ async function listRows(
 
     const db = getDb(client);
 
-    const rows = await db.query(qb.toSql(queries.rows)).then((res) => res.rows);
+    const sql = qb.toSql(queries.rows);
+    sql.name = objectHash(sql.text);
+
+    const rows = await db.query(sql).then((res) => res.rows);
 
     return cleanDependentTypeCols({plan, group, type}, rows);
 }
