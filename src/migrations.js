@@ -59,6 +59,7 @@ function createPostgrator() {
         migrationDirectory: __dirname + '/../migrations',
         driver: 'pg',
         host: normalConfig.host,
+        port: normalConfig.port,
         database: normalConfig.database,
         username: normalConfig.user,
         password: normalConfig.password,
