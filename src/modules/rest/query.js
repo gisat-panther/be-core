@@ -6,6 +6,7 @@ const _getPlan = require('../../applications/plan').get;
 const util = require('./util');
 const translation = require('./translation');
 const cf = require('./custom-fields');
+const objectHash = require('object-hash');
 
 const mapWithKey = _.map.convert({cap: false});
 const forEachWithKey = _.forEach.convert({cap: false});
@@ -373,65 +374,116 @@ function listPermissionQuery({user, group, type}, alias) {
         return {};
     }
 
-    const userQuery = qb.merge(
-        qb.joins(
-            qb.leftJoin(
-                'user.v_userPermissions',
-                'tp',
-                qb.expr.and(
-                    qb.expr.eq('tp.resourceGroup', qb.val.inlineParam(group)),
-                    qb.expr.eq('tp.resourceType', qb.val.inlineParam(type)),
-                    qb.expr.eq('tp.permission', qb.val.inlineParam('view')),
-                    qb.expr.or(
-                        qb.expr.null('tp.resourceKey'),
+    const userExpr = qb.expr.or(
+        qb.expr.exists(
+            qb.merge(
+                qb.select([qb.val.raw('1')]),
+                qb.from('user.userPermissions', 'up'),
+                qb.joins(
+                    qb.join(
+                        'user.permissions',
+                        'p',
+                        qb.expr.eq('p.key', 'up.permissionKey')
+                    )
+                ),
+                qb.where(
+                    qb.expr.and(
                         qb.expr.eq(
-                            'tp.resourceKey',
-                            qb.val.raw(`"${alias}"."key"::text`)
+                            'p.resourceGroup',
+                            qb.val.inlineParam(group)
+                        ),
+                        qb.expr.eq('p.resourceType', qb.val.inlineParam(type)),
+                        qb.expr.eq('p.permission', qb.val.inlineParam('view')),
+                        qb.expr.or(
+                            qb.expr.null('p.resourceKey'),
+                            qb.expr.eq(
+                                'p.resourceKey',
+                                qb.val.raw(`"${alias}"."key"::text`)
+                            )
+                        ),
+                        qb.expr.eq(
+                            'up.userKey',
+                            qb.val.inlineParam(user.realKey)
+                        )
+                    )
+                )
+            )
+        ),
+        qb.expr.exists(
+            qb.merge(
+                qb.select([qb.val.raw('1')]),
+                qb.from('user.userGroups', 'ug'),
+                qb.joins(
+                    qb.join(
+                        'user.groupPermissions',
+                        'gp',
+                        qb.expr.eq('gp.groupKey', 'ug.groupKey')
+                    ),
+                    qb.join(
+                        'user.permissions',
+                        'p',
+                        qb.expr.eq('p.key', 'gp.permissionKey')
+                    )
+                ),
+                qb.where(
+                    qb.expr.and(
+                        qb.expr.eq(
+                            'p.resourceGroup',
+                            qb.val.inlineParam(group)
+                        ),
+                        qb.expr.eq('p.resourceType', qb.val.inlineParam(type)),
+                        qb.expr.eq('p.permission', qb.val.inlineParam('view')),
+                        qb.expr.or(
+                            qb.expr.null('p.resourceKey'),
+                            qb.expr.eq(
+                                'p.resourceKey',
+                                qb.val.raw(`"${alias}"."key"::text`)
+                            )
+                        ),
+                        qb.expr.eq(
+                            'ug.userKey',
+                            qb.val.inlineParam(user.realKey)
                         )
                     )
                 )
             )
         )
-    );
-    const userCondition = qb.expr.eq(
-        'tp.userKey',
-        qb.val.inlineParam(user.realKey)
     );
 
     if (user.hash == null) {
-        return qb.merge(userQuery, qb.where(userCondition));
+        return qb.where(userExpr);
     }
 
-    const hashQuery = qb.merge(
-        qb.joins(
-            qb.leftJoin(
-                'user.v_hashPermissions',
-                'tph',
+    const hashExpr = qb.expr.exists(
+        qb.merge(
+            qb.select([qb.val.raw('1')]),
+            qb.from('user.hashPermissions', 'hp'),
+            qb.joins(
+                qb.join(
+                    'user.permissions',
+                    'p',
+                    qb.expr.eq('p.key', 'hp.permissionKey')
+                )
+            ),
+            qb.where(
                 qb.expr.and(
-                    qb.expr.eq('tph.resourceGroup', qb.val.inlineParam(group)),
-                    qb.expr.eq('tph.resourceType', qb.val.inlineParam(type)),
-                    qb.expr.eq('tph.permission', qb.val.inlineParam('view')),
+                    qb.expr.eq('p.resourceGroup', qb.val.inlineParam(group)),
+                    qb.expr.eq('p.resourceType', qb.val.inlineParam(type)),
+                    qb.expr.eq('p.permission', qb.val.inlineParam('view')),
                     qb.expr.or(
-                        qb.expr.null('tph.resourceKey'),
+                        qb.expr.null('p.resourceKey'),
                         qb.expr.eq(
-                            'tph.resourceKey',
+                            'p.resourceKey',
                             qb.val.raw(`"${alias}"."key"::text`)
                         )
-                    )
+                    ),
+                    qb.expr.eq('hp.hashKey', qb.val.inlineParam(user.hash))
                 )
             )
         )
     );
-    const hashCondition = qb.expr.eq(
-        'tph.hashKey',
-        qb.val.inlineParam(user.hash)
-    );
 
-    return qb.append(
-        userQuery,
-        hashQuery,
-        qb.where(qb.expr.or(userCondition, hashCondition))
-    );
+    return qb.where(qb.expr.or(userExpr, hashExpr));
 }
 
 /**
@@ -450,97 +502,165 @@ function listPermissionRelationQuery({user, plan, group, type}, alias) {
 
     return qb.append(
         ...mapWithKey((col, name) => {
-            const joinAlias = 'tp_' + name;
-            const userQuery = qb.merge(
-                qb.joins(
-                    qb.leftJoin(
-                        'user.v_userPermissions',
-                        joinAlias,
-                        qb.expr.and(
-                            qb.expr.eq(
-                                `${joinAlias}.resourceGroup`,
-                                qb.val.inlineParam(col.relation.resourceGroup)
+            const userExpr = qb.expr.or(
+                qb.expr.null(`${alias}.${name}`),
+                qb.expr.or(
+                    qb.expr.exists(
+                        qb.merge(
+                            qb.select([qb.val.raw('1')]),
+                            qb.from('user.userPermissions', 'up'),
+                            qb.joins(
+                                qb.join(
+                                    'user.permissions',
+                                    'p',
+                                    qb.expr.eq('p.key', 'up.permissionKey')
+                                )
                             ),
-                            qb.expr.eq(
-                                `${joinAlias}.resourceType`,
-                                qb.val.inlineParam(col.relation.resourceType)
+                            qb.where(
+                                qb.expr.and(
+                                    qb.expr.eq(
+                                        'p.resourceGroup',
+                                        qb.val.inlineParam(
+                                            col.relation.resourceGroup
+                                        )
+                                    ),
+                                    qb.expr.eq(
+                                        'p.resourceType',
+                                        qb.val.inlineParam(
+                                            col.relation.resourceType
+                                        )
+                                    ),
+                                    qb.expr.eq(
+                                        'p.permission',
+                                        qb.val.inlineParam('view')
+                                    ),
+                                    qb.expr.or(
+                                        qb.expr.null('p.resourceKey'),
+                                        qb.expr.eq(
+                                            'p.resourceKey',
+                                            qb.val.raw(
+                                                `"${alias}"."${name}"::text`
+                                            )
+                                        )
+                                    ),
+                                    qb.expr.notNull('up.userKey'),
+                                    qb.expr.eq(
+                                        'up.userKey',
+                                        qb.val.inlineParam(user.realKey)
+                                    )
+                                )
+                            )
+                        )
+                    ),
+                    qb.expr.exists(
+                        qb.merge(
+                            qb.select([qb.val.raw('1')]),
+                            qb.from('user.userGroups', 'ug'),
+                            qb.joins(
+                                qb.join(
+                                    'user.groupPermissions',
+                                    'gp',
+                                    qb.expr.eq('gp.groupKey', 'ug.groupKey')
+                                ),
+                                qb.join(
+                                    'user.permissions',
+                                    'p',
+                                    qb.expr.eq('p.key', 'gp.permissionKey')
+                                )
                             ),
-                            qb.expr.eq(
-                                `${joinAlias}.permission`,
-                                qb.val.inlineParam('view')
-                            ),
-                            qb.expr.or(
-                                qb.expr.null(`${joinAlias}.resourceKey`),
-                                qb.expr.eq(
-                                    `${joinAlias}.resourceKey`,
-                                    qb.val.raw(`"${alias}"."${name}"::text`)
+                            qb.where(
+                                qb.expr.and(
+                                    qb.expr.eq(
+                                        'p.resourceGroup',
+                                        qb.val.inlineParam(
+                                            col.relation.resourceGroup
+                                        )
+                                    ),
+                                    qb.expr.eq(
+                                        'p.resourceType',
+                                        qb.val.inlineParam(
+                                            col.relation.resourceType
+                                        )
+                                    ),
+                                    qb.expr.eq(
+                                        'p.permission',
+                                        qb.val.inlineParam('view')
+                                    ),
+                                    qb.expr.or(
+                                        qb.expr.null('p.resourceKey'),
+                                        qb.expr.eq(
+                                            'p.resourceKey',
+                                            qb.val.raw(
+                                                `"${alias}"."${name}"::text`
+                                            )
+                                        )
+                                    ),
+                                    qb.expr.notNull('ug.userKey'),
+                                    qb.expr.eq(
+                                        'ug.userKey',
+                                        qb.val.inlineParam(user.realKey)
+                                    )
                                 )
                             )
                         )
                     )
                 )
-            );
-            const userCondition = qb.expr.or(
-                qb.expr.and(
-                    qb.expr.notNull(`${joinAlias}.userKey`),
-                    qb.expr.eq(
-                        `${joinAlias}.userKey`,
-                        qb.val.inlineParam(user.realKey)
-                    )
-                ),
-                qb.expr.null(`${alias}.${name}`)
             );
 
             if (user.hash == null) {
-                return qb.merge(userQuery, qb.where(userCondition));
+                return qb.where(userExpr);
             }
 
-            const hashJoinAlias = 'tph_' + name;
-            const hashQuery = qb.merge(
-                qb.joins(
-                    qb.leftJoin(
-                        'user.v_hashPermissions',
-                        hashJoinAlias,
-                        qb.expr.and(
-                            qb.expr.eq(
-                                `${hashJoinAlias}.resourceGroup`,
-                                qb.val.inlineParam(col.relation.resourceGroup)
-                            ),
-                            qb.expr.eq(
-                                `${hashJoinAlias}.resourceType`,
-                                qb.val.inlineParam(col.relation.resourceType)
-                            ),
-                            qb.expr.eq(
-                                `${hashJoinAlias}.permission`,
-                                qb.val.inlineParam('view')
-                            ),
-                            qb.expr.or(
-                                qb.expr.null(`${hashJoinAlias}.resourceKey`),
+            const hashExpr = qb.expr.or(
+                qb.expr.null(`${alias}.${name}`),
+                qb.expr.exists(
+                    qb.merge(
+                        qb.select([qb.val.raw('1')]),
+                        qb.from('user.hashPermissions', 'hp'),
+                        qb.joins(
+                            qb.join(
+                                'user.permissions',
+                                'p',
+                                qb.expr.eq('p.key', 'hp.permissionKey')
+                            )
+                        ),
+                        qb.where(
+                            qb.expr.and(
                                 qb.expr.eq(
-                                    `${hashJoinAlias}.resourceKey`,
-                                    qb.val.raw(`"${alias}"."${name}"::text`)
+                                    'p.resourceGroup',
+                                    qb.val.inlineParam(
+                                        col.relation.resourceGroup
+                                    )
+                                ),
+                                qb.expr.eq(
+                                    'p.resourceType',
+                                    qb.val.inlineParam(
+                                        col.relation.resourceType
+                                    )
+                                ),
+                                qb.expr.eq(
+                                    'p.permission',
+                                    qb.val.inlineParam('view')
+                                ),
+                                qb.expr.or(
+                                    qb.expr.null('p.resourceKey'),
+                                    qb.expr.eq(
+                                        'p.resourceKey',
+                                        qb.val.raw(`"${alias}"."${name}"::text`)
+                                    )
+                                ),
+                                qb.expr.notNull('hp.hashKey'),
+                                qb.expr.eq(
+                                    'hp.hashKey',
+                                    qb.val.inlineParam(user.hash)
                                 )
                             )
                         )
                     )
                 )
             );
-            const hashCondition = qb.expr.or(
-                qb.expr.and(
-                    qb.expr.notNull(`${hashJoinAlias}.hashKey`),
-                    qb.expr.eq(
-                        `${hashJoinAlias}.hashKey`,
-                        qb.val.inlineParam(user.hash)
-                    )
-                ),
-                qb.expr.null(`${alias}.${name}`)
-            );
 
-            return qb.append(
-                userQuery,
-                hashQuery,
-                qb.where(qb.expr.or(userCondition, hashCondition))
-            );
+            return qb.where(qb.expr.or(userExpr, hashExpr));
         }, restrictedColumns)
     );
 }
@@ -565,38 +685,116 @@ function specificUserPermissionsQuery(
     alias,
     permissionsAlias
 ) {
-    const joinAlias = 'rela_' + permissionsAlias;
     const restrictedColumns = util.restrictedColumns(plan, group, type);
-    const restrictedColumnAlias = (name) => joinAlias + name;
 
     const restrictedColumnSqlMaps = mapWithKey(function (col, name) {
-        const restrictedAlias = restrictedColumnAlias(name);
-        const joinAlias = restrictedColumnAlias(name);
-
         return qb.select([
             qb.expr.as(
                 qb.merge(
                     qb.select([
-                        qb.val.raw(
-                            `ARRAY_AGG(DISTINCT "${restrictedAlias}"."permission")`
-                        ),
+                        qb.val.raw('ARRAY_AGG(DISTINCT "p"."permission")'),
                     ]),
-                    qb.from('user.v_userPermissions', joinAlias),
+                    qb.from('user.permissions', 'p'),
                     qb.where(
-                        qb.expr.and(
-                            qb.expr.eq(
-                                `${joinAlias}.resourceGroup`,
-                                qb.val.inlineParam(col.relation.resourceGroup)
+                        qb.expr.or(
+                            qb.expr.in(
+                                'p.key',
+                                qb.merge(
+                                    qb.select(['p.key']),
+                                    qb.from('user.userPermissions', 'up'),
+                                    qb.joins(
+                                        qb.join(
+                                            'user.permissions',
+                                            'p',
+                                            qb.expr.eq(
+                                                'p.key',
+                                                'up.permissionKey'
+                                            )
+                                        )
+                                    ),
+                                    qb.where(
+                                        qb.expr.and(
+                                            qb.expr.eq(
+                                                'p.resourceGroup',
+                                                qb.val.inlineParam(
+                                                    col.relation.resourceGroup
+                                                )
+                                            ),
+                                            qb.expr.eq(
+                                                'p.resourceType',
+                                                qb.val.inlineParam(
+                                                    col.relation.resourceType
+                                                )
+                                            ),
+                                            qb.expr.or(
+                                                qb.expr.null('p.resourceKey'),
+                                                qb.expr.eq(
+                                                    'p.resourceKey',
+                                                    qb.val.raw(
+                                                        `"${alias}"."${name}"::text`
+                                                    )
+                                                )
+                                            ),
+                                            qb.expr.eq(
+                                                'up.userKey',
+                                                qb.val.inlineParam(userKey)
+                                            )
+                                        )
+                                    )
+                                )
                             ),
-                            qb.expr.eq(
-                                `${joinAlias}.resourceType`,
-                                qb.val.inlineParam(col.relation.resourceType)
-                            ),
-                            qb.expr.or(
-                                qb.expr.null(`${joinAlias}.resourceKey`),
-                                qb.expr.eq(
-                                    `${joinAlias}.resourceKey`,
-                                    qb.val.raw(`"${alias}"."${name}"::text`)
+                            qb.expr.in(
+                                'p.key',
+                                qb.merge(
+                                    qb.select(['p.key']),
+                                    qb.from('user.userGroups', 'ug'),
+                                    qb.joins(
+                                        qb.join(
+                                            'user.groupPermissions',
+                                            'gp',
+                                            qb.expr.eq(
+                                                'gp.groupKey',
+                                                'ug.groupKey'
+                                            )
+                                        ),
+                                        qb.join(
+                                            'user.permissions',
+                                            'p',
+                                            qb.expr.eq(
+                                                'p.key',
+                                                'gp.permissionKey'
+                                            )
+                                        )
+                                    ),
+                                    qb.where(
+                                        qb.expr.and(
+                                            qb.expr.eq(
+                                                'p.resourceGroup',
+                                                qb.val.inlineParam(
+                                                    col.relation.resourceGroup
+                                                )
+                                            ),
+                                            qb.expr.eq(
+                                                'p.resourceType',
+                                                qb.val.inlineParam(
+                                                    col.relation.resourceType
+                                                )
+                                            ),
+                                            qb.expr.or(
+                                                qb.expr.null('p.resourceKey'),
+                                                qb.expr.eq(
+                                                    'p.resourceKey',
+                                                    qb.val.raw(
+                                                        `"${alias}"."${name}"::text`
+                                                    )
+                                                )
+                                            ),
+                                            qb.expr.eq(
+                                                'ug.userKey',
+                                                qb.val.inlineParam(userKey)
+                                            )
+                                        )
+                                    )
                                 )
                             )
                         )
@@ -610,32 +808,92 @@ function specificUserPermissionsQuery(
     const sqlMap = qb.select([
         qb.expr.as(
             qb.merge(
-                qb.select([
-                    qb.val.raw(
-                        `ARRAY_AGG(DISTINCT "${joinAlias}"."permission")`
-                    ),
-                ]),
-                qb.from('user.v_userPermissions', joinAlias),
+                qb.select([qb.val.raw(`ARRAY_AGG(DISTINCT "p"."permission")`)]),
+                qb.from('user.permissions', 'p'),
                 qb.where(
-                    qb.expr.and(
-                        qb.expr.eq(
-                            `${joinAlias}.resourceGroup`,
-                            qb.val.inlineParam(group)
-                        ),
-                        qb.expr.eq(
-                            `${joinAlias}.resourceType`,
-                            qb.val.inlineParam(type)
-                        ),
-                        qb.expr.or(
-                            qb.expr.null(`${joinAlias}.resourceKey`),
-                            qb.expr.eq(
-                                `${joinAlias}.resourceKey`,
-                                qb.val.raw(`"${alias}"."key"::text`)
+                    qb.expr.or(
+                        qb.expr.in(
+                            'p.key',
+                            qb.merge(
+                                qb.select(['p.key']),
+                                qb.from('user.userPermissions', 'up'),
+                                qb.joins(
+                                    qb.join(
+                                        'user.permissions',
+                                        'p',
+                                        qb.expr.eq('p.key', 'up.permissionKey')
+                                    )
+                                ),
+                                qb.where(
+                                    qb.expr.and(
+                                        qb.expr.eq(
+                                            'p.resourceGroup',
+                                            qb.val.inlineParam(group)
+                                        ),
+                                        qb.expr.eq(
+                                            'p.resourceType',
+                                            qb.val.inlineParam(type)
+                                        ),
+                                        qb.expr.or(
+                                            qb.expr.null('p.resourceKey'),
+                                            qb.expr.eq(
+                                                'p.resourceKey',
+                                                qb.val.raw(
+                                                    `"${alias}"."key"::text`
+                                                )
+                                            )
+                                        ),
+                                        qb.expr.eq(
+                                            'up.userKey',
+                                            qb.val.inlineParam(userKey)
+                                        )
+                                    )
+                                )
                             )
                         ),
-                        qb.expr.eq(
-                            `${joinAlias}.userKey`,
-                            qb.val.inlineParam(userKey)
+                        qb.expr.in(
+                            'p.key',
+                            qb.merge(
+                                qb.select(['p.key']),
+                                qb.from('user.userGroups', 'ug'),
+                                qb.joins(
+                                    qb.join(
+                                        'user.groupPermissions',
+                                        'gp',
+                                        qb.expr.eq('gp.groupKey', 'ug.groupKey')
+                                    ),
+                                    qb.join(
+                                        'user.permissions',
+                                        'p',
+                                        qb.expr.eq('p.key', 'gp.permissionKey')
+                                    )
+                                ),
+                                qb.where(
+                                    qb.expr.and(
+                                        qb.expr.eq(
+                                            'p.resourceGroup',
+                                            qb.val.inlineParam(group)
+                                        ),
+                                        qb.expr.eq(
+                                            'p.resourceType',
+                                            qb.val.inlineParam(type)
+                                        ),
+                                        qb.expr.or(
+                                            qb.expr.null('p.resourceKey'),
+                                            qb.expr.eq(
+                                                'p.resourceKey',
+                                                qb.val.raw(
+                                                    `"${alias}"."key"::text`
+                                                )
+                                            )
+                                        ),
+                                        qb.expr.eq(
+                                            `ug.userKey`,
+                                            qb.val.inlineParam(userKey)
+                                        )
+                                    )
+                                )
+                            )
                         )
                     )
                 )
@@ -908,38 +1166,6 @@ function cleanDependentTypeCols({plan, group, type}, rows) {
 /**
  * @param {{group: string, type: string}} context
  * @param {string} alias
- *
- * @param {import('@imatic/pgqb').Sql}
- */
-function createdAtQuery({group, table}, alias) {
-    return qb.select([
-        qb.expr.as(
-            qb.merge(
-                qb.select([qb.expr.as('a.action_tstamp_stm', 'createdAt')]),
-                qb.from('audit.logged_actions', 'a'),
-                qb.where(
-                    qb.expr.and(
-                        qb.expr.eq('a.schema_name', qb.val.inlineParam(group)),
-                        qb.expr.eq('a.table_name', qb.val.inlineParam(table)),
-                        qb.expr.eq('a.action', qb.val.inlineParam('I')),
-                        qb.expr.eq(
-                            qb.val.raw(
-                                `"a"."row_data" OPERATOR("public".->) 'key'`
-                            ),
-                            qb.val.raw(`"${alias}"."key"::text`)
-                        )
-                    )
-                ),
-                qb.limit(1)
-            ),
-            'createdAt'
-        ),
-    ]);
-}
-
-/**
- * @param {{group: string, type: string}} context
- * @param {string} alias
  * @param {import('@imatic/pgqb').Sql} sortExpr
  *
  * @returns {import('@imatic/pgqb').Sql}
@@ -949,7 +1175,7 @@ function createSortQuery({group, table}, alias, sortExpr) {
         return sortExpr;
     }
 
-    return qb.orderBy(createdAtQuery({group, table}, alias));
+    return qb.orderBy(`${alias}.createdAt`);
 }
 
 /**
@@ -958,10 +1184,7 @@ function createSortQuery({group, table}, alias, sortExpr) {
  *
  * @returns {import('@imatic/pgqb').Sql}
  */
-function listPermissionsQuery(
-    {plan, group, type, user},
-    alias
-) {
+function listPermissionsQuery({plan, group, type, user}, alias) {
     return qb.append(
         listPermissionQuery({user, group, type}, alias),
         listPermissionRelationQuery({user, plan, group, type}, alias)
@@ -1057,7 +1280,9 @@ function listQueries(
         qb.append(
             qb.merge(
                 qb.select(
-                    columns.map((c) => columnsConfig[c].selectExpr({alias: 't'}))
+                    columns.map((c) =>
+                        columnsConfig[c].selectExpr({alias: 't'})
+                    )
                 ),
                 qb.from(`${group}.${table}`, 't'),
                 qb.groupBy(['t.key'])
@@ -1081,11 +1306,17 @@ function listQueries(
         't'
     );
 
-    const permissionsQuery = listPermissionsQuery({plan, user, group, type}, 't');
+    const permissionsQuery = listPermissionsQuery(
+        {plan, user, group, type},
+        't'
+    );
 
     const countSqlMap = qb.merge(
         qb.select([qb.expr.as(qb.expr.fn('COUNT', qb.val.raw(1)), 'count')]),
-        qb.from(qb.merge(qb.append(sqlMap, permissionsQuery), qb.select(['t.key'])), '_gt')
+        qb.from(
+            qb.merge(qb.append(sqlMap, permissionsQuery), qb.select(['t.key'])),
+            '_gt'
+        )
     );
 
     const sortQuery = createSortQuery(
@@ -1099,11 +1330,7 @@ function listQueries(
     );
 
     const keysSqlMap = qb.append(
-        qb.merge(
-            sqlMap,
-            qb.select(['t.key']),
-            sortQuery
-        ),
+        qb.merge(sqlMap, qb.select(['t.key']), sortQuery),
         permissionsQuery
     );
 
@@ -1128,7 +1355,7 @@ function listQueries(
  *
  * @returns {Promise<object[]>}}
  */
- async function listRows(
+async function listRows(
     {plan, group, type, client, user, customFields},
     {sort, filter, page, translations, updateSqlMap}
 ) {
@@ -1140,7 +1367,10 @@ function listQueries(
 
     const db = getDb(client);
 
-    const rows = await db.query(qb.toSql(queries.rows)).then((res) => res.rows);
+    const sql = qb.toSql(queries.rows);
+    sql.name = objectHash(sql.text);
+
+    const rows = await db.query(sql).then((res) => res.rows);
 
     return cleanDependentTypeCols({plan, group, type}, rows);
 }
@@ -1574,11 +1804,19 @@ async function updateRecordRelation({plan, group, type, client}, record) {
                     // todo find out how to do this using imatic pgqb
                     const parentTableName = plan[group][type].table || type;
                     acc.push(
-						SQL`INSERT INTO `
-							.append(`${quoteIdentifier(rel.relationTable)} ("${rel.ownKey}", "${rel.inverseKey}") `)
-							.append(`SELECT '${record.key}', '${relKey}' WHERE EXISTS `)
-							.append(`(SELECT * FROM "${group}"."${parentTableName}" `)
-							.append(`WHERE "key" = '${record.key}')`)
+                        SQL`INSERT INTO `
+                            .append(
+                                `${quoteIdentifier(rel.relationTable)} ("${
+                                    rel.ownKey
+                                }", "${rel.inverseKey}") `
+                            )
+                            .append(
+                                `SELECT '${record.key}', '${relKey}' WHERE EXISTS `
+                            )
+                            .append(
+                                `(SELECT * FROM "${group}"."${parentTableName}" `
+                            )
+                            .append(`WHERE "key" = '${record.key}')`)
                     );
 
                     return acc;
