@@ -2,28 +2,10 @@ name: ci
 
 on:
   push:
-    branches:
-      - 'dev'
 
 jobs:
-  check:
-    runs-on: ubuntu-latest
-    outputs:
-      DOCKER_LABEL: ${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
-    steps:
-      -
-        name: "Convert repository name to docker hub repository name"
-        id: convert-repository-name
-        run: |
-          echo "::set-output name=DOCKER_LABEL::$(sed 's/^[[:upper:]]/\L&/;s/[[:upper:]]/\L_&/g' <<< '${{ github.event.repository.name }}')"
-      -
-        name: "Check if docker repository exists"
-        run: |
-          curl --location --fail --header "Authorization: JWT $(curl --location --header "Content-type: application/json" --request POST --data '{"username": "${{ secrets.DOCKERHUB_USERNAME }}", "password": "${{ secrets.DOCKERHUB_TOKEN }}"}' https://hub.docker.com/v2/users/login | jq -r '.token')" https://hub.docker.com/v2/repositories/gisat/${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
-  
   test:
     runs-on: ubuntu-latest
-    needs: [check]
     services:
         postgres:
             image: postgis/postgis
@@ -53,10 +35,27 @@ jobs:
           name: "Run application tests"
           run: |
             npm run test:wait
+
+  check:
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/performance' }}
+    outputs:
+      DOCKER_LABEL: ${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
+    steps:
+      -
+        name: "Convert repository name to docker hub repository name"
+        id: convert-repository-name
+        run: |
+          echo "::set-output name=DOCKER_LABEL::$(sed 's/^[[:upper:]]/\L&/;s/[[:upper:]]/\L_&/g' <<< '${{ github.event.repository.name }}')"
+      -
+        name: "Check if docker repository exists"
+        run: |
+          curl --location --fail --header "Authorization: JWT $(curl --location --header "Content-type: application/json" --request POST --data '{"username": "${{ secrets.DOCKERHUB_USERNAME }}", "password": "${{ secrets.DOCKERHUB_TOKEN }}"}' https://hub.docker.com/v2/users/login | jq -r '.token')" https://hub.docker.com/v2/repositories/gisat/${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
   
   build:
     runs-on: ubuntu-latest
-    needs: [check, test]
+    if: ${{ github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/performance' }}
+    needs: [test, check]
     steps:
       - 
         name: "Checkout"
@@ -90,10 +89,12 @@ jobs:
   
   deploy:
     runs-on: ubuntu-latest
-    needs: [check, test, build]
+    if: ${{ github.ref == 'refs/heads/dev'}}
+    needs: [test, check, build]
     steps:
       -
         name: "Deploy application on remote server"
+        if: ${{ github.ref == 'refs/heads/dev' }}
         run: |
           curl --location --fail "https://ptr.gisat.cz/webhook/hooks/deploy?token=102aeeb9-233d-4e29-97c4-91cdc8852d97&service=be"
   
