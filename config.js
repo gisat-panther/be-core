@@ -2,6 +2,7 @@ const ptr4 = {
 	url: 'http://localhost/backend', // url on which server is accessible
 	urlMapServer: "http://localhost/mapserver", // url on which MapServer is accessible
 	masterPort: 9850,
+	isBehindKong: false, // allow auto login based on X-User-Info header which is provided by KongHQ, potential security risk if used without KongHQ
 	pgConfig: {
 		normal: {
 			user: `panther`,
