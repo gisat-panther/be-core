@@ -2141,7 +2141,7 @@ module.exports = {
                     defaultValue: null,
                     schema: Joi.object().allow(null),
                     selectExpr: function ({alias}) {
-                        return qb.expr.fn('ST_AsGeoJSON', alias);
+                        return qb.expr.fn('ST_AsGeoJSON', '"' + alias + '"');
                     },
                     modifyExpr: function ({value}) {
                         if (value == null) {
