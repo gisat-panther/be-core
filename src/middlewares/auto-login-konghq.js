@@ -1,8 +1,6 @@
 const auth = require('../modules/login/auth');
 const uuid = require('../uuid');
 const q = require('../modules/login/query');
-const info = require('../modules/login/info');
-const plan = require('../applications/plan');
 
 const UserType = {
     USER: 'user'
