@@ -1,6 +1,7 @@
 const auth = require('../modules/login/auth');
 const uuid = require('../uuid');
 const q = require('../modules/login/query');
+const config = require('../../config');
 
 const UserType = {
     USER: 'user'
@@ -10,6 +11,10 @@ const UserType = {
  * If no user is logged in, logs in user by X-User-Info header provided by KongHQ.
  */
 async function autoLoginKongHqMiddleware(request, response, next) {
+    if (!config.isBehindKong) {
+        return next();
+    }
+
     if (request.user != null) {
         return next();
     }
