@@ -1,0 +1,1 @@
+ALTER TABLE "specific"."worldCerealProductMetadata" DROP COLUMN "__customColumns";
