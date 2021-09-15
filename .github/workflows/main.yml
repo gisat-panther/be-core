@@ -38,7 +38,9 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/performance' }}
+    if: |
+      ( github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/performance' ) 
+      && contains(github.event.head_commit.message, '#deploy')
     outputs:
       DOCKER_LABEL: ${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
     steps:
@@ -54,7 +56,9 @@ jobs:
   
   build:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/performance' }}
+    if: |
+      ( github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/performance' ) 
+      && contains(github.event.head_commit.message, '#deploy')
     needs: [test, check]
     steps:
       - 
@@ -89,12 +93,14 @@ jobs:
   
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/dev'}}
+    if: |
+      ( github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/performance' ) 
+      && contains(github.event.head_commit.message, '#deploy')
     needs: [test, check, build]
     steps:
       -
         name: "Deploy application on remote server"
-        if: ${{ github.ref == 'refs/heads/dev' }}
+        if: ${{ github.ref == 'refs/heads/dev' &&  }}
         run: |
           curl --location --fail "https://ptr.gisat.cz/webhook/hooks/deploy?token=102aeeb9-233d-4e29-97c4-91cdc8852d97&service=be"
   
