@@ -30,7 +30,7 @@ function schema() {
  * @returns {import('@imatic/pgqb').Sql}
  */
 function listQuery(alias) {
-    return qb.select([`${alias}.__customColumns`]);
+    return qb.select([`"${alias}"."__customColumns"`]);
 }
 
 /**

@@ -428,15 +428,15 @@ async function getAttributeRelatons(filter, user) {
 						qb.append(
 							qb.merge(
 								qb.select([qb.val.raw(`JSONB_ARRAY_ELEMENTS("_t"."definition"->'rules') "rule"`)]),
-								qb.from('metadata.style', '_t'),
-								qb.where(qb.expr.eq('_t.key', qb.val.inlineParam(filter.styleKey))),
+								qb.from('"metadata"."style"', '"_t"'),
+								qb.where(qb.expr.eq('"_t"."key"', qb.val.inlineParam(filter.styleKey))),
 							),
 							query.listPermissionsQuery({plan: compiledPlan, group: 'metadata', type: 'styles'}, '_t'),
 						),
-						'_t1'
+						'"_t1"'
 					)
 				),
-				'_t2'
+				'"_t2"'
 			),
 			qb.where(qb.expr.notNull(qb.val.raw(`"_t2"."style"->>'attributeKey'`)))
 		);
@@ -447,7 +447,7 @@ async function getAttributeRelatons(filter, user) {
 				qb.where(
 					qb.expr.or(
 						qb.expr.not(qb.expr.fn('EXISTS', attributeKeysSqlMap)),
-						qb.expr.in(`${alias}.attributeKey`, attributeKeysSqlMap)
+						qb.expr.in(`"${alias}"."attributeKey"`, attributeKeysSqlMap)
 					)
 				)
 			);
