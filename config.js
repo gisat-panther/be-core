@@ -7,7 +7,11 @@ const ptr4 = {
 			user: `panther`,
 			password: `panther`,
 			database: `panther`,
-			host: `localhost`
+			host: `localhost`,
+			// keep connections open for 1 hour (instead of default 10 seconds)
+			// to make better use of query plan cache (which is per connection)
+			idleTimeoutMillis: 3600000,
+			allowExitOnIdle: true
 		},
 		superuser: {
 			user: `postgres`,

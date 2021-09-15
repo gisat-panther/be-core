@@ -61,7 +61,7 @@ function compileColumn(column, name) {
         }),
         _.update('selectExpr', function (expr) {
             if (expr == null) {
-                return ({alias}) => alias + '.' + name;
+                return ({alias}) => '"' +alias + '"."' + name + '"';
             }
 
             return expr;
