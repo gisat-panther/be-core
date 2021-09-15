@@ -84,7 +84,8 @@ function get() {
     const config = mergeApplications(
         require('./core/index'),
         require('./demo/index'),
-        require('./data/index')
+        require('./data/index'),
+        require('./worldCereal/index')
     );
 
     config.plan = planCompiler.compile(config.plan);
