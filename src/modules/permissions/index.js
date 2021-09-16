@@ -605,7 +605,7 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                     const requiredPermissions = permission.targetPermissions;
                     const permissions = _.map(
                         (perm) =>
-                            _.merge(permissionType, {
+                            Object.assign({}, permissionType, {
                                 permission: perm,
                             }),
                         requiredPermissions
@@ -633,7 +633,8 @@ async function manageGroups({client, tableToType}, {permission, name}) {
             case 'U':
                 {
                     const oldData = action.row_data;
-                    const currentData = _.merge(
+                    const currentData = Object.assign(
+                        {},
                         action.row_data,
                         action.changed_fields
                     );
@@ -660,7 +661,7 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                             permission.targetPermissions;
                         const permissions = _.map(
                             (perm) =>
-                                _.merge(permissionType, {
+                                Object.assign({}, permissionType, {
                                     permission: perm,
                                 }),
                             requiredPermissions
@@ -721,7 +722,7 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                     const requiredPermissions = permission.targetPermissions;
                     const permissions = _.map(
                         (perm) =>
-                            _.merge(permissionType, {
+                            Object.assign({}, permissionType, {
                                 permission: perm,
                             }),
                         requiredPermissions

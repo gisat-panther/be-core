@@ -43,7 +43,7 @@ function getAppendHandler(config) {
         };
     }
 
-    return _.merge;
+    return (app1, app2) => Object.assign({}, app1, app2);
 }
 
 /**
