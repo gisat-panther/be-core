@@ -102,25 +102,22 @@ function listTranslationsQuery({group, type, translations}, alias) {
 
     const translationsMap = qb.merge(
         qb.selectDistinct(
-            ['_ptrans.field'],
-            ['_ptrans.locale', '_ptrans.field', '_ptrans.value']
+            ['"_ptrans"."field"'],
+            ['"_ptrans"."locale"', '"_ptrans"."field"', '"_ptrans"."value"']
         ),
-        qb.from('public.translations', '_ptrans'),
+        qb.from('"public"."translations"', '"_ptrans"'),
         qb.where(
             qb.expr.and(
-                qb.expr.eq(
-                    qb.val.raw('"t"."key"::text'),
-                    '_ptrans.resourceKey'
+                qb.val.raw(
+                    SQL`("t"."key"::text = "_ptrans"."resourceKey" AND "_ptrans"."resourceGroup" = ${group} AND "_ptrans"."resourceType" = ${type})`
                 ),
-                qb.expr.eq('_ptrans.resourceGroup', qb.val.inlineParam(group)),
-                qb.expr.eq('_ptrans.resourceType', qb.val.inlineParam(type)),
                 qb.expr.in(
-                    '_ptrans.locale',
+                    '"_ptrans"."locale"',
                     translations.map(qb.val.inlineParam)
                 )
             )
         ),
-        qb.append(qb.orderBy('_ptrans.field'), ...orderBys)
+        qb.append(qb.orderBy('"_ptrans"."field"'), ...orderBys)
     );
 
     return qb.select([
@@ -134,18 +131,18 @@ function listTranslationsQuery({group, type, translations}, alias) {
                 qb.from(
                     qb.merge(
                         qb.select([
-                            '_ptrans.locale',
+                            '"_ptrans"."locale"',
                             qb.val.raw(
                                 'JSON_OBJECT_AGG("_ptrans"."field", "_ptrans"."value") "t"'
                             ),
                         ]),
-                        qb.from(translationsMap, '_ptrans'),
-                        qb.groupBy(['_ptrans.locale'])
+                        qb.from(translationsMap, '"_ptrans"'),
+                        qb.groupBy(['"_ptrans"."locale"'])
                     ),
-                    '_trans'
+                    '"_trans"'
                 )
             ),
-            '__translations'
+            '"__translations"'
         ),
     ]);
 }

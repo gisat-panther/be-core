@@ -162,7 +162,9 @@ function formatRow(row) {
 
     return _.update(
         'data',
-        _.flow(_.omit('__customColumns'), _.merge(customColumns)),
+        _.flow(_.omit('__customColumns'), (v) =>
+            Object.assign({}, customColumns, v)
+        ),
         row
     );
 }
@@ -189,7 +191,7 @@ function extractRecordFieldMaps(record) {
 function extractRecordFields(record) {
     return _.flow(
         extractRecordFieldMaps,
-        _.mergeAll,
+        (arr) => Object.assign({}, ...arr),
         Object.keys,
         set.from
     )(record);
@@ -405,9 +407,15 @@ DO UPDATE SET "fields" = EXCLUDED."fields" || "customColumns"."fields"
  * @returns {object}
  */
 function filterColumnsConfig(customFields) {
-    const allCustomFields = _.getOr({}, 'all', customFields);
+    const allCustomFields = customFields?.all || {};
 
-    return _.mapValues(_.always({}), allCustomFields);
+    const keys = Object.keys(allCustomFields);
+    const config = {};
+    for (const k of keys) {
+        config[k] = {};
+    }
+
+    return config;
 }
 
 /**
@@ -463,10 +471,11 @@ function modifyCustomFieldMiddleware({plan, group}) {
                 ? {}
                 : inferFieldTypes(unknownCustomFields, data);
 
-        const allCustomFields = _.mergeAll([
+        const allCustomFields = Object.assign(
+            {},
             definedCustomFields,
-            newCustomFields,
-        ]);
+            newCustomFields
+        );
 
         request.customFields = {
             defined: definedCustomFields,
@@ -507,7 +516,8 @@ function modifyCustomFieldMiddleware({plan, group}) {
                 return _.update(
                     'data',
                     (val) => {
-                        return _.merge(
+                        return Object.assign(
+                            {},
                             val,
                             _.getOr({}, [type, index, 'data'], resultData)
                         );

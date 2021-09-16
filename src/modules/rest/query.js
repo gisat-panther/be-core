@@ -309,7 +309,7 @@ function relationsQuery({plan, group, type}, alias) {
             case 'manyToMany': {
                 const relAlias = listRelationAlias(name);
                 const column = name + 'Keys';
-                const ownKey = `${relAlias}.${rel.ownKey}`;
+                const ownKey = `"${relAlias}"."${rel.ownKey}"`;
 
                 return qb.merge(
                     qb.select([
@@ -321,7 +321,9 @@ function relationsQuery({plan, group, type}, alias) {
                         qb.leftJoin(
                             rel.relationTable,
                             relAlias,
-                            qb.expr.eq(ownKey, `"${alias}"."key"`)
+                            qb.val.raw(
+                                SQL``.append(`"${alias}"."key" = ${ownKey}`)
+                            )
                         )
                     )
                 );
@@ -329,7 +331,7 @@ function relationsQuery({plan, group, type}, alias) {
             case 'manyToOne': {
                 const relAlias = listRelationAlias(name);
                 const column = name + 'Key';
-                const ownKey = `${relAlias}.${rel.ownKey}`;
+                const ownKey = `"${relAlias}"."${rel.ownKey}"`;
 
                 return qb.merge(
                     qb.select([
@@ -344,7 +346,9 @@ function relationsQuery({plan, group, type}, alias) {
                         qb.leftJoin(
                             rel.relationTable,
                             relAlias,
-                            qb.expr.eq(ownKey, `"${alias}"."key"`)
+                            qb.val.raw(
+                                SQL``.append(`"${alias}"."key" = ${ownKey}`)
+                            )
                         )
                     )
                 );
@@ -885,15 +889,13 @@ function listDependentTypeQuery({plan, group, type}, alias) {
                     qb.leftJoin(
                         `"${group}"."${table}"`,
                         '"' + al + '"',
-                        qb.expr.and(
-                            qb.expr.eq(
-                                `"${alias}"."${dispatchColumn}"`,
-                                qb.val.inlineParam(table)
-                            ),
-                            qb.expr.eq(
-                                `"${alias}"."${relationKey}"`,
-                                `"${al}"."key"`
-                            )
+                        qb.val.raw(
+                            SQL``
+                                .append(`("${alias}"."${dispatchColumn}" = `)
+                                .append(SQL`${table}`)
+                                .append(
+                                    ` AND "${alias}"."${relationKey}" = "${al}"."key")`
+                                )
                         )
                     )
                 ),
@@ -905,9 +907,8 @@ function listDependentTypeQuery({plan, group, type}, alias) {
     return qb.merge(
         qb.select(
             mapWithKey((selects, name) => {
-                return qb.expr.as(
-                    qb.expr.fn('COALESCE', ...selects),
-                    '"' + name + '"'
+                return qb.val.raw(
+                    SQL``.append(`COALESCE(${selects.join(',')}) AS "${name}"`)
                 );
             }, selectByColumn)
         ),
@@ -992,57 +993,47 @@ function listQueries(
     const columns = typeSchema.context.list.columns;
     const table = _.getOr(type, 'table', typeSchema);
     const customColumnsConfig = cf.filterColumnsConfig(customFields);
-    const columnsConfig = _.merge(
+    const columnsConfig = Object.assign(
+        {},
         plan[group][type].columns,
         customColumnsConfig
     );
 
-    const columnToAliases = _.reduce(
-        function (res, next) {
-            return _.mergeWith(
-                function (x, y) {
-                    if (x === undefined) {
-                        return y;
-                    }
+    const columnToAliases = [
+        _.zipObject(columns, fill(['t'], new Array(columns.length))),
+        _.zipObject(
+            Object.keys(customColumnsConfig),
+            new Array(_.size(customColumnsConfig)).fill(['t'])
+        ),
+        ...mapWithKey((t, name) => {
+            const columns = t?.context?.list?.columns || [];
 
-                    return _.concat(x, y);
-                },
-                res,
-                next
+            return _.zipObject(
+                columns,
+                new Array(columns.length).fill([listDependentTypeAlias(name)])
             );
-        },
-        {},
-        [
-            _.zipObject(columns, fill(['t'], new Array(columns.length))),
-            _.zipObject(
-                _.keys(customColumnsConfig),
-                fill(['t'], new Array(_.size(customColumnsConfig)))
-            ),
-            ...mapWithKey((t, name) => {
-                const columns = _.getOr([], ['context', 'list', 'columns'], t);
+        }, typeSchema?.type?.types || {}),
+        ...mapWithKey((rel, name) => {
+            switch (rel.type) {
+                case 'manyToMany':
+                    return {[name + 'Keys']: [listRelationAlias(name)]};
+                case 'manyToOne':
+                    return {[name + 'Key']: [listRelationAlias(name)]};
+            }
 
-                return _.zipObject(
-                    columns,
-                    fill(
-                        [listDependentTypeAlias(name)],
-                        new Array(columns.length)
-                    )
-                );
-            }, _.getOr({}, ['type', 'types'], typeSchema)),
-            ...mapWithKey((rel, name) => {
-                switch (rel.type) {
-                    case 'manyToMany':
-                        return {[name + 'Keys']: [listRelationAlias(name)]};
-                    case 'manyToOne':
-                        return {[name + 'Key']: [listRelationAlias(name)]};
-                }
+            throw new Error(`Unspported relation type: ${rel.type}`);
+        }, plan[group][type].relations),
+    ].reduce(function (res, next) {
+        return Object.keys(next).reduce(
+            (m, k) =>
+                Object.assign(m, {
+                    [k]: m[k] ? m[k].concat(next[k]) : next[k],
+                }),
+            res
+        );
+    }, {});
 
-                throw new Error(`Unspported relation type: ${rel.type}`);
-            }, plan[group][type].relations),
-        ]
-    );
-
-    const columnToField = _.reduce(
+    const columnToField = _.keys(plan[group][type].relations).reduce(
         (res, name) => {
             const rel = plan[group][type].relations[name];
             switch (rel.type) {
@@ -1056,8 +1047,7 @@ function listQueries(
 
             throw new Error(`Unspported relation type: ${rel.type}`);
         },
-        {},
-        _.keys(plan[group][type].relations)
+        {}
     );
 
     const sqlMap = updateSqlMap(
@@ -1480,7 +1470,8 @@ function updateRecord({plan, group, type, client}, record, dependentType) {
             _.some((input) => _.has(input, data), columnsConfig[col].inputs),
         _.getOr([], ['context', 'create', 'queryColumns'], typeSchema)
     );
-    const enrichedData = _.merge(
+    const enrichedData = Object.assign(
+        {},
         data,
         _.zipObject(queryColumns, new Array(queryColumns.length))
     );
