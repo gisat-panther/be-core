@@ -74,8 +74,9 @@ function listBody(plan, group) {
         }, plan[group])
     );
 
-    const defaultFilter = _.mergeAll(
-        _.map(
+    const defaultFilter = Object.assign(
+        {},
+        ..._.map(
             (type) => _.getOr({}, ['context', 'list', 'defaultFilter'], type),
             plan[group]
         )
@@ -127,9 +128,10 @@ function relationSchemas(plan, group, type) {
                 );
                 return;
             case 'manyToOne':
-                relationSchemas[name + 'Key'] = plan[rel.resourceGroup][
-                    rel.resourceType
-                ].columns.key.schema.allow(null);
+                relationSchemas[name + 'Key'] =
+                    plan[rel.resourceGroup][
+                        rel.resourceType
+                    ].columns.key.schema.allow(null);
                 return;
         }
 
@@ -157,7 +159,8 @@ function createBody(plan, group) {
                 .items(
                     Joi.alternatives().try(
                         ..._.map((currentType) => {
-                            const columns = _.merge(
+                            const columns = Object.assign(
+                                {},
                                 _.pick(
                                     typeSchema.context.create.columns,
                                     _.update(
@@ -297,7 +300,8 @@ function updateBody(plan, group) {
                 .items(
                     Joi.alternatives().try(
                         ..._.map((currentType) => {
-                            const columns = _.merge(
+                            const columns = Object.assign(
+                                {},
                                 _.pick(
                                     typeSchema.context.create.columns,
                                     _.update(
