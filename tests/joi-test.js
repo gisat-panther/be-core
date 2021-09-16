@@ -1,5 +1,6 @@
 const {assert} = require('chai');
 const Joi = require('../src/joi');
+const moment = require('moment');
 
 describe('joi', function () {
     describe('stringArray', function () {
@@ -62,6 +63,17 @@ describe('joi', function () {
         });
 
         describe('invalid', function () {
+            this.beforeAll(function() {
+                // As we test with invalid values that show warnings due to parsing fallback
+                // using `Date`, let's suppress the warnings to not confuse people reading test output.
+                // Warning is expected behaviour until moment removes the Date parsing fallback.
+                moment.suppressDeprecationWarnings = true;
+            });
+
+            this.afterAll(function() {
+                moment.suppressDeprecationWarnings = false;
+            });
+
             const tests = [
                 {
                     name: 'using dates in both ends',
