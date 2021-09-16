@@ -309,7 +309,7 @@ function relationsQuery({plan, group, type}, alias) {
             case 'manyToMany': {
                 const relAlias = listRelationAlias(name);
                 const column = name + 'Keys';
-                const ownKey = `${relAlias}.${rel.ownKey}`;
+                const ownKey = `"${relAlias}"."${rel.ownKey}"`;
 
                 return qb.merge(
                     qb.select([
@@ -321,7 +321,7 @@ function relationsQuery({plan, group, type}, alias) {
                         qb.leftJoin(
                             rel.relationTable,
                             relAlias,
-                            qb.expr.eq(ownKey, `"${alias}"."key"`)
+                            qb.val.raw(SQL``.append(`"${alias}"."key" = ${ownKey}`))
                         )
                     )
                 );
@@ -329,7 +329,7 @@ function relationsQuery({plan, group, type}, alias) {
             case 'manyToOne': {
                 const relAlias = listRelationAlias(name);
                 const column = name + 'Key';
-                const ownKey = `${relAlias}.${rel.ownKey}`;
+                const ownKey = `"${relAlias}"."${rel.ownKey}"`;
 
                 return qb.merge(
                     qb.select([
@@ -344,7 +344,7 @@ function relationsQuery({plan, group, type}, alias) {
                         qb.leftJoin(
                             rel.relationTable,
                             relAlias,
-                            qb.expr.eq(ownKey, `"${alias}"."key"`)
+                            qb.val.raw(SQL``.append(`"${alias}"."key" = ${ownKey}`))
                         )
                     )
                 );
@@ -885,15 +885,13 @@ function listDependentTypeQuery({plan, group, type}, alias) {
                     qb.leftJoin(
                         `"${group}"."${table}"`,
                         '"' + al + '"',
-                        qb.expr.and(
-                            qb.expr.eq(
-                                `"${alias}"."${dispatchColumn}"`,
-                                qb.val.inlineParam(table)
-                            ),
-                            qb.expr.eq(
-                                `"${alias}"."${relationKey}"`,
-                                `"${al}"."key"`
-                            )
+                        qb.val.raw(
+                            SQL``
+                                .append(`("${alias}"."${dispatchColumn}" = `)
+                                .append(SQL`${table}`)
+                                .append(
+                                    ` AND "${alias}"."${relationKey}" = "${al}"."key")`
+                                )
                         )
                     )
                 ),
@@ -905,9 +903,8 @@ function listDependentTypeQuery({plan, group, type}, alias) {
     return qb.merge(
         qb.select(
             mapWithKey((selects, name) => {
-                return qb.expr.as(
-                    qb.expr.fn('COALESCE', ...selects),
-                    '"' + name + '"'
+                return qb.val.raw(
+                    SQL``.append(`COALESCE(${selects.join(',')}) AS "${name}"`)
                 );
             }, selectByColumn)
         ),
