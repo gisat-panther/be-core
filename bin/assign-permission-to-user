@@ -3,7 +3,7 @@
 /**
  * This script assign permission to user.
  * 
- * Usage: assign-permission <userKey> <permissionKey>
+ * Usage: assign-permission-to-user <userKey> <permissionKey>
  */
 
 const { SQL } = require('sql-template-strings');
