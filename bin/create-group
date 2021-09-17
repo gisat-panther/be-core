@@ -1,0 +1,37 @@
+#!/usr/bin/env node
+
+/**
+ * This script creates user.
+ * 
+ * Usage: create-group <name>
+ */
+
+const { SQL } = require('sql-template-strings');
+const db = require('../src/db');
+
+if (process.argv.length < 3) {
+    throw new Error('Script expects exact 1 parameter - <name>');
+}
+
+const name = process.argv[2];
+
+async function main() {
+    await db.init();
+
+    await db
+    .query(
+        SQL`
+            INSERT INTO "user"."groups"
+                ("name")
+            VALUES
+                (${name})
+            ON CONFLICT DO NOTHING
+            RETURNING key
+            `
+    )
+    .then((queryResult) => {
+        console.log(queryResult.rows[0].key);
+    })
+}
+
+main().then(() => process.exit());
