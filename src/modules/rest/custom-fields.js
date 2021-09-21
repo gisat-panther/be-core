@@ -5,8 +5,8 @@ const {SQL} = require('sql-template-strings');
 const set = require('../../set');
 const db = require('../../db');
 const schemaUtil = require('./schema-util');
-const {HttpError} = require('../error');
 const apiUtil = require('../../util/api');
+const commandResult = require('./result');
 
 const mapWithKey = _.map.convert({cap: false});
 const mapValuesWithKey = _.mapValues.convert({cap: false});
@@ -419,118 +419,102 @@ function filterColumnsConfig(customFields) {
 }
 
 /**
- * @param {{group: string}} context
+ * @param {string} group
+ * @param {object} request
  */
-function selectCustomFieldMiddleware({group}) {
-    return async function (request, response, next) {
-        const definedCustomFields = await fetchCustomFields(group);
-        request.customFields = {
-            defined: definedCustomFields,
-            all: definedCustomFields,
-        };
-
-        const columns = _.mapValues(customFieldToColumn, definedCustomFields);
-
-        const BodySchema = Joi.object().keys({
-            filter: schemaUtil.filter(columns),
-            order: schemaUtil.order(columns),
-        });
-
-        request.match = _.update(
-            ['data', 'parameters', 'body'],
-            (Schema) => Schema.concat(BodySchema),
-            request.match
-        );
-
-        next();
+async function updateSelectRequest(group, request) {
+    const definedCustomFields = await fetchCustomFields(group);
+    request.customFields = {
+        defined: definedCustomFields,
+        all: definedCustomFields,
     };
+
+    const columns = _.mapValues(customFieldToColumn, definedCustomFields);
+
+    const BodySchema = Joi.object().keys({
+        filter: schemaUtil.filter(columns),
+        order: schemaUtil.order(columns),
+    });
+
+    request.match = _.update(
+        ['data', 'parameters', 'body'],
+        (Schema) => Schema.concat(BodySchema),
+        request.match
+    );
 }
 
-/**
- * @param {{plan: import('./compiler').Plan, group: string}} context
- */
-function modifyCustomFieldMiddleware({plan, group}) {
-    return async function (request, response, next) {
-        const definedCustomFields = await fetchCustomFields(group);
-        const definedCustomFieldNames = set.from(
-            Object.keys(definedCustomFields)
-        );
+async function modifyCustomFieldRequest({plan, group}, request) {
+    const definedCustomFields = await fetchCustomFields(group);
+    const definedCustomFieldNames = set.from(Object.keys(definedCustomFields));
 
-        const validNames = validGroupDataNames({plan, group});
+    const validNames = validGroupDataNames({plan, group});
 
-        const data = request.parameters.body.data;
-        const customFields = set.difference(extractFields(data), validNames);
+    const data = request.parameters.body.data;
+    const customFields = set.difference(extractFields(data), validNames);
 
-        const unknownCustomFields = set.difference(
-            customFields,
-            definedCustomFieldNames
-        );
+    const unknownCustomFields = set.difference(
+        customFields,
+        definedCustomFieldNames
+    );
 
-        const newCustomFields =
-            unknownCustomFields.size === 0
-                ? {}
-                : inferFieldTypes(unknownCustomFields, data);
+    const newCustomFields =
+        unknownCustomFields.size === 0
+            ? {}
+            : inferFieldTypes(unknownCustomFields, data);
 
-        const allCustomFields = Object.assign(
-            {},
-            definedCustomFields,
-            newCustomFields
-        );
+    const allCustomFields = Object.assign(
+        {},
+        definedCustomFields,
+        newCustomFields
+    );
 
-        request.customFields = {
-            defined: definedCustomFields,
-            new: newCustomFields,
-            all: allCustomFields,
-        };
-
-        const columns = _.mapValues(customFieldToColumn, allCustomFields);
-
-        const ColSchema = Joi.object().keys(
-            _.mapValues((col) => col.schema, columns)
-        );
-        const TypeSchema = Joi.array().items(
-            Joi.object().keys({data: ColSchema})
-        );
-        const BodySchema = Joi.object().keys({
-            data: Joi.object().keys(_.mapValues(() => TypeSchema, plan[group])),
-        });
-
-        const validationResult = BodySchema.validate(request.body, {
-            abortEarly: false,
-            stripUnknown: true,
-        });
-        if (validationResult.error) {
-            if (validationResult.error) {
-                return next(
-                    new HttpError(
-                        400,
-                        apiUtil.createDataErrorObject(validationResult.error)
-                    )
-                );
-            }
-        }
-
-        const resultData = validationResult.value.data;
-        const dataWithCustomFields = mapValuesWithKey((records, type) => {
-            return mapWithKey((record, index) => {
-                return _.update(
-                    'data',
-                    (val) => {
-                        return Object.assign(
-                            {},
-                            val,
-                            _.getOr({}, [type, index, 'data'], resultData)
-                        );
-                    },
-                    record
-                );
-            }, records);
-        }, data);
-
-        request.parameters.body.data = dataWithCustomFields;
-
-        next();
+    request.customFields = {
+        defined: definedCustomFields,
+        new: newCustomFields,
+        all: allCustomFields,
     };
+
+    const columns = _.mapValues(customFieldToColumn, allCustomFields);
+
+    const ColSchema = Joi.object().keys(
+        _.mapValues((col) => col.schema, columns)
+    );
+    const TypeSchema = Joi.array().items(Joi.object().keys({data: ColSchema}));
+    const BodySchema = Joi.object().keys({
+        data: Joi.object().keys(_.mapValues(() => TypeSchema, plan[group])),
+    });
+
+    const validationResult = BodySchema.validate(request.body, {
+        abortEarly: false,
+        stripUnknown: true,
+    });
+    if (validationResult.error) {
+        if (validationResult.error) {
+            return {
+                type: commandResult.BAD_REQUEST,
+                data: apiUtil.createDataErrorObject(validationResult.error),
+            };
+        }
+    }
+
+    const resultData = validationResult.value.data;
+    const dataWithCustomFields = mapValuesWithKey((records, type) => {
+        return mapWithKey((record, index) => {
+            return _.update(
+                'data',
+                (val) => {
+                    return Object.assign(
+                        {},
+                        val,
+                        _.getOr({}, [type, index, 'data'], resultData)
+                    );
+                },
+                record
+            );
+        }, records);
+    }, data);
+
+    request.parameters.body.data = dataWithCustomFields;
 }
 
 module.exports = {
@@ -544,8 +528,8 @@ module.exports = {
     extractFields,
     inferFieldTypes,
     storeNew,
-    selectCustomFieldMiddleware,
-    modifyCustomFieldMiddleware,
+    updateSelectRequest,
+    modifyCustomFieldRequest,
     sortExpr,
     filterColumnsConfig,
     customFieldToColumn,

@@ -1,4 +1,5 @@
 const express = require('express');
+const command = require('../modules/rest/command');
 const restRouter = require('../modules/rest/router');
 const createLoginApi = require('../modules/login/router');
 const routing = require('../modules/routing/index');
@@ -8,6 +9,7 @@ const {errorMiddleware} = require('../modules/error/index');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const p = require('./plan');
+const c = require('./commands');
 const getConfig = require('./config').get;
 
 const config = getConfig();
@@ -20,9 +22,11 @@ function apiRouter() {
 
     const plan = config.plan;
     p.init(plan);
+    const commands = command.createAll(plan);
+    c.init(commands);
     const api = [
         ...createLoginApi(plan),
-        ...restRouter.createAll(plan),
+        ...restRouter.createAll(plan, commands),
         ...config.router,
     ];
     const swaggerDocument = swagger.configFromApi(api);
