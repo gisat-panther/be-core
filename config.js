@@ -60,7 +60,10 @@ const ptr4 = {
 				static: `/tmp/panther/static`
 			}
 		}
-	}
+	},
+	// Directory containing apps. App is a directory with `index.js` file same as the directories in
+    // `src/applicatons`. index.js is loaded automatically. Can be `null`.
+    externalApplications: __dirname + '/panther-apps',
 };
 
 module.exports = ptr4;
