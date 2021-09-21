@@ -30,12 +30,10 @@ function create(request, response) {
             } else if (r.type === result.FORBIDDEN) {
                 response.status(403).end();
             } else {
-                console.log(`#worldCereal/product#r.type`, r.type);
                 response.status(500).end();
             }
         })
         .catch((error) => {
-            console.log(`#worldCereal/product#error`, error);
             response.status(500).end();
         })
 }
@@ -63,12 +61,10 @@ function update(request, response) {
             } else if (r.type === result.FORBIDDEN) {
                 response.status(403).end();
             } else {
-                console.log(`#worldCereal/product#r.type`, r.type);
                 response.status(500).end();
             }
         })
         .catch((error) => {
-            console.log(`#worldCereal/product#error`, error);
             response.status(500).end();
         })
 }
@@ -93,12 +89,10 @@ function remove(request, response) {
             } else if (r.type === result.FORBIDDEN) {
                 response.status(403).end();
             } else {
-                console.log(`#worldCereal/product#r.type`, r.type);
                 response.status(500).end();
             }
         })
         .catch((error) => {
-            console.log(`#worldCereal/product#error`, error);
             response.status(500).end();
         })
 }
@@ -122,12 +116,10 @@ function view(request, response) {
             } else if (r.type === result.FORBIDDEN) {
                 response.status(403).end();
             } else {
-                console.log(`#worldCereal/product#r.type`, JSON.stringify(r));
                 response.status(500).end();
             }
         })
         .catch((error) => {
-            console.log(`#worldCereal/product#error`, error);
             response.status(500).end();
         })
 }
