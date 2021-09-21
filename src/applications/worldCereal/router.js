@@ -3,6 +3,9 @@ const authMiddleware = require('../../middlewares/auth');
 const autoLoginMiddleware = require('../../middlewares/auto-login');
 const autoLoginKongHqMiddleware = require('../../middlewares/auto-login-konghq');
 
+const product = require('./product');
+const user = require('./user');
+
 module.exports = [
     {
         path: '/rest/project/worldCereal/product',
@@ -17,9 +20,7 @@ module.exports = [
             authMiddleware,
         ],
         responses: { 200: {} },
-        handler: (request, response) => {
-            response.send({});
-        }
+        handler: product.create
     },
     {
         path: '/rest/project/worldCereal/product',
@@ -34,9 +35,7 @@ module.exports = [
             authMiddleware,
         ],
         responses: { 200: {} },
-        handler: (request, response) => {
-            response.send({});
-        }
+        handler: product.update
     },
     {
         path: '/rest/project/worldCereal/product',
@@ -51,9 +50,7 @@ module.exports = [
             authMiddleware,
         ],
         responses: { 200: {} },
-        handler: (request, response) => {
-            response.send({});
-        }
+        handler: product.remove
     },
     {
         path: '/rest/project/worldCereal/product/filtered',
@@ -68,9 +65,7 @@ module.exports = [
             authMiddleware,
         ],
         responses: { 200: {} },
-        handler: (request, response) => {
-            response.send({});
-        }
+        handler: product.view
     },
     {
         path: '/rest/project/worldCereal/user',
@@ -85,9 +80,7 @@ module.exports = [
             authMiddleware,
         ],
         responses: { 200: {} },
-        handler: (request, response) => {
-            response.send({});
-        }
+        handler: user.create
     },
     {
         path: '/rest/project/worldCereal/user',
@@ -102,9 +95,7 @@ module.exports = [
             authMiddleware,
         ],
         responses: { 200: {} },
-        handler: (request, response) => {
-            response.send({});
-        }
+        handler: user.update
     },
     {
         path: '/rest/project/worldCereal/user',
@@ -119,8 +110,6 @@ module.exports = [
             authMiddleware,
         ],
         responses: { 200: {} },
-        handler: (request, response) => {
-            response.send({});
-        }
+        handler: user.remove
     }
 ];
