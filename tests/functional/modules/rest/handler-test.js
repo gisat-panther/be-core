@@ -12,6 +12,12 @@ const USER_ADMIN = {
     type: 'user',
 };
 
+const USER_CREATE_PERMS = {
+    realKey: '3fdd158d-4b78-4d11-92c7-403b4adab4d8',
+    key: '3fdd158d-4b78-4d11-92c7-403b4adab4d8',
+    type: 'user'
+}
+
 describe('modules/retst/handler', function () {
     it('list', async function () {
         const res = await handler.list('user', {
@@ -116,6 +122,30 @@ describe('modules/retst/handler', function () {
                 success: true,
                 total: 1,
             },
+        });
+    });
+
+    it('create with create perms', async function () {
+        const res = await handler.create('specific', {
+            user: USER_CREATE_PERMS,
+            body: {
+                data: {
+                    worldCerealProductMetadata: [
+                        {
+                            data: {
+                                data: {
+                                    property: 'value'
+                                }
+                            },
+                        },
+                    ],
+                },
+            },
+        });
+
+        assert.isObject(res);
+        assert.deepStrictEqual(res, {
+            type: result.CREATED
         });
     });
 

@@ -47,7 +47,8 @@ VALUES ('cad8ea0d-f95e-43c1-b162-0704bfc1d3f6', null, null, null, 'guest'),
         '$2a$04$iDjo0YV1HpIVGFqN1xFrUeuduvBdRs.o8HR5RVsRIz8OOLi/uOezS', null, null),
        -- this user should not have permissions with NULL resourceKey
        ('39ed471f-8383-4283-bb8a-303cb05cadef', 'specificPermsAdmin@specific.example.com',
-        '$2a$04$iDjo0YV1HpIVGFqN1xFrUeuduvBdRs.o8HR5RVsRIz8OOLi/uOezS', null, null);
+        '$2a$04$iDjo0YV1HpIVGFqN1xFrUeuduvBdRs.o8HR5RVsRIz8OOLi/uOezS', null, null),
+       ('3fdd158d-4b78-4d11-92c7-403b4adab4d8', 'worldCerealUser@create-perms.com', null, null, null);
 
 INSERT INTO "user"."groups"
     ("key", "name")
@@ -100,7 +101,8 @@ VALUES ('ed6a9cb0-7662-4d85-bb9a-ed5b78396008', null, 'metadata', 'cases', 'view
        ('f2ead234-6402-4a6e-9374-b243647edc44', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'users', 'view'),
        ('4f2b3dc7-9b3f-4624-82c0-93d139e19baa', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'users', 'update'),
        ('e84dfa30-f2fc-4a1f-988c-b7f4e2489f2f', '8b162b2f-44ee-47a4-af6c-0bbc882b6bb8', 'user', 'users', 'delete'),
-       ('432348bc-6adf-4fd3-ac44-48a15f7d8ac6', '7c5acddd-3625-46ef-90b3-82f829afb258', 'user', 'users', 'view');
+       ('432348bc-6adf-4fd3-ac44-48a15f7d8ac6', '7c5acddd-3625-46ef-90b3-82f829afb258', 'user', 'users', 'view'),
+       ('b809c988-cfff-427d-9572-1e40a2fe92fe', null, 'specific', 'worldCerealProductMetadata', 'create');
 
 INSERT INTO "user"."userPermissions"
     ("userKey", "permissionKey")
@@ -155,7 +157,9 @@ VALUES
     ('39ed471f-8383-4283-bb8a-303cb05cadef', 'e84dfa30-f2fc-4a1f-988c-b7f4e2489f2f'),
     -- user: specificPermsAdmin@specific.example.com, users[key]:view
     ('39ed471f-8383-4283-bb8a-303cb05cadef', '432348bc-6adf-4fd3-ac44-48a15f7d8ac6'),
-    ('39ed471f-8383-4283-bb8a-303cb05cadef', 'f2ead234-6402-4a6e-9374-b243647edc44');
+    ('39ed471f-8383-4283-bb8a-303cb05cadef', 'f2ead234-6402-4a6e-9374-b243647edc44'),
+    -- user: worldCerealUser@create-perms.com, specific:worldCerealProductMetadata:create
+    ('3fdd158d-4b78-4d11-92c7-403b4adab4d8', 'b809c988-cfff-427d-9572-1e40a2fe92fe');
 
 INSERT INTO "user"."groupPermissions"
     ("groupKey", "permissionKey")
