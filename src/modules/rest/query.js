@@ -391,30 +391,10 @@ function listPermissionQuery({user, group, type}, alias) {
                     )
                 ),
                 qb.where(
-                    qb.expr.and(
-                        qb.expr.eq(
-                            '"p"."resourceGroup"',
-                            qb.val.inlineParam(group)
-                        ),
-                        qb.expr.eq(
-                            '"p"."resourceType"',
-                            qb.val.inlineParam(type)
-                        ),
-                        qb.expr.eq(
-                            '"p"."permission"',
-                            qb.val.inlineParam('view')
-                        ),
-                        qb.expr.or(
-                            qb.expr.null('"p"."resourceKey"'),
-                            qb.expr.eq(
-                                '"p"."resourceKey"',
-                                qb.val.raw(`"${alias}"."key"::text`)
-                            )
-                        ),
-                        qb.expr.eq(
-                            '"up"."userKey"',
-                            qb.val.inlineParam(user.realKey)
-                        )
+                    qb.val.raw(
+                        SQL`"p"."resourceGroup" = ${group} AND "p"."resourceType" = ${type} AND "p"."permission" = 'view' AND ("p"."resourceKey" IS NULL OR "p"."resourceKey" = `
+                            .append(`"${alias}"."key"::text`)
+                            .append(SQL`) AND "up"."userKey" = ${user.realKey}`)
                     )
                 )
             )

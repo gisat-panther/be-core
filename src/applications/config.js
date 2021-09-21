@@ -1,6 +1,8 @@
 const _ = require('lodash/fp');
 const planCompiler = require('../modules/rest/compiler');
 const generatedPermissionsCompiler = require('../modules/permissions/compiler');
+const config = require('../../config');
+const fs = require('fs');
 
 /**
  * @typedef {import('../modules/rest/compiler').Plan} PlanConfig
@@ -34,8 +36,8 @@ function getAppendHandler(config) {
     if (_.isFunction(config)) {
         return function (app1, app2) {
             return function () {
-                const config1 = app1(arguments);
-                const config2 = app2(arguments);
+                const config1 = app1(...arguments);
+                const config2 = app2(...arguments);
                 const appendHandler = getAppendHandler(config1);
 
                 return appendHandler(config1, config2);
@@ -77,6 +79,22 @@ function mergeApplications(...applications) {
     return _.reduce(appendApplication, {}, applications);
 }
 
+function getExternalApplications() {
+    const dir = config.externalApplications;
+    if (dir == null) {
+        return [];
+    }
+
+    return fs
+        .readdirSync(dir, {
+            withFileTypes: true,
+        })
+        .filter((f) => f.isDirectory())
+        .map((f) => dir + '/' + f.name + '/index.js')
+        .filter((path) => fs.existsSync(path))
+        .map((path) => require(path));
+}
+
 /**
  * @returns {Appconfig}
  */
@@ -84,7 +102,8 @@ function get() {
     const config = mergeApplications(
         require('./core/index'),
         require('./demo/index'),
-        require('./data/index')
+        require('./data/index'),
+        ...getExternalApplications()
     );
 
     config.plan = planCompiler.compile(config.plan);
