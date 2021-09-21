@@ -7,6 +7,7 @@ const customFields = require('./custom-fields');
 const db = require('../../db');
 const permission = require('../../permission');
 const schema = require('./schema');
+const commandResult = require('./result');
 
 const mapWithKey = _.map.convert({cap: false});
 const mapValuesWithKey = _.mapValues.convert({cap: false});
@@ -165,11 +166,6 @@ function formatList({plan, group}, recordsByType, page) {
     return data;
 }
 
-const RESULT_FORBIDDEN = 'forbidden';
-const RESULT_CREATED = 'created';
-const RESULT_UPDATED = 'updated';
-const RESULT_DELETED = 'deleted';
-
 async function createData({plan, group, client}, request) {
     const data = request.parameters.body.data;
 
@@ -197,7 +193,7 @@ async function createData({plan, group, client}, request) {
             requiredPermissions
         ))
     ) {
-        return {type: RESULT_FORBIDDEN};
+        return {type: commandResult.FORBIDDEN};
     }
 
     const records = await Promise.all(
@@ -220,7 +216,7 @@ async function createData({plan, group, client}, request) {
     const recordsByType = _.zipObject(_.keys(data), records);
 
     return {
-        type: RESULT_CREATED,
+        type: commandResult.CREATED,
         data: formatList({plan, group}, recordsByType),
     };
 }
@@ -241,7 +237,7 @@ async function createData({plan, group, client}, request) {
  * @param {Object<string, any>} request.parameters.body.filter
  * @param {string[]} request.parameters.body.translations
  *
- * @returns {Promise<object>}
+ * @returns {Promise<{type: string, data: object}>}
  */
 async function list({plan, group}, request) {
     const types = request.parameters.path.types;
@@ -282,11 +278,14 @@ async function list({plan, group}, request) {
     );
     const changeByType = _.zipObject(types, changes);
 
-    return Object.assign(
-        {},
-        {changes: changeByType},
-        formatList({plan, group}, recordsByType, page)
-    );
+    return {
+        type: commandResult.SUCCESS,
+        data: Object.assign(
+            {},
+            {changes: changeByType},
+            formatList({plan, group}, recordsByType, page)
+        ),
+    };
 }
 
 /**
@@ -405,7 +404,7 @@ async function updateData({plan, group, client}, request) {
             requiredPermissions
         ))
     ) {
-        return {type: RESULT_FORBIDDEN};
+        return {type: commandResult.FORBIDDEN};
     }
 
     const records = await Promise.all(
@@ -431,9 +430,8 @@ async function updateData({plan, group, client}, request) {
     const recordsByType = _.zipObject(_.keys(data), records);
 
     return {
-        type: RESULT_UPDATED,
+        type: commandResult.UPDATED,
         data: formatList({plan, group}, recordsByType),
-        oldData: oldData,
     };
 }
 
@@ -456,7 +454,7 @@ async function update({plan, group}, request) {
         await customFields.storeNew({client, group}, request.customFields);
 
         const updatedResult = await updateData({plan, group, client}, request);
-        if (updatedResult.type !== RESULT_UPDATED) {
+        if (updatedResult.type !== commandResult.UPDATED) {
             return updatedResult;
         }
 
@@ -515,12 +513,12 @@ async function update({plan, group}, request) {
         }
 
         const createdResult = await createData({plan, group, client}, request);
-        if (createdResult.type !== RESULT_CREATED) {
+        if (createdResult.type !== commandResult.CREATED) {
             return createdResult;
         }
 
         return {
-            type: RESULT_UPDATED,
+            type: commandResult.UPDATED,
             data: mergeListsWithoutPage(updatedResult.data, createdResult.data),
         };
     });
@@ -565,7 +563,7 @@ async function deleteRecords({plan, group}, request) {
             requiredPermissions
         ))
     ) {
-        return {type: RESULT_FORBIDDEN};
+        return {type: commandResult.FORBIDDEN};
     }
 
     await db.transactional(async function (client) {
@@ -577,14 +575,10 @@ async function deleteRecords({plan, group}, request) {
         );
     });
 
-    return {type: RESULT_DELETED};
+    return {type: commandResult.DELETED};
 }
 
 module.exports = {
-    RESULT_FORBIDDEN,
-    RESULT_CREATED,
-    RESULT_UPDATED,
-    RESULT_DELETED,
     list,
     create,
     update,

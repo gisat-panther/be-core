@@ -4,8 +4,8 @@ const qb = require('@imatic/pgqb');
 const SQL = require('sql-template-strings');
 const cf = require('./custom-fields');
 const schemaUtil = require('./schema-util');
-const {HttpError} = require('../error');
 const apiUtil = require('../../util/api');
+const commandResult = require('./result');
 
 const mapWithKey = _.map.convert({cap: false});
 const mapValuesWithKey = _.mapValues.convert({cap: false});
@@ -360,64 +360,59 @@ function groupColumns({plan, group, customFields}) {
 
 /**
  * @param {{plan: import('./compiler').Plan, group: string}} context
+ * @param {object} request
  */
-function modifyTranslationMiddleware({plan, group}) {
-    return async function (request, response, next) {
-        const columns = groupColumns({
-            plan,
-            group,
-            customFields: request.customFields,
-        });
+async function modifyTranslationRequest({plan, group}, request) {
+    const columns = groupColumns({
+        plan,
+        group,
+        customFields: request.customFields,
+    });
 
-        const TranslationSchema = Joi.object().keys(
-            _.omitBy(
-                _.isNil,
-                _.mapValues((col) => col.schema, columns)
-            )
-        );
+    const TranslationSchema = Joi.object().keys(
+        _.omitBy(
+            _.isNil,
+            _.mapValues((col) => col.schema, columns)
+        )
+    );
 
-        const RecordSchema = Joi.object().keys({
-            translations: Joi.object().pattern(LocaleSchema, TranslationSchema),
-        });
-        const TypeSchema = Joi.array().items(RecordSchema);
-        const BodySchema = Joi.object().keys({
-            data: Joi.object().keys(_.mapValues(() => TypeSchema, plan[group])),
-        });
+    const RecordSchema = Joi.object().keys({
+        translations: Joi.object().pattern(LocaleSchema, TranslationSchema),
+    });
+    const TypeSchema = Joi.array().items(RecordSchema);
+    const BodySchema = Joi.object().keys({
+        data: Joi.object().keys(_.mapValues(() => TypeSchema, plan[group])),
+    });
 
-        const validationResult = BodySchema.validate(request.body, {
-            abortEarly: false,
-            stripUnknown: true,
-        });
+    const validationResult = BodySchema.validate(request.body, {
+        abortEarly: false,
+        stripUnknown: true,
+    });
+    if (validationResult.error) {
         if (validationResult.error) {
-            if (validationResult.error) {
-                return next(
-                    new HttpError(
-                        400,
-                        apiUtil.createDataErrorObject(validationResult.error)
-                    )
-                );
-            }
+            return {
+                type: commandResult.BAD_REQUEST,
+                data: apiUtil.createDataErrorObject(validationResult.error),
+            };
         }
+    }
 
-        const data = request.parameters.body.data;
-        const resultData = validationResult.value.data;
+    const data = request.parameters.body.data;
+    const resultData = validationResult.value.data;
 
-        const dataWithTranslations = mapValuesWithKey((records, type) => {
-            return mapWithKey((record, index) => {
-                const translations = _.getOr(
-                    {},
-                    [type, index, 'translations'],
-                    resultData
-                );
+    const dataWithTranslations = mapValuesWithKey((records, type) => {
+        return mapWithKey((record, index) => {
+            const translations = _.getOr(
+                {},
+                [type, index, 'translations'],
+                resultData
+            );
 
-                return _.set('translations', translations, record);
-            }, records);
-        }, data);
+            return _.set('translations', translations, record);
+        }, records);
+    }, data);
 
-        request.parameters.body.data = dataWithTranslations;
-
-        next();
-    };
+    request.parameters.body.data = dataWithTranslations;
 }
 
 module.exports = {
@@ -428,6 +423,6 @@ module.exports = {
     formatRow,
     lastChangeExprs,
     sortExpr,
-    modifyTranslationMiddleware,
+    modifyTranslationRequest,
     filterFieldExpr,
 };

@@ -1,14 +1,9 @@
-const parameters = require('../../middlewares/parameters');
 const userMiddleware = require('../../middlewares/user');
 const authMiddleware = require('../../middlewares/auth');
 const autoLoginMiddleware = require('../../middlewares/auto-login');
-const createDependentTypeMiddleware = require('./middlewares/dependentType');
 const hashMiddleware = require('../../middlewares/hash');
 const _ = require('lodash/fp');
-const schema = require('./schema');
-const translation = require('./translation');
-const customFields = require('./custom-fields');
-const api = require('./api');
+const commandResult = require('./result');
 
 const forEachWithKey = _.forEach.convert({cap: false});
 
@@ -19,13 +14,17 @@ const forEachWithKey = _.forEach.convert({cap: false});
  */
 function resultToResponse(result) {
     switch (result.type) {
-        case api.RESULT_CREATED:
-            return {status: 201, body: result.data};
-        case api.RESULT_UPDATED:
+        case commandResult.SUCCESS:
             return {status: 200, body: result.data};
-        case api.RESULT_DELETED:
+        case commandResult.CREATED:
+            return {status: 201, body: result.data};
+        case commandResult.UPDATED:
+            return {status: 200, body: result.data};
+        case commandResult.DELETED:
             return {status: 200, body: {}};
-        case api.RESULT_FORBIDDEN:
+        case commandResult.BAD_REQUEST:
+            return {status: 400, body: result.data};
+        case commandResult.FORBIDDEN:
             return {status: 403, body: {success: false}};
     }
 
@@ -39,10 +38,11 @@ function sendResponse(responseData, response) {
 /**
  * @param {import('./compiler').Plan} plan
  * @param {string} group
+ * @param {Object<string, import('./command').Command>} commands
  *
  * @returns {import('../routing').RouteData[]}
  */
-function createGroup(plan, group) {
+function createGroup(plan, group, commands) {
     return [
         {
             path: `/rest/${group}/filtered/:types`,
@@ -50,23 +50,20 @@ function createGroup(plan, group) {
             swagger: {
                 tags: [group],
             },
-            parameters: {
-                path: schema.listPath(plan, group),
-                body: schema.listBody(plan, group),
-            },
+            parameters: commands.list.parameters,
             responses: {200: {}},
             middlewares: [
-                customFields.selectCustomFieldMiddleware({group}),
-                parameters,
                 userMiddleware,
                 autoLoginMiddleware,
                 authMiddleware,
                 hashMiddleware,
             ],
             handler: async function (request, response) {
-                response
-                    .status(200)
-                    .json(await api.list({plan, group}, request));
+                const responseData = resultToResponse(
+                    await commands.list.handler(request)
+                );
+
+                sendResponse(responseData, response);
             },
         },
         {
@@ -75,21 +72,12 @@ function createGroup(plan, group) {
             swagger: {
                 tags: [group],
             },
-            parameters: {
-                body: schema.createBody(plan, group),
-            },
+            parameters: commands.create.parameters,
             responses: {201: {}},
-            middlewares: [
-                parameters,
-                userMiddleware,
-                autoLoginMiddleware,
-                authMiddleware,
-                customFields.modifyCustomFieldMiddleware({plan, group}),
-                translation.modifyTranslationMiddleware({plan, group}),
-            ],
+            middlewares: [userMiddleware, autoLoginMiddleware, authMiddleware],
             handler: async function (request, response) {
                 const responseData = resultToResponse(
-                    await api.create({plan, group}, request)
+                    await commands.create.handler(request)
                 );
 
                 sendResponse(responseData, response);
@@ -101,22 +89,12 @@ function createGroup(plan, group) {
             swagger: {
                 tags: [group],
             },
-            parameters: {
-                body: schema.updateBody(plan, group),
-            },
+            parameters: commands.update.parameters,
             responses: {200: {}},
-            middlewares: [
-                parameters,
-                userMiddleware,
-                autoLoginMiddleware,
-                authMiddleware,
-                createDependentTypeMiddleware({plan, group}),
-                customFields.modifyCustomFieldMiddleware({plan, group}),
-                translation.modifyTranslationMiddleware({plan, group}),
-            ],
+            middlewares: [userMiddleware, autoLoginMiddleware, authMiddleware],
             handler: async function (request, response) {
                 const responseData = resultToResponse(
-                    await api.update({plan, group}, request)
+                    await commands.update.handler(request)
                 );
 
                 sendResponse(responseData, response);
@@ -128,17 +106,12 @@ function createGroup(plan, group) {
             swagger: {
                 tags: [group],
             },
-            parameters: {body: schema.deleteBody(plan, group)},
+            parameters: commands.delete.parameters,
             responses: {200: {}},
-            middlewares: [
-                parameters,
-                userMiddleware,
-                autoLoginMiddleware,
-                authMiddleware,
-            ],
+            middlewares: [userMiddleware, autoLoginMiddleware, authMiddleware],
             handler: async function (request, response) {
                 const responseData = resultToResponse(
-                    await api.deleteRecords({plan, group}, request)
+                    await commands.delete.handler(request)
                 );
 
                 sendResponse(responseData, response);
@@ -149,14 +122,15 @@ function createGroup(plan, group) {
 
 /**
  * @param {import('./compiler').Plan} plan
+ * @param {Object<string, Object<string, import('./command').Command>>}
  *
  * @returns {import('../routing').RouteData[]}
  */
-function createAll(plan) {
+function createAll(plan, commands) {
     const handlers = [];
 
     forEachWithKey(function (g, group) {
-        handlers.push(...createGroup(plan, group));
+        handlers.push(...createGroup(plan, group, commands[group]));
     }, plan);
 
     return handlers;
