@@ -1,0 +1,37 @@
+#!/usr/bin/env node
+
+/**
+ * This script loads fixtures for application.
+ *
+ * Usage: load-fixtures-for-application <applicationName>
+ */
+
+const { spawn } = require('child_process');
+const { pgConfig, externalApplications } = require('../config');
+const fs = require('fs');
+
+if (process.argv.length < 3) {
+    throw new Error('Script expects exact 1 parameters - <applicationName>');
+}
+
+if (!fs.existsSync(`${externalApplications}/${process.argv[2]}`)) {
+    throw new Error(`Application ${process.argv[2]} not found!`);
+}
+
+if (!fs.existsSync(`${externalApplications}/${process.argv[2]}/fixtures.sql`)) {
+    throw new Error(`Application ${process.argv[2]} has no fixtures!`);
+}
+
+const options = {
+    '-h': pgConfig.normal.host,
+    '-U': pgConfig.normal.user,
+    '-f': `${externalApplications}/${process.argv[2]}/fixtures.sql`,
+};
+
+const args = [...Object.entries(options).flat(), pgConfig.normal.database];
+
+spawn('psql', args, {
+    env: { PATH: process.env.PATH, PGPASSWORD: pgConfig.normal.password },
+    stdio: 'inherit',
+    shell: true,
+});
