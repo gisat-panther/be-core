@@ -1,5 +1,5 @@
 const Joi = require('joi');
-const uuid = require('../../uuid');
+const uuid = require('../../src/uuid');
 
 module.exports = {
     specific: {

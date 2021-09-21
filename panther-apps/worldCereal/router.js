@@ -1,7 +1,7 @@
-const userMiddleware = require('../../middlewares/user');
-const authMiddleware = require('../../middlewares/auth');
-const autoLoginMiddleware = require('../../middlewares/auto-login');
-const autoLoginKongHqMiddleware = require('../../middlewares/auto-login-konghq');
+const userMiddleware = require('../../src/middlewares/user');
+const authMiddleware = require('../../src/middlewares/auth');
+const autoLoginMiddleware = require('../../src/middlewares/auto-login');
+const autoLoginKongHqMiddleware = require('../../src/middlewares/auto-login-konghq');
 
 const product = require('./product');
 const user = require('./user');

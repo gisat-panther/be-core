@@ -1,7 +1,7 @@
 const uuidByString = require('uuid-by-string');
 
-const result = require('../../../../src/modules/rest/result');
-const handler = require('../../../modules/rest/handler');
+const result = require('../../../src/modules/rest/result');
+const handler = require('../../../src/modules/rest/handler');
 
 function getKeyByProductId(productMetadata) {
     return uuidByString(productMetadata.id)

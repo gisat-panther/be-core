@@ -1,8 +1,6 @@
 const SQL = require('sql-template-strings');
 
-const db = require('../../../db');
-
-// const GUEST_GROUP_KEY = '52ddabec-d01a-49a0-bb4d-5ff931bd346e';
+const db = require('../../../src/db');
 
 function getUserGroups(user) {
     return db
