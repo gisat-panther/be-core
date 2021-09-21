@@ -144,9 +144,7 @@ describe('modules/retst/handler', function () {
         });
 
         assert.isObject(res);
-        assert.deepStrictEqual(res, {
-            type: result.CREATED
-        });
+        assert.equal(res.type, result.CREATED);
     });
 
     it('update', async function () {
