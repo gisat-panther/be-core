@@ -1,0 +1,1 @@
+ALTER TABLE specific."worldCerealProductMetadata" ADD PRIMARY KEY (key);
