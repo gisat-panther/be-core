@@ -6,6 +6,38 @@ const fn = require('../../fn');
 
 const flatMapWithKey = _.flatMap.convert({cap: false});
 
+const PERMISSION_SOURCE_OWNER = 'owner';
+
+/**
+ * @param {number} eventId
+ * @param {string[]} tables
+ *
+ * @returns {import('@imatic/pgqb').Sql}
+ */
+function ownerChangesSinceQuery(eventId, tables) {
+    return qb.merge(
+        qb.select([
+            '"la"."event_id"',
+            '"la"."schema_name"',
+            '"la"."table_name"',
+            '"la"."action"',
+            '"la"."row_data"',
+        ]),
+        qb.from('"audit"."logged_actions"', '"la"'),
+        qb.where(
+            qb.expr.and(
+                qb.expr.gt('"la"."event_id"', qb.val.inlineParam(eventId)),
+                qb.expr.neq('"la"."action"', qb.val.inlineParam('U')),
+                qb.expr.neq('"la"."action"', qb.val.inlineParam('I')),
+                qb.expr.in(
+                    '"la"."table_name"',
+                    tables.map((t) => qb.val.inlineParam(t))
+                )
+            )
+        )
+    );
+}
+
 /**
  * @param {number} eventId
  *
@@ -328,7 +360,7 @@ async function ensureGroups(client, groups) {
 /**
  * @param {import('pg').Client} client
  */
-async function clearGroupPermissions(client) {
+async function clearStalePermissions(client) {
     const inactiveSqlMap = qb.merge(
         qb.select(['name', 'config_hash']),
         qb.from('public.generatedPermissions'),
@@ -345,16 +377,76 @@ async function clearGroupPermissions(client) {
         )
     );
 
-    const stalePermissionsSql = `DELETE FROM "user"."groupPermissions"
+    const staleUserPermissionsSql = `DELETE FROM "user"."userPermissions"
+WHERE
+  ARRAY_LENGTH("permissionSources", 1) IS NULL`;
+    const staleGroupPermissionsSql = `DELETE FROM "user"."groupPermissions"
 WHERE
   ARRAY_LENGTH("permissionSources", 1) IS NULL`;
 
     const staleGeneratedPermissionsSql = `DELETE FROM "public"."generatedPermissions" WHERE "active" = false`;
 
     await Promise.all([
-        client.query(stalePermissionsSql),
+        client.query(staleUserPermissionsSql),
+        client.query(staleGroupPermissionsSql),
         client.query(staleGeneratedPermissionsSql),
     ]);
+}
+
+/**
+ * @param {import('pg').Client} client
+ * @param {string} userKey
+ * @param {Promise<string[]>} permissionKeys
+ * @param {string} permissionSource
+ */
+async function ensureUserPermissions(
+    client,
+    userKey,
+    permissionKeys,
+    permissionSource
+) {
+    if (userKey == null || permissionKeys.length === 0) {
+        return;
+    }
+
+    const values = permissionKeys.map((pk) => [
+        qb.val.inlineParam(userKey),
+        qb.val.inlineParam(pk),
+        qb.val.inlineParam([permissionSource]),
+    ]);
+
+    const sqlMap = qb.merge(
+        qb.insertInto('"user"."userPermissions"'),
+        qb.columns(['"userKey"', '"permissionKey"', '"permissionSources"']),
+        qb.values(values),
+        qb.onConflict(['"userKey"', '"permissionKey"']),
+        qb.doUpdate([
+            qb.val.raw(
+                SQL`"permissionSources" = (SELECT ARRAY(SELECT DISTINCT "e" FROM UNNEST(ARRAY_APPEND("user"."userPermissions"."permissionSources", ${permissionSource})) "e"))`
+            ),
+        ])
+    );
+
+    await client.query(qb.toSql(sqlMap));
+}
+
+/**
+ * @param {import('pg').Client} client
+ * @param {string} resourceGroup
+ * @param {string} resourceType
+ * @param {string} resourceKey
+ *
+ * @returns {Promise}
+ */
+async function deletePermissions(
+    client,
+    resourceGroup,
+    resourceType,
+    resourceKey
+) {
+    await client.query(
+        SQL`DELETE FROM "user"."permissions" WHERE "resourceGroup" = ${resourceGroup} AND "resourceType" = ${resourceType} AND "resourceKey" = ${resourceKey}`
+    );
 }
 
 /**
@@ -885,16 +977,91 @@ async function manageGroups2({client}, {permission, name}) {
 }
 
 /**
+ * @param {{client: import('pg').Client, group: string, type: string}} context
+ * @param {string} userKey
+ * @param {string[]} typeKeys
+ */
+async function ensureOwnerPermissions(
+    {client, group, type},
+    userKey,
+    typeKeys
+) {
+    const requiredPermissions = ['view', 'update', 'delete'];
+
+    const permissionKeys = await ensurePermissions(
+        client,
+        typeKeys.flatMap((key) =>
+            requiredPermissions.map((p) => ({
+                resourceGroup: group,
+                resourceType: type,
+                resourceKey: key,
+                permission: p,
+            }))
+        )
+    );
+
+    await ensureUserPermissions(
+        client,
+        userKey,
+        permissionKeys,
+        PERMISSION_SOURCE_OWNER
+    );
+}
+
+/**
+ * @param {{client: import('pg').Client,  tableToType: Object<string, Object<string, string>>}} context
+ * @param {{permission: {hash: string}, name: string}} params
+ */
+async function manageOwners({client, tableToType}, {name}) {
+    const eventId = await lastPermissionEvent(client, name);
+    const tables = Object.values(tableToType).flatMap((v) => Object.keys(v));
+    for await (let action of runAuditQuery(
+        client,
+        ownerChangesSinceQuery(eventId, tables)
+    )) {
+        if (
+            (tableToType[action.schema_name] || {})[action.table_name] == null
+        ) {
+            await updatePermissionProgress(client, name, action.event_id);
+            continue; // not managed type
+        }
+
+        const actionType = _.getOr(
+            action.table_name,
+            [action.schema_name, action.table_name],
+            tableToType
+        );
+        switch (action.action) {
+            // 'I' is called on creation so that response contains proper permissions
+            case 'D':
+                {
+                    await deletePermissions(
+                        client,
+                        action.schema_name,
+                        actionType,
+                        action.row_data.key
+                    );
+                }
+                break;
+        }
+        await updatePermissionProgress(client, name, action.event_id);
+    }
+}
+
+/**
  * @param {{plan: import('../rest/compiler').Plan, client: import('pg').Client}} context
  *
  * @returns {Promise}
  */
 async function process({plan, generatedPermissions, client}) {
+    const allPermissions = Object.assign({}, generatedPermissions, {
+        [PERMISSION_SOURCE_OWNER]: {hash: 'v1'},
+    });
     await db.obtainPermissionsLock(client);
     try {
         const tableToType = createTableToTypeMapping(plan);
-        await initPermissions(client, generatedPermissions);
-        for (let [name, permission] of Object.entries(generatedPermissions)) {
+        await initPermissions(client, allPermissions);
+        for (let [name, permission] of Object.entries(allPermissions)) {
             await db.transaction(client, async function (client) {
                 if (
                     permission.targets != null &&
@@ -915,7 +1082,14 @@ async function process({plan, generatedPermissions, client}) {
                     await manageGroups2({client}, {permission, name});
                 }
 
-                await clearGroupPermissions(client);
+                if (name === PERMISSION_SOURCE_OWNER) {
+                    await manageOwners(
+                        {client, tableToType},
+                        {permission, name}
+                    );
+                }
+
+                await clearStalePermissions(client);
             });
         }
     } finally {
@@ -954,4 +1128,5 @@ async function run({plan, generatedPermissions}) {
 module.exports = {
     run,
     runOnce,
+    ensureOwnerPermissions,
 };
