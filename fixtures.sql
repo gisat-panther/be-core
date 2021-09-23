@@ -27,7 +27,8 @@ TRUNCATE
     "relations"."spatialDataSourceRelation",
     "specific"."lpisChangeCase",
     "public"."cache",
-    "public"."translations"
+    "public"."translations",
+    "audit"."logged_actions"
     CASCADE;
 
 INSERT INTO "user"."users"
