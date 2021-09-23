@@ -8,6 +8,7 @@ const db = require('../../db');
 const permission = require('../../permission');
 const schema = require('./schema');
 const commandResult = require('./result');
+const p = require('../permissions/index');
 
 const mapWithKey = _.map.convert({cap: false});
 const mapValuesWithKey = _.mapValues.convert({cap: false});
@@ -202,6 +203,12 @@ async function createData({plan, group, client}, request) {
                 q.create({plan, group, type, client}, records),
                 translation.updateTranslations({client, group, type}, records),
             ]);
+
+            await p.ensureOwnerPermissions(
+                {client, group, type},
+                request.user.realKey,
+                createdKeys
+            );
 
             const createdRecords = await q.list(
                 {plan, group, type, client, user: request.user},
