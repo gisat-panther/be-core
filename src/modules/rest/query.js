@@ -378,108 +378,40 @@ function listPermissionQuery({user, group, type}, alias) {
         return {};
     }
 
-    const userExpr = qb.expr.or(
-        qb.expr.exists(
-            qb.merge(
-                qb.select([qb.val.raw('1')]),
-                qb.from('"user"."userPermissions"', '"up"'),
-                qb.joins(
-                    qb.join(
-                        '"user"."permissions"',
-                        '"p"',
-                        qb.expr.eq('"p"."key"', '"up"."permissionKey"')
-                    )
-                ),
-                qb.where(
-                    qb.val.raw(
-                        SQL`"p"."resourceGroup" = ${group} AND "p"."resourceType" = ${type} AND "p"."permission" = 'view' AND ("p"."resourceKey" IS NULL OR "p"."resourceKey" = `
-                            .append(`"${alias}"."key"::text`)
-                            .append(SQL`) AND "up"."userKey" = ${user.realKey}`)
-                    )
-                )
+    const userExpr = qb.val.raw(
+        SQL`(EXISTS(
+        SELECT 1
+        FROM "user"."userPermissions" "up"
+        JOIN "user"."permissions" "p" ON "p"."key" = "up"."permissionKey"
+        WHERE
+          "p"."resourceGroup" = ${group} AND "p"."resourceType" = ${type} AND "p"."permission" = 'view' AND ("p"."resourceKey" IS NULL OR "p"."resourceKey" = `
+            .append(`"${alias}"."key"::text`)
+            .append(
+                SQL`) AND "up"."userKey" = ${user.realKey})
+        OR
+        EXISTS(
+            SELECT 1
+            FROM "user"."userGroups" "ug"
+            JOIN "user"."groupPermissions" "gp" ON "gp"."groupKey" = "ug"."groupKey"
+            JOIN "user"."permissions" "p" ON "p"."key" = "gp"."permissionKey"
+            WHERE "p"."resourceGroup" = ${group} AND "p"."resourceType" = ${type} AND "p"."permission" = 'view' AND ("p"."resourceKey" IS NULL OR "p"."resourceKey" = `
             )
-        ),
-        qb.expr.exists(
-            qb.merge(
-                qb.select([qb.val.raw('1')]),
-                qb.from('"user"."userGroups"', '"ug"'),
-                qb.joins(
-                    qb.join(
-                        '"user"."groupPermissions"',
-                        '"gp"',
-                        qb.expr.eq('"gp"."groupKey"', '"ug"."groupKey"')
-                    ),
-                    qb.join(
-                        '"user"."permissions"',
-                        '"p"',
-                        qb.expr.eq('"p"."key"', '"gp"."permissionKey"')
-                    )
-                ),
-                qb.where(
-                    qb.expr.and(
-                        qb.expr.eq(
-                            '"p"."resourceGroup"',
-                            qb.val.inlineParam(group)
-                        ),
-                        qb.expr.eq(
-                            '"p"."resourceType"',
-                            qb.val.inlineParam(type)
-                        ),
-                        qb.expr.eq(
-                            '"p"."permission"',
-                            qb.val.inlineParam('view')
-                        ),
-                        qb.expr.or(
-                            qb.expr.null('"p"."resourceKey"'),
-                            qb.expr.eq(
-                                '"p"."resourceKey"',
-                                qb.val.raw(`"${alias}"."key"::text`)
-                            )
-                        ),
-                        qb.expr.eq(
-                            '"ug"."userKey"',
-                            qb.val.inlineParam(user.realKey)
-                        )
-                    )
-                )
-            )
-        )
+            .append(`"${alias}"."key"::text`)
+            .append(SQL`) AND "ug"."userKey" = ${user.realKey}))`)
     );
 
     if (user.hash == null) {
         return qb.where(userExpr);
     }
 
-    const hashExpr = qb.expr.exists(
-        qb.merge(
-            qb.select([qb.val.raw('1')]),
-            qb.from('"user"."hashPermissions"', '"hp"'),
-            qb.joins(
-                qb.join(
-                    '"user"."permissions"',
-                    '"p"',
-                    qb.expr.eq('"p"."key"', '"hp"."permissionKey"')
-                )
-            ),
-            qb.where(
-                qb.expr.and(
-                    qb.expr.eq(
-                        '"p"."resourceGroup"',
-                        qb.val.inlineParam(group)
-                    ),
-                    qb.expr.eq('"p"."resourceType"', qb.val.inlineParam(type)),
-                    qb.expr.eq('"p"."permission"', qb.val.inlineParam('view')),
-                    qb.expr.or(
-                        qb.expr.null('"p"."resourceKey"'),
-                        qb.expr.eq(
-                            '"p"."resourceKey"',
-                            qb.val.raw(`"${alias}"."key"::text`)
-                        )
-                    ),
-                    qb.expr.eq('"hp"."hashKey"', qb.val.inlineParam(user.hash))
-                )
-            )
-        )
+    const hashExpr = qb.val.raw(
+        SQL`EXISTS(SELECT 1
+      FROM "user"."hashPermissions" "hp"
+      JOIN "user"."permissions" "p" ON "p"."key" = "hp"."permissionKey"
+      WHERE
+        "p"."resourceGroup" = ${group} AND "p"."resourceType" = ${type} AND "p"."permission" = 'view' AND ("p"."resourceKey" IS NULL OR "p"."resourceKey" = `
+            .append(`"${alias}"."key"::text`)
+            .append(SQL`) AND "hp"."hashKey" = ${user.hash})`)
     );
 
     return qb.where(qb.expr.or(userExpr, hashExpr));
