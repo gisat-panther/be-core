@@ -111,5 +111,20 @@ module.exports = [
         ],
         responses: { 200: {} },
         handler: user.remove
+    },
+    {
+        path: '/rest/project/worldCereal/user/sessionStart',
+        method: 'get',
+        swagger: {
+            tags: ['project', 'worldCereal', 'user']
+        },
+        middlewares: [
+            userMiddleware,
+            autoLoginKongHqMiddleware,
+            autoLoginMiddleware,
+            authMiddleware,
+        ],
+        responses: { 200: {} },
+        handler: user.sessionStart
     }
 ];
