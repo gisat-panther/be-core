@@ -33,6 +33,7 @@
     "pg": "^8.7.1",
     "pg-hstore": "^2.3.4",
     "postgrator": "^4.2.0",
+    "redis": "^3.1.2",
     "sql-template-strings": "^2.2.2",
     "swagger-ui-express": "^4.1.6",
     "uuid": "^8.3.2",
