@@ -26,7 +26,6 @@ assert.deepStrictEqual = function (actual, expected, ...more) {
 };
 
 const config = {
-    spec: './tests/**/*.js',
 };
 
 module.exports = config;

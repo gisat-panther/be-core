@@ -64,12 +64,13 @@
     "start": "node src/server.js",
     "permissions:start": "node src/permissions.js",
     "start:watch": "nodemon src/server.js",
-    "test": "eslint src/ && eslint tests/ && ./bin/load-fixtures && mocha -b --full-trace -t 60000 && ./bin/check-indexes && ./bin/check-custom-columns && ./bin/check-columns",
+    "test": "eslint src/ && eslint tests/ && ./bin/load-fixtures && mocha -b --full-trace -t 60000 --exit ./tests/**/*.js && ./bin/check-indexes && ./bin/check-custom-columns && ./bin/check-columns",
     "test:wait": "wait-port -t 30000 localhost:9850 && npm run test",
     "test:watch": "npm-watch test:wait",
     "db:migrations:create": "version=$(date +%Y%m%d%H%M) && touch \"migrations/${version}.do.sql\" && touch \"migrations/${version}.undo.sql\"",
     "db:start": "docker run -it --rm -p 5432:5432/tcp -e POSTGRES_PASSWORD=postgres -e TZ=Europe/Prague gisat/postgis:13",
     "load-performance-fixtures": "./bin/load-fixtures && ./bin/create-all-permissions && ./bin/assign-all-permissions-to-user 2d069e3a-f77f-4a1f-aeda-50fd06c8c35d && ./bin/load-performance-fixtures",
-    "create-all-permissions-for-guest": "./bin/create-all-permissions && ./bin/assign-all-permissions-to-group 52ddabec-d01a-49a0-bb4d-5ff931bd346e"
+    "create-all-permissions-for-guest": "./bin/create-all-permissions && ./bin/assign-all-permissions-to-group 52ddabec-d01a-49a0-bb4d-5ff931bd346e",
+    "test:worldCereal": "eslint ./panther-apps/worldCereal/ && ./bin/load-fixtures-for-application worldCereal && mocha -b --full-trace --exit ./panther-apps/worldCereal/tests/**/*.js"
   }
 }
