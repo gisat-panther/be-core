@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+
+/**
+This script is used to create all data necessary for application
+*/
+
+const { execSync } = require('child_process');
+
+const config = require('../../../config');
+
+console.log(
+    execSync(
+        `./bin/load-fixtures-for-application worldCereal`
+    ).toString()
+);
+
+console.log(
+    execSync(
+        `ogr2ogr -f PostgreSQL \
+        PG:"\
+        dbname='${config.pgConfig.normal.database}' \
+        host='${config.pgConfig.normal.host}' \
+        port='${config.pgConfig.normal.port || 5432}' \
+        user='${config.pgConfig.normal.user}' \
+        password='${config.pgConfig.normal.password}'" \
+        -overwrite \
+        -lco GEOMETRY_NAME=geom \
+        ./panther-apps/worldCereal/assets/world_cereal_s2_tiles.gpkg`
+    ).toString()
+)
