@@ -164,8 +164,6 @@ function view(request, response) {
             if (r.type === result.SUCCESS) {
                 const sharedStorageKey = `${request.user.realKey}_products`;
 
-                console.log("####", await shared.get());
-
                 let sentProductKeys = await shared.get(sharedStorageKey) || [];
 
                 let products = r.data.data.worldCerealProductMetadata.map((product) => {
