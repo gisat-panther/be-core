@@ -71,6 +71,6 @@
     "db:start": "docker run -it --rm -p 5432:5432/tcp -e POSTGRES_PASSWORD=postgres -e TZ=Europe/Prague gisat/postgis:13",
     "load-performance-fixtures": "./bin/load-fixtures && ./bin/create-all-permissions && ./bin/assign-all-permissions-to-user 2d069e3a-f77f-4a1f-aeda-50fd06c8c35d && ./bin/load-performance-fixtures",
     "create-all-permissions-for-guest": "./bin/create-all-permissions && ./bin/assign-all-permissions-to-group 52ddabec-d01a-49a0-bb4d-5ff931bd346e",
-    "test:worldCereal": "eslint ./panther-apps/worldCereal/ && ./bin/load-fixtures-for-application worldCereal && mocha -b --full-trace --exit ./panther-apps/worldCereal/tests/**/*.js"
+    "test:worldCereal": "eslint ./panther-apps/worldCereal/ && ./panther-apps/worldCereal/bin/init && mocha -b --full-trace --exit ./panther-apps/worldCereal/tests/**/*.js"
   }
 }
