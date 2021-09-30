@@ -5,6 +5,7 @@ const result = require('../../../src/modules/rest/result');
 const handler = require('../../../src/modules/rest/handler');
 const shared = require('../shared');
 const db = require('../../../src/db');
+const s2tiles = require('../s2tiles');
 
 const GROUPS = {
     worldCerealPublic: "2dbc2120-b826-4649-939b-fff5a4a01866",
@@ -152,13 +153,29 @@ function remove(request, response) {
 }
 
 function view(request, response) {
-    return handler
-        .list('specific', {
-            params: { types: 'worldCerealProductMetadata' },
-            user: request.user,
-            body: {
-                filter: request.body
+    let tiles = [];
+    return Promise
+        .resolve()
+        .then(async () => {
+            if (request.body.bbox) {
+                tiles = await s2tiles.getTilesByBbox(request.body.bbox);
+            } else {
+                tiles = await s2tiles.getTilesAll();
             }
+        })
+        .then(() => {
+            let filter = request.body;
+
+            delete filter.bbox;
+
+            return handler
+                .list('specific', {
+                    params: { types: 'worldCerealProductMetadata' },
+                    user: request.user,
+                    body: {
+                        filter
+                    }
+                })
         })
         .then(async (r) => {
             if (r.type === result.SUCCESS) {
@@ -193,7 +210,7 @@ function view(request, response) {
 
                 response.status(200).send({
                     products,
-                    tiles: []
+                    tiles
                 }
 
                 );
