@@ -21,6 +21,9 @@ const ptr4 = {
 			host: `localhost`
 		}
 	},
+	redisConfig: {
+		host: 'localhost'
+	},
 	pgSchema: {
 		analysis: `analysis`,
 		data: `data`,
