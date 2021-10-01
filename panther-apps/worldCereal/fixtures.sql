@@ -17,7 +17,9 @@ INSERT INTO "user"."userGroups"
     ("userKey", "groupKey")
 VALUES
     ('3fdd158d-4b78-4d11-92c7-403b4adab4d8', '998c5760-e42e-457f-aa6d-247af6352c73'),
-    ('4fc1d704-b2e5-4fb7-839a-5baf3ad494ee', '2597df23-94d9-41e0-91f3-7ea633ae27f2')
+    ('4fc1d704-b2e5-4fb7-839a-5baf3ad494ee', '2597df23-94d9-41e0-91f3-7ea633ae27f2'),
+    ('3fdd158d-4b78-4d11-92c7-403b4adab4d8', '2dbc2120-b826-4649-939b-fff5a4a01866'),
+    ('4fc1d704-b2e5-4fb7-839a-5baf3ad494ee', '2dbc2120-b826-4649-939b-fff5a4a01866')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO "user"."permissions"
