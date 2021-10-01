@@ -1,0 +1,60 @@
+#!/usr/bin/env node
+
+/**
+This script is used to create all data necessary for application
+*/
+
+const USER_KEY = '4fc1d704-b2e5-4fb7-839a-5baf3ad494ee';
+const ADMIN_KEY = '3fdd158d-4b78-4d11-92c7-403b4adab4d8';
+
+const { readFileSync } = require('fs');
+const fetch = require('node-fetch');
+
+const products = JSON.parse(readFileSync('./panther-apps/worldCereal/assets/productMetadata.json'));
+
+const requestOptions = {
+    hostname: "localhost",
+    port: 9850,
+    path: "/rest/project/worldCereal/product",
+    methos: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "X-User-Info": USER_KEY
+    }
+}
+
+async function createProduct(product) {
+    const response = await fetch(
+        'http://localhost:9850/rest/project/worldCereal/product',
+        {
+            method: "POST",
+            body: JSON.stringify(product.data),
+            headers: {
+                "Content-Type": "application/json",
+                "X-User-Info": USER_KEY
+            }
+        }
+    );
+
+    if (response.status === 201) {
+        console.log(`Created!`);
+    } else {
+        console.log(
+            JSON.stringify(
+                await response.json()
+            )
+        );
+    }
+}
+
+async function createProducts() {
+    for (const product of products) {
+        try {
+            await createProduct(product);
+        } catch (error) {
+            console.log(error);
+        }
+    };
+}
+
+createProducts();
