@@ -183,7 +183,11 @@ function view(request, response) {
 
                 let sentProductKeys = await shared.get(sharedStorageKey) || [];
 
-                let products = r.data.data.worldCerealProductMetadata.map((product) => {
+                let filteredProducts = _.filter(r.data.data.worldCerealProductMetadata, (product) => {
+                    return !!(_.intersection(tiles, product.data.tileKeys).length);
+                });
+
+                let products = filteredProducts.map((product) => {
                     if (!sentProductKeys.includes(product.key)) {
                         sentProductKeys.push(product.key);
 
