@@ -1,8 +1,8 @@
 const db = require('../../../src/db');
 
-function getTilesByBbox(bbox) {
+function getTilesByGeometry(geometry) {
     return db
-        .query(`SELECT "tile" FROM "world_cereal_s2_tiles" WHERE geom && ST_GeomFromGeoJSON('${JSON.stringify(bbox)}');`)
+        .query(`SELECT "tile" FROM "world_cereal_s2_tiles" WHERE geom && ST_GeomFromGeoJSON('${JSON.stringify(geometry)}');`)
         .then((pgResult) => {
             return pgResult.rows.map((row) => row.tile);
         })
@@ -17,6 +17,6 @@ function getTilesAll() {
 }
 
 module.exports = {
-    getTilesByBbox,
+    getTilesByGeometry,
     getTilesAll
 }

@@ -37,7 +37,7 @@ function create(request, response) {
                             key: getKeyByProductId(request.body),
                             data: {
                                 tileKeys: request.body.tiles.map((tile) => tile.tile),
-                                bbox: request.body.geometry,
+                                geometry: request.body.geometry,
                                 data: request.body
                             }
                         }
@@ -86,7 +86,7 @@ function update(request, response) {
                             key: getKeyByProductId(request.body),
                             data: {
                                 tileKeys: request.body.tiles.map((tile) => tile.tile),
-                                bbox: request.body.geometry,
+                                geometry: request.body.geometry,
                                 data: request.body
                             }
                         }
@@ -157,8 +157,8 @@ function view(request, response) {
     return Promise
         .resolve()
         .then(async () => {
-            if (request.body.bbox) {
-                tiles = await s2tiles.getTilesByBbox(request.body.bbox);
+            if (request.body.geometry) {
+                tiles = await s2tiles.getTilesByGeometry(request.body.geometry);
             } else {
                 tiles = await s2tiles.getTilesAll();
             }
@@ -166,7 +166,7 @@ function view(request, response) {
         .then(() => {
             let filter = request.body;
 
-            delete filter.bbox;
+            delete filter.geometry;
 
             return handler
                 .list('specific', {
@@ -221,10 +221,12 @@ function view(request, response) {
             } else if (r.type === result.FORBIDDEN) {
                 response.status(403).end();
             } else {
+                console.log(JSON.stringify(r));
                 response.status(500).end();
             }
         })
         .catch((error) => {
+            console.log(error);
             response.status(500).end();
         })
 }

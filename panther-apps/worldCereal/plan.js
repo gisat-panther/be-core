@@ -11,7 +11,7 @@ module.exports = {
                     columns: [
                         'key',
                         'tileKeys',
-                        'bbox',
+                        'geometry',
                         'data'
                     ],
                 },
@@ -19,7 +19,7 @@ module.exports = {
                     columns: [
                         'key',
                         'tileKeys',
-                        'bbox',
+                        'geometry',
                         'data'
                     ],
                 },
@@ -27,7 +27,7 @@ module.exports = {
                     columns: [
                         'key',
                         'tileKeys',
-                        'bbox',
+                        'geometry',
                         'data'
                     ],
                 },
@@ -41,11 +41,11 @@ module.exports = {
                     defaultValue: null,
                     schema: Joi.array().items(Joi.string()).allow(null)
                 },
-                bbox: {
+                geometry: {
                     defaultValue: null,
                     schema: Joi.object().allow(null),
                     selectExpr: function ({alias}) {
-                        return qb.val.raw(`ST_AsGeoJSON(${alias}."bbox")::JSON AS "bbox"`);
+                        return qb.val.raw(`ST_AsGeoJSON(${alias}."geometry")::JSON AS "geometry"`);
                     },
                     modifyExpr: function ({value}) {
                         if (value == null) {
