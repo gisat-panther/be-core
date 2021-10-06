@@ -1,6 +1,7 @@
 const chai = require('chai');
 const { assert } = chai;
 const fetch = require('node-fetch');
+const { URL } = require('url');
 
 const db = require('../../../../src/db');
 const product = require('../../product');
@@ -85,7 +86,7 @@ const exampleUsers = {
 }
 
 function url(path) {
-    return 'http://localhost:' + config.masterPort + path;
+    return new URL(`http://localhost:${config.masterPort}${path}`);
 }
 
 /**
@@ -289,12 +290,15 @@ describe("Workflow", () => {
             headers: new fetch.Headers({
                 "X-User-Info": exampleUsers.user2.key,
                 "Content-Type": "application/json"
-            }),
-            body: JSON.stringify(exampleProduct)
+            })
         };
 
+        const completeUrl = url("/rest/project/worldCereal/product");
+        
+        completeUrl.searchParams.append('productId', exampleProduct.id)
+
         const response = await fetch(
-            url("/rest/project/worldCereal/product"),
+            completeUrl.href,
             request
         );
 
@@ -307,12 +311,15 @@ describe("Workflow", () => {
             headers: new fetch.Headers({
                 "X-User-Info": exampleUsers.user1.key,
                 "Content-Type": "application/json"
-            }),
-            body: JSON.stringify(exampleProduct)
+            })
         };
 
+        const completeUrl = url("/rest/project/worldCereal/product");
+        
+        completeUrl.searchParams.append('productId', exampleProduct.id)
+
         const response = await fetch(
-            url("/rest/project/worldCereal/product"),
+            completeUrl.href,
             request
         );
 
@@ -325,12 +332,15 @@ describe("Workflow", () => {
             headers: new fetch.Headers({
                 "X-User-Info": USER.admin,
                 "Content-Type": "application/json"
-            }),
-            body: JSON.stringify({ key: exampleUsers.user1.key })
+            })
         };
 
+        const completeUrl = url("/rest/project/worldCereal/user");
+        
+        completeUrl.searchParams.append('userKey', exampleUsers.user1.key)
+
         const response = await fetch(
-            url("/rest/project/worldCereal/user"),
+            completeUrl.href,
             request
         );
 
@@ -343,12 +353,15 @@ describe("Workflow", () => {
             headers: new fetch.Headers({
                 "X-User-Info": USER.admin,
                 "Content-Type": "application/json"
-            }),
-            body: JSON.stringify({ key: exampleUsers.user2.key })
+            })
         };
 
+        const completeUrl = url("/rest/project/worldCereal/user");
+        
+        completeUrl.searchParams.append('userKey', exampleUsers.user2.key)
+
         const response = await fetch(
-            url("/rest/project/worldCereal/user"),
+            completeUrl.href,
             request
         );
 

@@ -80,7 +80,7 @@ function remove(request, response) {
             user: request.user,
             body: {
                 data: {
-                    users: [request.body]
+                    users: [{key: request.query.userKey}]
                 }
             }
         })
