@@ -193,6 +193,23 @@ describe("Workflow", () => {
         assert.strictEqual(response.status, 201);
     });
 
+    it("First regular user starts session", async () => {
+        const request = {
+            method: "GET",
+            headers: new fetch.Headers({
+                "X-User-Info": exampleUsers.user1.key,
+                "Content-Type": "application/json"
+            })
+        };
+
+        const response = await fetch(
+            url("/rest/project/worldCereal/user/sessionStart"),
+            request
+        );
+
+        assert.strictEqual(response.status, 200);
+    })
+
     it("First regular user obtain its own product", async () => {
         const request = {
             method: "POST",
@@ -216,6 +233,23 @@ describe("Workflow", () => {
 
         assert.strictEqual(data.products[0].key, product.getKeyByProductId(exampleProduct));
     });
+
+    it("Second regular user starts session", async () => {
+        const request = {
+            method: "GET",
+            headers: new fetch.Headers({
+                "X-User-Info": exampleUsers.user2.key,
+                "Content-Type": "application/json"
+            })
+        };
+
+        const response = await fetch(
+            url("/rest/project/worldCereal/user/sessionStart"),
+            request
+        );
+
+        assert.strictEqual(response.status, 200);
+    })
 
     it("Second regular user fail to obtain private product of first regular user", async () => {
         const request = {
