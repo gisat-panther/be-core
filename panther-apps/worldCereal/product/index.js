@@ -132,7 +132,7 @@ function remove(request, response) {
                 data: {
                     worldCerealProductMetadata: [
                         {
-                            key: getKeyByProductId({id: request.query.productId})
+                            key: getKeyByProductId({ id: request.query.productId })
                         }
                     ]
                 }
@@ -164,9 +164,21 @@ function view(request, response) {
             }
         })
         .then(() => {
-            let filter = request.body;
+            let filter = {};
 
-            delete filter.geometry;
+            if (request.body.geometry) {
+                filter.geometry = {
+                    geometry_overlaps: request.body.geometry
+                }
+
+                filter.tileKeys = {
+                    overlaps: tiles
+                }
+            }
+
+            if (request.body.key) {
+                filter.key = request.body.key;
+            }
 
             return handler
                 .list('specific', {
@@ -183,11 +195,7 @@ function view(request, response) {
 
                 let sentProductKeys = await shared.get(sharedStorageKey) || [];
 
-                let filteredProducts = _.filter(r.data.data.worldCerealProductMetadata, (product) => {
-                    return !!(_.intersection(tiles, product.data.tileKeys).length);
-                });
-
-                let products = filteredProducts.map((product) => {
+                let products = r.data.data.worldCerealProductMetadata.map((product) => {
                     if (!sentProductKeys.includes(product.key)) {
                         sentProductKeys.push(product.key);
 
@@ -195,6 +203,11 @@ function view(request, response) {
                             {},
                             product,
                             {
+                                data: {
+                                    ...product.data,
+                                    tileKeys: undefined,
+                                    geometry: undefined
+                                },
                                 permissions: undefined
                             }
                         );
