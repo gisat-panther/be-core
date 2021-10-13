@@ -276,8 +276,7 @@ module.exports = {
                     defaultValue: null,
                     schema: Geometry.allow(null),
                     selectExpr: function ({alias}) {
-                        // todo this has to be fixed properly in future
-                        return qb.val.raw(SQL`ST_AsGeoJSON(t."geometry")::JSON AS "geometry"`);
+                        return qb.val.raw(`ST_AsGeoJSON("${alias}"."geometry")::JSON AS "geometry"`);
                     },
                     modifyExpr: function ({value}) {
                         if (value == null) {
