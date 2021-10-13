@@ -3,6 +3,8 @@ const uuid = require('../../src/uuid');
 const qb = require('@imatic/pgqb');
 const {SQL} = require('sql-template-strings');
 
+const Geometry = Joi.object().meta({type: 'geometry'});
+
 module.exports = {
     specific: {
         worldCerealProductMetadata: {
@@ -43,7 +45,7 @@ module.exports = {
                 },
                 geometry: {
                     defaultValue: null,
-                    schema: Joi.object().allow(null),
+                    schema: Geometry.allow(null),
                     selectExpr: function ({alias}) {
                         return qb.val.raw(`ST_AsGeoJSON(${alias}."geometry")::JSON AS "geometry"`);
                     },
