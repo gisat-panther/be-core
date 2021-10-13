@@ -94,6 +94,7 @@ function colFilterSchema(col) {
                 eq: itemSchema,
                 in: Joi.array().items(itemSchema.allow(null)).min(1),
                 notin: Joi.array().items(itemSchema.allow(null)).min(1),
+                overlaps: Joi.array().items(itemSchema).min(1),
             });
         }
     }
