@@ -120,6 +120,8 @@ function get() {
     return config;
 }
 
+const cfg = get();
+
 module.exports = {
-    get,
+    get: () => cfg,
 };
