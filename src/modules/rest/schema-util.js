@@ -28,6 +28,24 @@ function mergeColumns(columns) {
     return merged;
 }
 
+function schemaType(schema) {
+    for (const meta of _.getOr([], ['$_terms', 'metas'], schema)) {
+        if (typeof meta === 'object' && meta.hasOwnProperty('type')) {
+            return meta.type;
+        }
+    }
+}
+
+function objectColSchema(schema) {
+    switch (schemaType(schema)) {
+        case 'geometry':
+            return Joi.object().keys({
+                geometry_overlaps: schema,
+                st_intersects: schema,
+            });
+    }
+}
+
 /**
  * @param {import('./compiler').Column} col
  *
@@ -84,7 +102,7 @@ function colFilterSchema(col) {
                     .length(1)
             );
         case 'object':
-            return null;
+            return objectColSchema(schema);
         case 'array': {
             const itemSchema = Joi.alternatives().try(
                 ..._.get(['$_terms', 'items'], schema)
