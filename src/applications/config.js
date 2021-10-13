@@ -100,6 +100,11 @@ function getExternalApplications() {
  */
 function get() {
     const config = mergeApplications(
+        {
+            generatedPermissions: function () {
+                return {};
+            },
+        },
         require('./core/index'),
         require('./demo/index'),
         require('./data/index'),
