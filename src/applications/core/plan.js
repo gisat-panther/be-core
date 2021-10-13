@@ -5,6 +5,8 @@ const qb = require('@imatic/pgqb');
 const {SQL} = require('sql-template-strings');
 const p = require('../../postgres');
 
+const Geometry = Joi.object().meta({type: 'geometry'});
+
 module.exports = {
     user: {
         users: {
@@ -272,7 +274,7 @@ module.exports = {
                 },
                 geometry: {
                     defaultValue: null,
-                    schema: Joi.object().allow(null),
+                    schema: Geometry.allow(null),
                     selectExpr: function ({alias}) {
                         // todo this has to be fixed properly in future
                         return qb.val.raw(SQL`ST_AsGeoJSON(t."geometry")::JSON AS "geometry"`);
@@ -287,7 +289,7 @@ module.exports = {
                 },
                 bbox: {
                     defaultValue: null,
-                    schema: Joi.object().allow(null),
+                    schema: Geometry.allow(null),
                     selectExpr: function ({alias}) {
                         // todo this has to be fixed properly in future
                         return qb.val.raw(SQL`ST_AsGeoJSON(t."bbox")::JSON AS "bbox"`);
@@ -2139,7 +2141,7 @@ module.exports = {
                 },
                 geometryBefore: {
                     defaultValue: null,
-                    schema: Joi.object().allow(null),
+                    schema: Geometry.allow(null),
                     selectExpr: function ({alias}) {
                         return qb.expr.fn('ST_AsGeoJSON', '"' + alias + '"');
                     },
@@ -2153,7 +2155,7 @@ module.exports = {
                 },
                 geometryAfter: {
                     defaultValue: null,
-                    schema: Joi.object().allow(null),
+                    schema: Geometry.allow(null),
                     selectExpr: function ({alias}) {
                         return qb.expr.fn('ST_AsGeoJSON', alias);
                     },

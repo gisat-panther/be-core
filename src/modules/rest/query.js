@@ -97,6 +97,27 @@ const filterOperatorToSqlExpr = {
             qb.val.inlineParam(filter.value)
         );
     },
+    geometry_overlaps: function (filter) {
+        if (filter.value === null) {
+            return qb.expr.null(filter.column);
+        }
+
+        return qb.expr.overlaps(
+            filter.column,
+            qb.val.raw(SQL`ST_GeomFromGeoJSON(${filter.value})`)
+        );
+    },
+    st_intersects: function (filter) {
+        if (filter.value === null) {
+            return qb.expr.null(filter.column);
+        }
+
+        return qb.expr.fn(
+            'ST_Intersects',
+            filter.column,
+            qb.val.raw(SQL`ST_GeomFromGeoJSON(${filter.value})`)
+        );
+    },
 };
 
 /**
