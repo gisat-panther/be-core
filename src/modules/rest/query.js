@@ -1159,7 +1159,9 @@ function createDependentType({plan, group, type, client}, record) {
     const sqlMap = qb.merge(
         qb.insertInto(`${group}.${dispatchValue}`),
         qb.columns(columns),
-        qb.values([recordValues(record, columns, columnsConfig)]),
+        columns.length === 0
+            ? qb.values([])
+            : qb.values([recordValues(record, columns, columnsConfig)]),
         qb.returning(['key'])
     );
 
@@ -1237,7 +1239,7 @@ function deleteDependentType({plan, group, type, client}, record) {
 
     return client.query(
         SQL``
-            .append(`DELETE FROM "${group}".${dispatchValue} WHERE`)
+            .append(`DELETE FROM "${group}"."${dispatchValue}" WHERE`)
             .append(SQL` "key" = ${relationKeyValue}`)
     );
 }
