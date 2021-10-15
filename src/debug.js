@@ -26,7 +26,7 @@ function formatSql(sqlStatement) {
 
     return _.reduce(
         (inlined, next) => {
-            return inlined + preparedVals.pop() + next;
+            return inlined + preparedVals.shift() + next;
         },
         _.head(sqlStatement.strings),
         _.tail(sqlStatement.strings)

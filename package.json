@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@gisatcz/ptr-tile-grid": "^0.0.8",
-    "@imatic/pgqb": "^0.1.28",
+    "@imatic/pgqb": "^0.1.30",
     "adm-zip": "^0.5.6",
     "bcrypt": "^5.0.1",
     "body-parser": "^1.19.0",
