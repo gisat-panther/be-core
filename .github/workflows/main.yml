@@ -35,7 +35,7 @@ jobs:
     steps:
         - 
           name: "Checkout"
-          uses: actions/checkout@v2.3.4
+          uses: actions/checkout@v2.4.0
         - 
           name: "Setup NodeJS environment"
           uses: actions/setup-node@v2.4.1
@@ -60,7 +60,7 @@ jobs:
     steps:
       - 
         name: "Checkout"
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.4.0
       - 
         name: "Get docker image metadata"
         id: meta
