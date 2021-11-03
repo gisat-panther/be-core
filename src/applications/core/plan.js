@@ -1248,6 +1248,55 @@ module.exports = {
         },
     },
     dataSources: {
+        timeSerie: {
+            table: 'timeSerieDataSource',
+            context: {
+                list: {
+                    columns: [
+                        'key',
+                        'nameInternal',
+                        'attribution',
+                        'tableName'
+                    ],
+                },
+                create: {
+                    columns: [
+                        'key',
+                        'nameInternal',
+                        'attribution',
+                        'tableName'
+                    ],
+                },
+                update: {
+                    columns: [
+                        'key',
+                        'nameInternal',
+                        'attribution',
+                        'tableName'
+                    ],
+                },
+            },
+            columns: {
+                key: {
+                    defaultValue: () => uuid.generate(),
+                    schema: Joi.string().uuid(),
+                },
+                nameInternal: {
+                    defaultValue: null,
+                    schema: Joi.string().allow(null),
+                    index: true
+                },
+                attribution: {
+                    defaultValue: null,
+                    schema: Joi.string().allow(null),
+                },
+                tableName: {
+                    defaultValue: null,
+                    schema: Joi.string().allow(null),
+                    index: true
+                }
+            },
+        },
         attribute: {
             table: 'attributeDataSource',
             context: {
@@ -1523,6 +1572,136 @@ module.exports = {
         },
     },
     relations: {
+        timeSerie: {
+            table: 'timeSerieDataSourceRelation',
+            context: {
+                list: {
+                    columns: [
+                        'key',
+                        'scopeKey',
+                        'periodKey',
+                        'placeKey',
+                        'timeSerieDataSourceKey',
+                        'layerTemplateKey',
+                        'scenarioKey',
+                        'caseKey',
+                        'attributeKey',
+                        'applicationKey',
+                    ],
+                },
+                create: {
+                    columns: [
+                        'key',
+                        'scopeKey',
+                        'periodKey',
+                        'placeKey',
+                        'timeSerieDataSourceKey',
+                        'layerTemplateKey',
+                        'scenarioKey',
+                        'caseKey',
+                        'attributeKey',
+                        'applicationKey',
+                    ],
+                },
+                update: {
+                    columns: [
+                        'key',
+                        'scopeKey',
+                        'periodKey',
+                        'placeKey',
+                        'timeSerieDataSourceKey',
+                        'layerTemplateKey',
+                        'scenarioKey',
+                        'caseKey',
+                        'attributeKey',
+                        'applicationKey',
+                    ],
+                },
+            },
+            columns: {
+                key: {
+                    defaultValue: () => uuid.generate(),
+                    schema: Joi.string().uuid(),
+                },
+                scopeKey: {
+                    defaultValue: null,
+                    schema: Joi.string().uuid().allow(null),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'scopes',
+                    },
+                    index: true
+                },
+                periodKey: {
+                    defaultValue: null,
+                    schema: Joi.string().uuid().allow(null),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'periods',
+                    },
+                    index: true
+                },
+                placeKey: {
+                    defaultValue: null,
+                    schema: Joi.string().uuid().allow(null),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'places',
+                    },
+                    index: true
+                },
+                timeSerieDataSourceKey: {
+                    defaultValue: null,
+                    schema: Joi.string().uuid().allow(null),
+                    index: true
+                },
+                layerTemplateKey: {
+                    defaultValue: null,
+                    schema: Joi.string().uuid().allow(null),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'layerTemplates',
+                    },
+                    index: true
+                },
+                scenarioKey: {
+                    defaultValue: null,
+                    schema: Joi.string().uuid().allow(null),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'scenarios',
+                    },
+                    index: true
+                },
+                caseKey: {
+                    defaultValue: null,
+                    schema: Joi.string().uuid().allow(null),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'cases',
+                    },
+                    index: true
+                },
+                attributeKey: {
+                    defaultValue: null,
+                    schema: Joi.string().uuid().allow(null),
+                    relation: {
+                        resourceGroup: 'metadata',
+                        resourceType: 'attributes'
+                    },
+                    index: true
+                },
+                applicationKey: {
+                    defaultValue: null,
+                    schema: Joi.string().allow(null),
+                    relation: {
+                        resourceGroup: 'application',
+                        resourceType: 'applications',
+                    },
+                    index: true
+                },
+            },
+        },
         spatial: {
             table: 'spatialDataSourceRelation',
             context: {

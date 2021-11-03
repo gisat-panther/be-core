@@ -108,6 +108,7 @@ function get() {
         require('./core/index'),
         require('./demo/index'),
         require('./data/index'),
+        require('./timeSerieData'),
         ...getExternalApplications()
     );
 
