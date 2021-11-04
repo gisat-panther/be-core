@@ -1,0 +1,112 @@
+#!/usr/bin/env node
+
+/**
+ * Exits with 0 if there are no missing indexes that can be automatically checked and easilly forgotten
+ * to add, otherwise 1.
+ */
+
+require('../src/applications/index');
+const getPlan = require('../src/applications/plan').get;
+const db = require('../src/db');
+const _ = require('lodash');
+
+const getMissingPrimaryKeys = (tables) => {
+	return db
+	.query(`
+		SELECT 
+			t.table_schema AS schema, 
+			t.table_name AS table, 
+			CASE WHEN 
+				tc.table_name IS NOT NULL 
+			THEN 
+				true 
+			ELSE 
+				false 
+			END AS has_primary 
+		FROM 
+			information_schema.tables AS t 
+		LEFT OUTER JOIN 
+			information_schema.table_constraints AS tc 
+		ON 
+			tc.table_schema = t.table_schema 
+		AND 
+			tc.table_name = t.table_name 
+		AND 
+			tc.constraint_type = 'PRIMARY KEY';
+	`).then((pgResult) => {
+		return _.filter(tables, (table) => {
+			return _.find(pgResult.rows, (row) => {
+				return row.schema === table.schema && row.table === table.table && !row.has_primary;
+			});
+		})
+	});
+}
+
+const parsePrimaryKey = (table) => {
+	return `ALTER TABLE ONLY "${table.schema}"."${table.table}" ADD CONSTRAINT ${`${table.schema}_${table.table}`.toLowerCase()}_pkey PRIMARY KEY (key);`;
+}
+
+const parsePrimaryKeyDrop = (table) => {
+	return `ALTER TABLE ONLY "${table.schema}"."${table.table}" DROP CONSTRAINT ${`${table.schema}_${table.table}`.toLowerCase()}_pkey;`;
+}
+
+const short = (string) => {
+	return string.replace(/([a-z0-9])([A-Z])/g, '$1 $2').split(" ").map(i => i.charAt(0)).join("").toLowerCase();
+}
+
+/**
+ * @returns {Promise<{create: string[], drop: string[]}?>}
+ */
+const main = async () => {
+	await db.init();
+
+	const tables = [];
+
+	_.each(getPlan(), (group, groupName) => {
+		_.each(group, (type, typeName) => {
+			tables.push({
+				schema: groupName,
+				table: type.table || typeName,
+				columns: type.columns
+			});
+			
+			if (type.hasOwnProperty("type")) {
+				_.each (type.type.types, (type, tableName) => {
+					tables.push({
+						schema: groupName,
+						table: tableName,
+						columns: type.columns
+					});
+				})
+			}
+		})
+	});
+
+	const missingPrimaryKeys = await getMissingPrimaryKeys(tables);
+
+	if (missingPrimaryKeys && missingPrimaryKeys.length) {
+		return {
+			create: missingPrimaryKeys.map(parsePrimaryKey),
+			drop: missingPrimaryKeys.map(parsePrimaryKeyDrop),
+		};
+	}
+}
+
+main().then((missingPrimaryKeys) => {
+	if (missingPrimaryKeys == null) {
+		return process.exit(0);
+	}
+
+	console.error(`Some primakry keys are missing. Create migration with following contents:
+====================================================================
+
+do.sql
+------
+${missingPrimaryKeys.create.join('\n')}
+
+undo.sql:
+---------
+${missingPrimaryKeys.drop.join('\n')}`);
+
+	process.exit(1);
+});
