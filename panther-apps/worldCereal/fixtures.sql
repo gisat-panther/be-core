@@ -26,6 +26,7 @@ INSERT INTO "user"."permissions"
     ("key", "resourceKey", "resourceGroup", "resourceType", "permission")
 VALUES
     ('b809c988-cfff-427d-9572-1e40a2fe92fe', null, 'specific', 'worldCerealProductMetadata', 'create'),
+    ('fd5aba3a-c8f8-493c-a304-a75e19c64df6', null, 'specific', 'worldCerealProductMetadata', 'update'),
     ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'users', 'create')
 ON CONFLICT DO NOTHING;
 
@@ -33,6 +34,8 @@ INSERT INTO "user"."groupPermissions"
     ("groupKey", "permissionKey")
 VALUES
     ('998c5760-e42e-457f-aa6d-247af6352c73', 'b809c988-cfff-427d-9572-1e40a2fe92fe'),
+    ('998c5760-e42e-457f-aa6d-247af6352c73', 'fd5aba3a-c8f8-493c-a304-a75e19c64df6'),
     ('998c5760-e42e-457f-aa6d-247af6352c73', '6897b1fc-a3e3-4195-a41a-f492d4a9df2a'),
-    ('2597df23-94d9-41e0-91f3-7ea633ae27f2', 'b809c988-cfff-427d-9572-1e40a2fe92fe')
+    ('2597df23-94d9-41e0-91f3-7ea633ae27f2', 'b809c988-cfff-427d-9572-1e40a2fe92fe'),
+    ('2597df23-94d9-41e0-91f3-7ea633ae27f2', 'fd5aba3a-c8f8-493c-a304-a75e19c64df6')
 ON CONFLICT DO NOTHING;

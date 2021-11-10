@@ -1,0 +1,84 @@
+#!/usr/bin/env node
+
+/**
+This script is used to import product tiles from given directory
+*/
+const fs = require('fs');
+const path = require('path');
+const _ = require('lodash');
+const fse = require('fs-extra');
+const fetch = require('node-fetch');
+
+const ADMIN_KEY = '3fdd158d-4b78-4d11-92c7-403b4adab4d8';
+
+const folder = process.argv[2];
+
+if (!folder) {
+    throw new Error('folder has to be specified')
+}
+
+let count = 0;
+
+function getStacFiles(dir, stacFiles) {
+    let listFiles = fs.readdirSync(dir, { withFileTypes: true });
+
+    stacFiles = stacFiles || [];
+
+    listFiles.forEach((file) => {
+        if (file.isDirectory()) {
+            getStacFiles(path.resolve(dir, file.name), stacFiles);
+        } else if (path.extname(file.name).toLowerCase() === ".json") {
+            stacFiles.push(path.resolve(dir, file.name));
+        }
+    })
+
+    return stacFiles;
+}
+
+function getUniqueStacFiles(stacFiles) {
+    return _.uniq(stacFiles);
+}
+
+function getStac(path) {
+    return fse.readJsonSync(path);
+}
+
+async function createProducts(stacFilePaths) {
+    for (let stacFilePath of stacFilePaths) {
+        console.log(stacFilePath);
+        await createProduct(getStac(stacFilePath));
+    }
+}
+
+async function createProduct(product) {
+    const response = await fetch(
+        'http://localhost:9850/rest/project/worldCereal/product',
+        {
+            method: "POST",
+            body: JSON.stringify(product),
+            headers: {
+                "Content-Type": "application/json",
+                "X-User-Info": ADMIN_KEY
+            }
+        }
+    );
+
+    if (response.status === 200) {
+        console.log(`Created!`);
+    } else {
+        console.log(
+            JSON.stringify(
+                await response.json()
+            )
+        );
+    }
+}
+
+function init() {
+    let stacFiles = getStacFiles(folder);
+    stacFiles = getUniqueStacFiles(stacFiles);
+
+    createProducts(stacFiles);
+}
+
+init();

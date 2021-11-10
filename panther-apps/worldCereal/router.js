@@ -35,7 +35,7 @@ module.exports = [
             authMiddleware,
         ],
         responses: { 200: {} },
-        handler: product.update
+        handler: product.create
     },
     {
         path: '/rest/project/worldCereal/product',
