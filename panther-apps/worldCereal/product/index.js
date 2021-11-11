@@ -257,7 +257,7 @@ function remove(request, response) {
                 data: {
                     worldCerealProductMetadata: [
                         {
-                            key: getKeyByProductId({ id: request.query.productId })
+                            key: getKeyByProductId({ tile_collection_id: request.query.productId })
                         }
                     ]
                 }
