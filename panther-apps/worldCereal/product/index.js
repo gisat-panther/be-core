@@ -38,6 +38,15 @@ const STAC_REQUIRED_PROPERTIES = [
     'assets.confidence.href'
 ]
 
+const STAC_REQUIRED_PROPERTIES_EXCEPTIONS = {
+    "assets.confidence": {
+        "properties.product": "activecropland"
+    },
+    "assets.confidence.href": {
+        "properties.product": "activecropland"
+    }
+}
+
 function getKeyByProductId(productMetadata) {
     return uuidByString(productMetadata.properties.tile_collection_id);
 }
@@ -62,15 +71,27 @@ function setAsPrivate(productKey) {
         })
 }
 
+function checkRequiredProperty(requiredPropertyPath, stac) {
+    if (!_.has(stac, requiredPropertyPath)) {
+        if (_.has(STAC_REQUIRED_PROPERTIES_EXCEPTIONS, requiredPropertyPath)) {
+            for (let [path, value] of Object.entries(STAC_REQUIRED_PROPERTIES_EXCEPTIONS[requiredPropertyPath])) {
+                if (_.get(stac, path) !== value) {
+                    throw new Error(`Property ${requiredPropertyPath} in STAC ${stac.id} was not found!`);
+                }
+            }
+        } else {
+            throw new Error(`Property ${requiredPropertyPath} in STAC ${stac.id} was not found!`);
+        }
+    }
+}
+
 function checkRequiredProperties(stacList) {
     return Promise
         .resolve()
         .then(() => {
             _.each(stacList, (stac) => {
                 _.each(STAC_REQUIRED_PROPERTIES, (requiredPropertyPath) => {
-                    if (!_.has(stac, requiredPropertyPath)) {
-                        throw new Error(`Property ${requiredPropertyPath} not found!`);
-                    }
+                    checkRequiredProperty(requiredPropertyPath, stac);
                 })
             })
         })
@@ -108,7 +129,7 @@ function getProductMetadataFromStac(stac) {
                                 "tile": `${stac.properties["mgrs:utm_zone"]}${stac.properties["mgrs:latitude_band"]}${stac.properties["mgrs:grid_square"]}`,
                                 "product": stac.assets.product.href,
                                 "metafeatures": stac.assets.metafeatures.href,
-                                "confidence": stac.assets.confidence.href,
+                                "confidence": stac.assets.confidence && stac.assets.confidence.href,
                                 "stac": _.find(stac.links, (link) => link.rel === "self").href
                             }
                         ]
@@ -250,6 +271,13 @@ function create(request, response) {
 }
 
 function remove(request, response) {
+    let key;
+    if (request.query.productId) {
+        key = getKeyByProductId({ properties: { tile_collection_id: request.query.productId } });
+    } else if (request.query.key) {
+        key = request.query.key;
+    }
+
     return handler
         .deleteRecords('specific', {
             user: request.user,
@@ -257,7 +285,7 @@ function remove(request, response) {
                 data: {
                     worldCerealProductMetadata: [
                         {
-                            key: getKeyByProductId({ properties: { tile_collection_id: request.query.productId } })
+                            key
                         }
                     ]
                 }
@@ -310,7 +338,8 @@ function view(request, response) {
                     params: { types: 'worldCerealProductMetadata' },
                     user: request.user,
                     body: {
-                        filter
+                        filter,
+                        limit: 999999
                     }
                 })
         })
