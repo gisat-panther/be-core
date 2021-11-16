@@ -380,7 +380,7 @@ function view(request, response) {
                     // }
                 });
 
-                await shared.set(sharedStorageKey, sentProductKeys);
+                // await shared.set(sharedStorageKey, sentProductKeys);
 
                 response.status(200).send({
                     products,
