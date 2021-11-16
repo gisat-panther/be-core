@@ -345,38 +345,39 @@ function view(request, response) {
         })
         .then(async (r) => {
             if (r.type === result.SUCCESS) {
-                const sharedStorageKey = `${request.user.realKey}_products`;
+                // TODO Temporary fix product cache, find better way how to handle this, there is probably need to identify session somehow
+                // const sharedStorageKey = `${request.user.realKey}_products`;
 
-                let sentProductKeys = await shared.get(sharedStorageKey) || [];
+                // let sentProductKeys = await shared.get(sharedStorageKey) || [];
 
                 let products = r.data.data.worldCerealProductMetadata.map((product) => {
-                    if (!sentProductKeys.includes(product.key)) {
-                        sentProductKeys.push(product.key);
+                    // if (!sentProductKeys.includes(product.key)) {
+                    // sentProductKeys.push(product.key);
 
-                        product.data.data.geometry = product.data.geometry;
+                    product.data.data.geometry = product.data.geometry;
 
-                        return Object.assign(
-                            {},
-                            product,
-                            {
-                                data: {
-                                    ...product.data,
-                                    tileKeys: undefined,
-                                    geometry: undefined
-                                },
-                                permissions: undefined
-                            }
-                        );
-                    } else {
-                        return Object.assign(
-                            {},
-                            product,
-                            {
-                                data: undefined,
-                                permissions: undefined
-                            }
-                        );
-                    }
+                    return Object.assign(
+                        {},
+                        product,
+                        {
+                            data: {
+                                ...product.data,
+                                tileKeys: undefined,
+                                geometry: undefined
+                            },
+                            permissions: undefined
+                        }
+                    );
+                    // } else {
+                    //     return Object.assign(
+                    //         {},
+                    //         product,
+                    //         {
+                    //             data: undefined,
+                    //             permissions: undefined
+                    //         }
+                    //     );
+                    // }
                 });
 
                 await shared.set(sharedStorageKey, sentProductKeys);
