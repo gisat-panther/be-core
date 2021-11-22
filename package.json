@@ -42,6 +42,7 @@
   "devDependencies": {
     "@auto-it/git-tag": "^10.4.2",
     "auto": "^10.4.2",
+    "axios": "^0.24.0",
     "chai": "^4.3.4",
     "eslint": "^7.32.0",
     "faker": "^5.5.3",
