@@ -5,8 +5,32 @@ const autoLoginKongHqMiddleware = require('../../src/middlewares/auto-login-kong
 
 const product = require('./product');
 const user = require('./user');
+const wcInit = require('./init');
+
+const ADMIN_USER_KEY = "3fdd158d-4b78-4d11-92c7-403b4adab4d8";
 
 module.exports = [
+    {
+        path: '/rest/project/worldCereal/init',
+        method: 'get',
+        swagger: {
+            tags: ['project', 'worldCereal', 'product']
+        },
+        middlewares: [
+            userMiddleware,
+            autoLoginKongHqMiddleware,
+            autoLoginMiddleware,
+            authMiddleware,
+        ],
+        responses: { 200: {} },
+        handler: (request, response) => {
+            if (request.headers['x-user-info'] === ADMIN_USER_KEY) {
+                response.status(200).send(wcInit.run());
+            } else {
+                response.status(403).end();
+            }
+        }
+    },
     {
         path: '/rest/project/worldCereal/product',
         method: 'post',
