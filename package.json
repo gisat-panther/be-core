@@ -37,7 +37,8 @@
     "sql-template-strings": "^2.2.2",
     "swagger-ui-express": "^4.1.6",
     "uuid": "^8.3.2",
-    "uuid-by-string": "^3.0.4"
+    "uuid-by-string": "^3.0.4",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "@auto-it/git-tag": "^10.4.2",

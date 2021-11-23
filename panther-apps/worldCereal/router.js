@@ -1,3 +1,5 @@
+const yamljs = require('yamljs');
+
 const userMiddleware = require('../../src/middlewares/user');
 const authMiddleware = require('../../src/middlewares/auth');
 const autoLoginMiddleware = require('../../src/middlewares/auto-login');
@@ -30,6 +32,15 @@ module.exports = [
                 response.status(403).end();
             }
         }
+    },
+    {
+        path: '/rest/project/worldCereal/swagger.json',
+        method: 'get',
+        swagger: {
+            tags: ['project', 'worldCereal', 'product']
+        },
+        responses: { 200: {} },
+        handler: (request, response) => response.json(yamljs.load('./panther-apps/worldCereal/swagger.yml'))
     },
     {
         path: '/rest/project/worldCereal/product',
