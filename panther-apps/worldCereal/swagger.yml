@@ -4,6 +4,22 @@ info:
   version: '1.0'
 
 paths:
+  /rest/project/worldCereal/init:
+    get:
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+      tags:
+        - WorldCereal
+      responses:
+        '200':
+          description: Database structure was successfully initialized
+        '403':
+          description: Unauthorized
   /rest/project/worldCereal/product:
     post:
       parameters:
@@ -24,11 +40,11 @@ paths:
         - Product
       responses:
         '201':
-          description: "Created"
+          description: Created
         '403':
-          description: "Unauthorized"
+          description: Unauthorized
         '500':
-          description: "Error"
+          description: Error
     put:
       parameters:
         - in: header
@@ -48,11 +64,11 @@ paths:
         - Product
       responses:
         '200':
-          description: "Updated"
+          description: Updated
         '403':
-          description: "Unauthorized"
+          description: Unauthorized
         '500':
-          description: "Error"
+          description: Error
     delete:
       parameters:
         - in: header
@@ -70,11 +86,11 @@ paths:
         - Product
       responses:
         '200':
-          description: "Deleted"
+          description: Deleted
         '403':
-          description: "Unauthorized"
+          description: Unauthorized
         '500':
-          description: "Error"
+          description: Error
   /rest/project/worldCereal/product/filtered:
     post:
       parameters:
@@ -119,11 +135,11 @@ paths:
         - User
       responses:
         '201':
-            description: "Created"
+            description: Created
         '403':
-            description: "Unauthorized"
+            description: Unauthorized
         '500':
-            description: "Error"
+            description: Error
     put:
       parameters:
         - in: header
@@ -142,11 +158,11 @@ paths:
         - User
       responses:
         '200':
-          description: "Updated"
+          description: Updated
         '403':
-          description: "Unauthorized"
+          description: Unauthorized
         '500':
-          description: "Error"
+          description: Error
     delete:
       parameters:
         - in: header
@@ -164,11 +180,11 @@ paths:
         - User
       responses:
         '200':
-          description: "Deleted"
+          description: Deleted
         '403':
-          description: "Unauthorized"
+          description: Unauthorized
         '500':
-          description: "Error"
+          description: Error
   /rest/project/worldCereal/user/sessionStart:
     get:
       parameters:
@@ -182,7 +198,7 @@ paths:
         - User
       responses:
         '200':
-          description: "New session started"
+          description: New session started
 
 components:
   schemas:
@@ -271,11 +287,11 @@ components:
             type: object
             properties:
               product:
-                $ref: "#/components/schemas/asset"
+                $ref: '#/components/schemas/asset'
               meta-features:
-                $ref: "#/components/schemas/asset"
+                $ref: '#/components/schemas/asset'
               confidence:
-                $ref: "#/components/schemas/asset"
+                $ref: '#/components/schemas/asset'
       required:
         - id
         - geometry
@@ -313,7 +329,7 @@ components:
                 type: object
                 properties:
                   data:
-                    $ref:  "#/components/schemas/product"
+                    $ref:  '#/components/schemas/product'
         tiles:
           type: array
           items:
