@@ -1,11 +1,7 @@
 openapi: '3.0.0'
 info:
-  title: |
-    'Visualization Dissemination Module REST API'
+  title: Visualization Dissemination Module REST API
   version: '1.0'
-
-servers:
-  - url: 'https://host/backend'
 
 paths:
   /rest/project/worldCereal/product:
