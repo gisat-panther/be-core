@@ -292,8 +292,8 @@ function fetchCustomFields(group) {
  * @returns {string|null}
  */
 function inferType(val) {
-    if (val == null) {
-        return null;
+    if (val === null) {
+        throw new Error(`Cannot infer value: ${JSON.stringify(val)}.`);
     }
 
     switch (typeof val) {
@@ -310,8 +310,6 @@ function inferType(val) {
 
             return 'object';
     }
-
-    throw new Error(`Cannot infer value: ${JSON.stringify(val)}.`);
 }
 
 /**
