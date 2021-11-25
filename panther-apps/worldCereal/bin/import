@@ -8,11 +8,12 @@ const path = require('path');
 const _ = require('lodash');
 const fse = require('fs-extra');
 const axios = require('axios').default;
+const https = require('https');
 
 const product = require('../product');
 
 const ADMIN_KEY = '3fdd158d-4b78-4d11-92c7-403b4adab4d8';
-const API_URL = 'https://ptr.gisat.cz/backend'
+const API_URL = 'https://139.177.178.219/backend'
 
 const folder = process.argv[2];
 
@@ -73,13 +74,16 @@ async function createProduct(stac) {
         headers: {
             "X-User-Info": ADMIN_KEY
         },
-        data: stac
+        data: stac,
+        httpsAgent: new https.Agent({
+            rejectUnauthorized: false
+        })
     }).then((response) => {
         let productKey = product.getKeyByProductId(stac);
 
-            console.log(`Created product with key ${productKey}!`);
+        console.log(`Created product with key ${productKey}!`);
 
-            return productKey;
+        return productKey;
     }).catch((error) => {
         console.log(`#ERROR# ${JSON.stringify(error.response.data)}`)
     })
@@ -92,10 +96,14 @@ async function getExistingProducts() {
         headers: {
             "X-User-Info": ADMIN_KEY
         },
-        data: {}
+        data: {},
+        httpsAgent: new https.Agent({
+            rejectUnauthorized: false
+        })
     }).then(async (response) => {
         return response.data.products;
     }).catch((error) => {
+        console.log(error);
         throw new Error('Unable to get existing products!');
     })
 }
@@ -109,7 +117,10 @@ async function removeProductByKey(productKey) {
         },
         params: {
             key: productKey
-        }
+        },
+        httpsAgent: new https.Agent({
+            rejectUnauthorized: false
+        })
     }).then(async (response) => {
         console.log(`Product ${productKey} was removed!`);
     }).catch((error) => {
