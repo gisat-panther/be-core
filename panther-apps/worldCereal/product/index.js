@@ -39,11 +39,15 @@ const STAC_REQUIRED_PROPERTIES = [
 ]
 
 const STAC_REQUIRED_PROPERTIES_EXCEPTIONS = {
+    "assets.metafeatures": {
+    },
+    "assets.metafeatures.href": {
+    },
     "assets.confidence": {
-        "properties.product": "activecropland"
+        // "properties.product": "activecropland"
     },
     "assets.confidence.href": {
-        "properties.product": "activecropland"
+        // "properties.product": "activecropland"
     }
 }
 
@@ -169,8 +173,10 @@ function mergeWith(object, source) {
     );
 }
 
-function create(request, response) {
+async function create(request, response) {
     let rawProductMetadataToCreateOrUpdate = {};
+    let rawProductMetadataToCreate = {};
+    let rawProductMetadataToUpdate = {};
 
     return Promise
         .resolve()
@@ -215,54 +221,102 @@ function create(request, response) {
                 if (existingProduct) {
                     delete existingProduct.permissions;
 
-                    rawProductMetadataToCreateOrUpdate[rawProductKey] = mergeWith(existingProduct, rawProduct);
+                    rawProductMetadataToUpdate[rawProductKey] = mergeWith(existingProduct, rawProduct);
+                } else {
+                    rawProductMetadataToCreate[rawProductKey] = rawProduct;
                 }
             });
         })
         .then(() => {
-            _.each(rawProductMetadataToCreateOrUpdate, (rawProduct) => {
+            _.each(rawProductMetadataToCreate, (rawProduct) => {
+                rawProduct.data.tileKeys = _.map(rawProduct.data.data.tiles, 'tile');
+            });
+            _.each(rawProductMetadataToUpdate, (rawProduct) => {
                 rawProduct.data.tileKeys = _.map(rawProduct.data.data.tiles, 'tile');
             });
         })
         .then(async () => {
-            for (let productKey of Object.keys(rawProductMetadataToCreateOrUpdate)) {
-                let rawProduct = rawProductMetadataToCreateOrUpdate[productKey];
+            for (let productKey of Object.keys(rawProductMetadataToCreate)) {
+                let rawProduct = rawProductMetadataToCreate[productKey];
+
+                rawProduct.data.geometry = await getGeometryForS2TilesByKeys(rawProduct.data.tileKeys);
+            }
+            for (let productKey of Object.keys(rawProductMetadataToUpdate)) {
+                let rawProduct = rawProductMetadataToUpdate[productKey];
 
                 rawProduct.data.geometry = await getGeometryForS2TilesByKeys(rawProduct.data.tileKeys);
             }
         })
         .then(() => {
-            return handler
-                .update(
-                    'specific',
-                    {
-                        user: request.user,
-                        body: {
-                            data: {
-                                worldCerealProductMetadata: _.map(rawProductMetadataToCreateOrUpdate)
+            if (Object.keys(rawProductMetadataToCreate).length) {
+                return handler
+                    .create(
+                        'specific',
+                        {
+                            user: request.user,
+                            body: {
+                                data: {
+                                    worldCerealProductMetadata: _.map(rawProductMetadataToCreate)
+                                }
                             }
                         }
-                    }
-                )
-                .then((update) => {
-                    if (update.type !== result.UPDATED) {
-                        throw new Error(JSON.stringify(update));
-                    } else {
-                        return update.data.data.worldCerealProductMetadata;
-                    }
-                })
+                    )
+                    .then((create) => {
+                        if (create.type !== result.CREATED) {
+                            throw new Error(JSON.stringify(create));
+                        } else {
+                            return create.data.data.worldCerealProductMetadata;
+                        }
+                    })
+            }
         })
-        .then(async (updatedProducts) => {
-            for (let updatedProduct of updatedProducts) {
-                if (updatedProduct.data.data.public && updatedProduct.data.data.public === "true") {
-                    await setAsPublic(updatedProduct.key);
-                } else {
-                    await setAsPrivate(updatedProduct.key);
+        .then(async (createdProducts) => {
+            if (createdProducts) {
+                for (let createdProduct of createdProducts) {
+                    if (createdProduct.data.data.public && createdProduct.data.data.public === "true") {
+                        await setAsPublic(createdProduct.key);
+                    } else {
+                        await setAsPrivate(createdProduct.key);
+                    }
                 }
             }
         })
         .then(() => {
-            response.status(200).send(rawProductMetadataToCreateOrUpdate);
+            if (Object.keys(rawProductMetadataToUpdate).length) {
+                return handler
+                    .update(
+                        'specific',
+                        {
+                            user: request.user,
+                            body: {
+                                data: {
+                                    worldCerealProductMetadata: _.map(rawProductMetadataToUpdate)
+                                }
+                            }
+                        }
+                    )
+                    .then((update) => {
+                        if (update.type !== result.UPDATED) {
+                            throw new Error(JSON.stringify(update));
+                        } else {
+                            return update.data.data.worldCerealProductMetadata;
+                        }
+                    })
+            }
+        })
+        .then(async (updatedProducts) => {
+            if (updatedProducts) {
+                for (let updatedProduct of updatedProducts) {
+                    if (updatedProduct.data.data.public && updatedProduct.data.data.public === "true") {
+                        await setAsPublic(updatedProduct.key);
+                    } else {
+                        await setAsPrivate(updatedProduct.key);
+                    }
+                }
+            }
+        })
+        .then(() => {
+            response.status(200).send({created: rawProductMetadataToCreate, updated: rawProductMetadataToUpdate});
         })
         .catch((error) => {
             console.log(error);
@@ -272,8 +326,8 @@ function create(request, response) {
 
 function remove(request, response) {
     let key;
-    if (request.query.productId) {
-        key = getKeyByProductId({ properties: { tile_collection_id: request.query.productId } });
+    if (request.query.tile_collection_id) {
+        key = getKeyByProductId({ properties: { tile_collection_id: request.query.tile_collection_id } });
     } else if (request.query.key) {
         key = request.query.key;
     }
