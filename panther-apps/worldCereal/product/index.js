@@ -39,14 +39,20 @@ const STAC_REQUIRED_PROPERTIES = [
 ]
 
 const STAC_REQUIRED_PROPERTIES_EXCEPTIONS = {
-    "assets.metafeatures": {
+    'properties.mgrs:utm_zone': {
     },
-    "assets.metafeatures.href": {
+    'properties.mgrs:latitude_band': {
     },
-    "assets.confidence": {
+    'properties.mgrs:grid_square': {
+    },
+    'assets.metafeatures': {
+    },
+    'assets.metafeatures.href': {
+    },
+    'assets.confidence': {
         // "properties.product": "activecropland"
     },
-    "assets.confidence.href": {
+    'assets.confidence.href': {
         // "properties.product": "activecropland"
     }
 }
@@ -110,49 +116,65 @@ function ensureArray(requestBody) {
 }
 
 function getProductMetadataFromStac(stac) {
-    return Promise
-        .resolve()
-        .then(() => {
-            return {
-                "key": getKeyByProductId(stac),
-                "data": {
-                    "data": {
-                        "tile_collection_id": stac.properties.tile_collection_id,
-                        "sos": stac.properties.start_datetime,
-                        "eos": stac.properties.end_datetime,
-                        "season": stac.properties.season,
-                        "aez_id": stac.properties.aez_id,
-                        "aez_group": stac.properties.aez_group,
-                        "model": stac.properties.model,
-                        "training_refids": stac.properties.training_refids,
-                        "product": stac.properties.product,
-                        "public": stac.properties.public,
-                        "tiles": [
-                            {
-                                "id": stac.id,
-                                "tile": `${stac.properties["mgrs:utm_zone"]}${stac.properties["mgrs:latitude_band"]}${stac.properties["mgrs:grid_square"]}`,
-                                "product": stac.assets.product.href,
-                                "metafeatures": stac.assets.metafeatures.href,
-                                "confidence": stac.assets.confidence && stac.assets.confidence.href,
-                                "stac": _.find(stac.links, (link) => link.rel === "self").href
-                            }
-                        ]
-                    }
-                }
+    let product = {
+        key: getKeyByProductId(stac),
+        data: {
+            data: {
+                tile_collection_id: stac.properties.tile_collection_id,
+                sos: stac.properties.start_datetime,
+                eos: stac.properties.end_datetime,
+                season: stac.properties.season,
+                aez_id: stac.properties.aez_id,
+                aez_group: stac.properties.aez_group,
+                model: stac.properties.model,
+                training_refids: stac.properties.training_refids,
+                product: stac.properties.product,
+                public: stac.properties.public,
+                geometry: stac.geometry
             }
-        })
+        }
+    };
+
+    if (
+        stac.properties.hasOwnProperty('mgrs:utm_zone')
+        && stac.properties.hasOwnProperty('mgrs:latitude_band')
+        && stac.properties.hasOwnProperty('mgrs:grid_square')
+    ) {
+        product.data.data.tiles = [
+            {
+                "id": stac.id,
+                "tile": `${stac.properties["mgrs:utm_zone"]}${stac.properties["mgrs:latitude_band"]}${stac.properties["mgrs:grid_square"]}`,
+                "product": stac.assets.product.href,
+                "metafeatures": stac.assets.metafeatures && stac.assets.metafeatures.href,
+                "confidence": stac.assets.confidence && stac.assets.confidence.href,
+                "stac": _.find(stac.links, (link) => link.rel === "self").href
+            }
+        ]
+    } else {
+        product.data.data.merged = {
+            "id": stac.id,
+            "product": stac.assets.product.href,
+            "metafeatures": stac.assets.metafeatures && stac.assets.metafeatures.href,
+            "confidence": stac.assets.confidence && stac.assets.confidence.href,
+            "stac": _.find(stac.links, (link) => link.rel === "self").href
+        }
+    }
+
+    return product;
 }
 
 function getGeometryForS2TilesByKeys(s2TileKeys) {
-    return db
-        .query(`SELECT ST_AsGeoJSON(ST_Extent(geom)) AS geometry FROM world_cereal_s2_tiles WHERE tile IN ('${s2TileKeys.join("', '")}');`)
-        .then((queryResult) => {
-            if (queryResult.rows[0] && queryResult.rows[0].geometry) {
-                return JSON.parse(queryResult.rows[0].geometry);
-            } else {
-                return null
-            }
-        });
+    if (s2TileKeys) {
+        return db
+            .query(`SELECT ST_AsGeoJSON(ST_Extent(geom)) AS geometry FROM world_cereal_s2_tiles WHERE tile IN ('${s2TileKeys.join("', '")}');`)
+            .then((queryResult) => {
+                if (queryResult.rows[0] && queryResult.rows[0].geometry) {
+                    return JSON.parse(queryResult.rows[0].geometry);
+                } else {
+                    return null
+                }
+            });
+    }
 }
 
 function mergeWith(object, source) {
@@ -168,7 +190,9 @@ function mergeWith(object, source) {
                 });
 
                 return _.orderBy(_.map(tiles), ['tile']);
-            }
+            } else {
+                return srcValue
+            };
         }
     );
 }
@@ -187,9 +211,9 @@ async function create(request, response) {
             return checkRequiredProperties(stacList)
                 .then(() => stacList);
         })
-        .then(async (stacList) => {
+        .then((stacList) => {
             for (let stac of stacList) {
-                let productMetadata = await getProductMetadataFromStac(stac);
+                let productMetadata = getProductMetadataFromStac(stac);
                 if (!rawProductMetadataToCreateOrUpdate[productMetadata.key]) {
                     rawProductMetadataToCreateOrUpdate[productMetadata.key] = _.assign({}, productMetadata);
                 } else {
@@ -226,25 +250,37 @@ async function create(request, response) {
                     rawProductMetadataToCreate[rawProductKey] = rawProduct;
                 }
             });
+
+            console.log(JSON.stringify(rawProductMetadataToUpdate));
         })
         .then(() => {
             _.each(rawProductMetadataToCreate, (rawProduct) => {
-                rawProduct.data.tileKeys = _.map(rawProduct.data.data.tiles, 'tile');
+                if (rawProduct.data.data.hasOwnProperty('tiles')) {
+                    rawProduct.data.tileKeys = _.map(rawProduct.data.data.tiles, 'tile');
+                } else {
+                    rawProduct.data.tileKeys = null;
+                }
             });
             _.each(rawProductMetadataToUpdate, (rawProduct) => {
-                rawProduct.data.tileKeys = _.map(rawProduct.data.data.tiles, 'tile');
+                if (rawProduct.data.data.hasOwnProperty('tiles')) {
+                    rawProduct.data.tileKeys = _.map(rawProduct.data.data.tiles, 'tile');
+                } else {
+                    rawProduct.data.tileKeys = null;
+                }
             });
         })
         .then(async () => {
             for (let productKey of Object.keys(rawProductMetadataToCreate)) {
                 let rawProduct = rawProductMetadataToCreate[productKey];
 
-                rawProduct.data.geometry = await getGeometryForS2TilesByKeys(rawProduct.data.tileKeys);
+                rawProduct.data.geometry = await getGeometryForS2TilesByKeys(rawProduct.data.tileKeys) || rawProduct.data.data.geometry;
+                delete rawProduct.data.data.geometry;
             }
             for (let productKey of Object.keys(rawProductMetadataToUpdate)) {
                 let rawProduct = rawProductMetadataToUpdate[productKey];
 
-                rawProduct.data.geometry = await getGeometryForS2TilesByKeys(rawProduct.data.tileKeys);
+                rawProduct.data.geometry = await getGeometryForS2TilesByKeys(rawProduct.data.tileKeys) || rawProduct.data.data.geometry;
+                delete rawProduct.data.data.geometry;
             }
         })
         .then(() => {
@@ -316,7 +352,7 @@ async function create(request, response) {
             }
         })
         .then(() => {
-            response.status(200).send({created: rawProductMetadataToCreate, updated: rawProductMetadataToUpdate});
+            response.status(200).send({ created: rawProductMetadataToCreate, updated: rawProductMetadataToUpdate });
         })
         .catch((error) => {
             console.log(error);
@@ -364,8 +400,10 @@ function view(request, response) {
     return Promise
         .resolve()
         .then(async () => {
-            if (request.body.geometry) {
+            if (request.body.geometry && !request.body.tiles) {
                 tiles = await s2tiles.getTilesByGeometry(request.body.geometry);
+            } else if (request.body.tiles) {
+                tiles = request.body.tiles;
             } else {
                 tiles = await s2tiles.getTilesAll();
             }
@@ -377,8 +415,10 @@ function view(request, response) {
                 filter.geometry = {
                     geometry_overlaps: request.body.geometry
                 }
+            }
 
-                filter.tileKeys = {
+            if (request.body.tilesKeys) {
+                filter.tiles = {
                     overlaps: tiles
                 }
             }
