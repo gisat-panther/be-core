@@ -24,12 +24,12 @@ async function autoLoginKongHqMiddleware(request, response, next) {
     }
 
     let kongUserKey = request.headers['x-user-info'];
-    
+
     // TODO This is just quick fix and has to be removed in next phase
     if (worldCerealUserKeyMap.hasOwnProperty(kongUserKey)) {
         console.log(`#WARNING# Invalid UUID ${kongUserKey} was replaced with proper one! This has to be solved!`);
         kongUserKey = worldCerealUserKeyMap[kongUserKey];
-    };
+    }
 
     if (!uuid.isValid(kongUserKey)) {
         return next();
