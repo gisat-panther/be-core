@@ -43,7 +43,7 @@ async function ensureDb() {
             console.log(`#WARNING#`, error.message);
         });
     await pgClient
-        .query(`CREATE DATABASE "panther" WITH OWNER "panther";`)
+        .query(`CREATE DATABASE "${config.pgConfig.normal.database}" WITH OWNER "${config.pgConfig.normal.user}";`)
         .catch((error) => {
             console.log(`#WARNING#`, error.message);
         });
