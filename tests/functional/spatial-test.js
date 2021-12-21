@@ -76,6 +76,7 @@ describe('/rest/dataSources', function () {
                                     url: 'localhost',
                                     layers: 'wms_layers',
                                     styles: 'wms_styles',
+                                    params: {k: 'v'},
                                     configuration: {k: 'v'},
                                 },
                             },
@@ -199,6 +200,7 @@ describe('/rest/dataSources', function () {
                                         url: 'localhost',
                                         layers: 'wms_layers',
                                         styles: 'wms_styles',
+                                        params: {k: 'v'},
                                         configuration: {k: 'v'},
                                     },
                                     permissions: {
@@ -365,6 +367,7 @@ describe('/rest/dataSources', function () {
                                         url: 'localhost',
                                         layers: 'wms_layers',
                                         styles: 'wms_styles',
+                                        params: {k: 'v'},
                                         configuration: {k: 'v'},
                                     },
                                     permissions: {
