@@ -1470,6 +1470,7 @@ module.exports = {
                                     'url',
                                     'layers',
                                     'styles',
+                                    'params',
                                     'configuration',
                                 ],
                             },
@@ -1478,6 +1479,7 @@ module.exports = {
                                     'url',
                                     'layers',
                                     'styles',
+                                    'params',
                                     'configuration',
                                 ],
                             },
@@ -1486,6 +1488,7 @@ module.exports = {
                                     'url',
                                     'layers',
                                     'styles',
+                                    'params',
                                     'configuration',
                                 ],
                             },
@@ -1503,6 +1506,10 @@ module.exports = {
                             styles: {
                                 defaultValue: null,
                                 schema: Joi.string().allow(null),
+                            },
+                            params: {
+                                defaultValue: null,
+                                schema: Joi.object().allow(null),
                             },
                             configuration: {
                                 defaultValue: null,
