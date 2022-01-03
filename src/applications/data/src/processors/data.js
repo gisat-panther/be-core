@@ -40,7 +40,7 @@ function formatData(rawData, filter) {
 			spatialDataSources: [],
 			attributeDataSources: []
 		},
-		spatialData: rawData.data.spatial,
+		spatialData: filter.data.geometry ? rawData.data.spatial : {},
 		attributeData: rawData.data.attribute
 	}
 
