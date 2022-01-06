@@ -5,12 +5,14 @@ const migrations = require('./migrations');
 const express = require('express');
 const permissions = require('./modules/permissions/index');
 const getAppConfig = require('./applications/config').get;
+const cors = require('cors');
 
 const init = async () => {
 	try {
 		await migrations.migrate();
 		await db.init();
 		const app = express();
+		app.use(cors({origin: true, credentials: true}));
 		app.use(applicationsRouter);
 		app.listen(config.masterPort, () => {
 			console.log(`#NOTE# Master is listening on port ${config.masterPort}`);
