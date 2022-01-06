@@ -21,7 +21,7 @@ const mapFileStaticPath = config.import.raster.paths.mapfile || `/srv/msmaps`;
 
 const cleanUp = (importKey) => {
 	return new Promise((resolve, reject) => {
-		fs.rmdir(`${basePath}${importKey}`, { recursive: true }, () => {
+		fs.rm(`${basePath}${importKey}`, { recursive: true }, () => {
 			log(importKey, "cleaned up");
 			resolve();
 		})
