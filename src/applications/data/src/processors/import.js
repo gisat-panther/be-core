@@ -71,10 +71,10 @@ const importVerifiedFiles = async (importKey, verifiedFiles, options) => {
 }
 
 const importVectorDataToPostgres = (importKey, path) => {
-	let { host, user, password, database } = config.pgConfig.normal;
+	let { host, user, password, database, port = 5432 } = config.pgConfig.normal;
 	return new Promise((resolve, reject) => {
 		chp.exec(
-			`ogr2ogr -f "PostgreSQL" "PG:host=${host} user=${user} password=${password} dbname=${database}" -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -lco GEOMETRY_NAME=geom -lco LAUNDER=NO ${path}`,
+			`ogr2ogr -f "PostgreSQL" "PG:host=${host} user=${user} password=${password} dbname=${database} port=${port}" -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -lco GEOMETRY_NAME=geom -lco LAUNDER=NO ${path}`,
 			(error, stdout, stderr) => {
 				if (error) {
 					reject(error);
