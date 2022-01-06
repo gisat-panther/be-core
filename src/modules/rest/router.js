@@ -5,7 +5,7 @@ const hashMiddleware = require('../../middlewares/hash');
 const _ = require('lodash/fp');
 const commandResult = require('./result');
 
-const forEachWithKey = _.forEach.convert({cap: false});
+const forEachWithKey = _.forEach.convert({ cap: false });
 
 /**
  * @param {{type: string, data: any}} result
