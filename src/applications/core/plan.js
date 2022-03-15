@@ -1246,6 +1246,32 @@ module.exports = {
                 },
             },
         },
+        accesses: {
+            table: 'accesses',
+            context: {
+                list: {
+                    columns: ['key', 'data'],
+                },
+                create: {
+                    columns: ['key', 'data'],
+                },
+                update: {
+                    columns: ['key', 'data'],
+                },
+            },
+            columns: {
+                key: {
+                    defaultValue: () => uuid.generate(),
+                    schema: Joi.string().uuid(),
+                },
+                data: {
+                    defaultValue: null,
+                    schema: Joi.object().allow(null),
+                },
+            },
+            relations: {
+            },
+        }
     },
     dataSources: {
         timeSerie: {
