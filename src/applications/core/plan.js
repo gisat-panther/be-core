@@ -1520,19 +1520,23 @@ module.exports = {
                     wmts: {
                         context: {
                             list: {
-                                columns: ['urls'],
+                                columns: ['urls', 'configuration'],
                             },
                             create: {
-                                columns: ['urls'],
+                                columns: ['urls', 'configuration'],
                             },
                             update: {
-                                columns: ['urls'],
+                                columns: ['urls', 'configuration'],
                             },
                         },
                         columns: {
                             urls: {
                                 defaultValue: null,
                                 schema: Joi.array().items(Joi.string()).allow(null),
+                            },
+                            configuration: {
+                                defaultValue: null,
+                                schema: Joi.object().allow(null),
                             },
                         },
                     },
