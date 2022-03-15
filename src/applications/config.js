@@ -105,10 +105,11 @@ function get() {
                 return {};
             },
         },
-        require('./core/index'),
-        require('./demo/index'),
-        require('./data/index'),
+        require('./core'),
+        require('./demo'),
+        require('./data'),
         require('./timeSerieData'),
+        require('./proxy'),
         ...getExternalApplications()
     );
 
