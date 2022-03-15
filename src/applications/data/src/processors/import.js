@@ -16,8 +16,8 @@ const query = require('../../../../modules/rest/query');
 
 const basePath = "/tmp/ptr_import_";
 
-const rasterStaticPath = config.import.raster.paths.static || `/srv/static`;
-const mapFileStaticPath = config.import.raster.paths.mapfile || `/srv/msmaps`;
+const rasterStaticPath = config.mapserver.storagePath || `/srv/static`;
+const mapFileStaticPath = config.mapserver.mapsPath || `/srv/msmaps`;
 
 const cleanUp = (importKey) => {
 	return new Promise((resolve, reject) => {
@@ -172,7 +172,7 @@ const generateMsMapFileForFinalProduct = (finalProduct, srid) => {
     WEB
         METADATA
             "wms_title" "ptr"
-            "wms_onlineresource" "${config.urlMapServer}/?map=${mapFileStaticPath}/${layerName}.map&"
+            "wms_onlineresource" "${config.mapserver.url}/?map=${mapFileStaticPath}/${layerName}.map&"
             "wms_enable_request" "*"
             "wcs_enable_request" "*"
             "ows_sld_enabled" "true"
