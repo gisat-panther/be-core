@@ -32,7 +32,7 @@ function verifyToken(token) {
 }
 
 function tokenFromRequest(request) {
-    const authorizatonHeader = request.headers.authorization;
+    const authorizatonHeader = request.headers['x-esri-authorization'] || request.headers.authorization;
     if (authorizatonHeader != null) {
         return parseToken(authorizatonHeader);
     }
