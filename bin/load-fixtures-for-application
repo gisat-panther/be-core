@@ -25,6 +25,7 @@ if (!fs.existsSync(`${externalApplications}/${process.argv[2]}/fixtures.sql`)) {
 const options = {
     '-h': pgConfig.normal.host,
     '-U': pgConfig.normal.user,
+    '-p': pgConfig.normal.port,
     '-f': `${externalApplications}/${process.argv[2]}/fixtures.sql`,
 };
 
