@@ -1487,20 +1487,6 @@ async function updateRecordRelation({plan, group, type, client}, record) {
             switch (rel.type) {
                 case 'manyToMany':
                 case 'manyToOne': {
-                    if (relKey == null || relKey.length === 0) {
-                        acc.push(
-                            SQL`DELETE FROM `
-                                .append(
-                                    `${quoteIdentifier(
-                                        rel.relationTable
-                                    )} WHERE "${rel.ownKey}" = `
-                                )
-                                .append(SQL`${record.key}`)
-                        );
-
-                        return acc;
-                    }
-
                     acc.push(
                         SQL`DELETE FROM `
                             .append(
@@ -1510,26 +1496,28 @@ async function updateRecordRelation({plan, group, type, client}, record) {
                             )
                             .append(SQL`${record.key} AND (`)
                             .append(`"${rel.inverseKey}"`)
-                            .append(SQL` = ANY(${relKey}))`)
+                            .append(SQL` IS NOT NULL)`)
                     );
 
-                    // todo find out how to do this using imatic pgqb
-                    const parentTableName = plan[group][type].table || type;
-                    acc.push(
-                        SQL`INSERT INTO `
-                            .append(
-                                `${quoteIdentifier(rel.relationTable)} ("${
-                                    rel.ownKey
-                                }", "${rel.inverseKey}") `
-                            )
-                            .append(
-                                `SELECT '${record.key}', '${relKey}' WHERE EXISTS `
-                            )
-                            .append(
-                                `(SELECT * FROM "${group}"."${parentTableName}" `
-                            )
-                            .append(`WHERE "key" = '${record.key}')`)
-                    );
+                    if (relKey && relKey.length) {    
+                        const parentTableName = plan[group][type].table || type;
+                        acc.push(
+                            SQL`INSERT INTO `
+                                .append(
+                                    `${quoteIdentifier(rel.relationTable)} ("${
+                                        rel.ownKey
+                                    }", "${rel.inverseKey}") `
+                                )
+                                .append(
+                                    `SELECT '${record.key}', unnest(string_to_array('${relKey}', ','))::UUID WHERE EXISTS `
+                                )
+                                .append(
+                                    `(SELECT * FROM "${group}"."${parentTableName}" `
+                                )
+                                .append(`WHERE "key" = '${record.key}')`)
+                        );
+                    }
+                    
 
                     return acc;
                 }
@@ -1541,6 +1529,7 @@ async function updateRecordRelation({plan, group, type, client}, record) {
         validRelationCols
     );
     for (const sql of relationQueries) {
+        console.log(sql);
         await client.query(sql);
     }
 }
