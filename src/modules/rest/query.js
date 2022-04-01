@@ -1501,21 +1501,23 @@ async function updateRecordRelation({plan, group, type, client}, record) {
 
                     if (relKey && relKey.length) {    
                         const parentTableName = plan[group][type].table || type;
-                        acc.push(
-                            SQL`INSERT INTO `
-                                .append(
-                                    `${quoteIdentifier(rel.relationTable)} ("${
-                                        rel.ownKey
-                                    }", "${rel.inverseKey}") `
-                                )
-                                .append(
-                                    `SELECT '${record.key}', unnest(string_to_array('${relKey}', ','))::UUID WHERE EXISTS `
-                                )
-                                .append(
-                                    `(SELECT * FROM "${group}"."${parentTableName}" `
-                                )
-                                .append(`WHERE "key" = '${record.key}')`)
-                        );
+                        relKey.forEach((singleRelKey) => {
+                            acc.push(
+                                SQL`INSERT INTO `
+                                    .append(
+                                        `${quoteIdentifier(rel.relationTable)} ("${
+                                            rel.ownKey
+                                        }", "${rel.inverseKey}") `
+                                    )
+                                    .append(
+                                        `SELECT '${record.key}', '${singleRelKey}' WHERE EXISTS `
+                                    )
+                                    .append(
+                                        `(SELECT * FROM "${group}"."${parentTableName}" `
+                                    )
+                                    .append(`WHERE "key" = '${record.key}')`)
+                            );
+                        })
                     }
                     
 
@@ -1529,7 +1531,6 @@ async function updateRecordRelation({plan, group, type, client}, record) {
         validRelationCols
     );
     for (const sql of relationQueries) {
-        console.log(sql);
         await client.query(sql);
     }
 }
