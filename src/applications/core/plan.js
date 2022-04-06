@@ -1566,6 +1566,29 @@ module.exports = {
                             },
                         },
                     },
+                    cog: {
+                        context: {
+                            list: {
+                                columns: ['url', 'configuration'],
+                            },
+                            create: {
+                                columns: ['url', 'configuration'],
+                            },
+                            update: {
+                                columns: ['url', 'configuration'],
+                            },
+                        },
+                        columns: {
+                            url: {
+                                defaultValue: null,
+                                schema: Joi.string().allow(null),
+                            },
+                            configuration: {
+                                defaultValue: null,
+                                schema: Joi.object().allow(null),
+                            },
+                        },
+                    }
                 },
             },
             context: {
@@ -1601,7 +1624,8 @@ module.exports = {
                         'tiledVector',
                         'vector',
                         'wms',
-                        'wmts'
+                        'wmts',
+                        'cog'
                     ),
                     index: true
                 },
