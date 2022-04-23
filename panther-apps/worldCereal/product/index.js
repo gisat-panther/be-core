@@ -6,6 +6,10 @@ const handler = require('../../../src/modules/rest/handler');
 const shared = require('../shared');
 const db = require('../../../src/db');
 const s2tiles = require('../s2tiles');
+const mapserver = require('../../../src/modules/map/mapserver');
+const mapproxy = require('../../../src/modules/map/mapproxy');
+
+const config = require('../../../config');
 
 const GROUPS = {
     worldCerealPublic: "2dbc2120-b826-4649-939b-fff5a4a01866",
@@ -29,6 +33,7 @@ const STAC_REQUIRED_PROPERTIES = [
     'properties.product',
     'properties.public',
     'properties.tile_collection_id',
+    'properties.proj:epsg',
     'assets',
     'assets.product',
     'assets.product.href',
@@ -147,7 +152,9 @@ function getProductMetadataFromStac(stac) {
                 "product": stac.assets.product.href,
                 "metafeatures": stac.assets.metafeatures && stac.assets.metafeatures.href,
                 "confidence": stac.assets.confidence && stac.assets.confidence.href,
-                "stac": _.find(stac.links, (link) => link.rel === "self").href
+                "stac": _.find(stac.links, (link) => link.rel === "self").href,
+                "src_epsg": stac.properties["proj:epsg"],
+                "src_bbox": stac.bbox
             }
         ]
     } else {
@@ -156,7 +163,9 @@ function getProductMetadataFromStac(stac) {
             "product": stac.assets.product.href,
             "metafeatures": stac.assets.metafeatures && stac.assets.metafeatures.href,
             "confidence": stac.assets.confidence && stac.assets.confidence.href,
-            "stac": _.find(stac.links, (link) => link.rel === "self").href
+            "stac": _.find(stac.links, (link) => link.rel === "self").href,
+            "src_epsg": stac.properties["proj:epsg"],
+            "src_bbox": stac.bbox
         }
     }
 
@@ -190,9 +199,7 @@ function mergeWith(object, source) {
                 });
 
                 return _.orderBy(_.map(tiles), ['tile']);
-            } else {
-                return srcValue
-            };
+            }
         }
     );
 }
@@ -250,8 +257,6 @@ async function create(request, response) {
                     rawProductMetadataToCreate[rawProductKey] = rawProduct;
                 }
             });
-
-            console.log(JSON.stringify(rawProductMetadataToUpdate));
         })
         .then(() => {
             _.each(rawProductMetadataToCreate, (rawProduct) => {
@@ -282,6 +287,92 @@ async function create(request, response) {
                 rawProduct.data.geometry = await getGeometryForS2TilesByKeys(rawProduct.data.tileKeys) || rawProduct.data.data.geometry;
                 delete rawProduct.data.data.geometry;
             }
+        })
+        .then(async () => {
+            const coverages = [];
+            const mapfiles = [];
+            const mapproxyConfs = [];
+
+            Object.entries(
+                Object.assign(
+                    {},
+                    rawProductMetadataToCreate,
+                    rawProductMetadataToUpdate
+                )
+            ).forEach(([key, object]) => {
+                const productName = `wc_${object.data.data.tile_collection_id}`;
+                object.data.data.tiles.forEach((tile) => {
+                    ["product", "metafeatures", "confidence"].forEach((type) => {
+                        if (tile[type]) {
+                            const name = `wc_${tile.id}_${type}`;
+                            mapfiles.push({
+                                filename: `${name}.map`,
+                                sourceName: name,
+                                productName,
+                                epsg: tile.src_epsg,
+                                bbox: tile.src_bbox,
+                                definition: mapserver.getMapfileString({
+                                    name: `${name}`,
+                                    projection: object.data.data.src_epsg,
+                                    config: Object.entries(config.projects.worldCereal.s3),
+                                    layers: [{
+                                        name,
+                                        status: true,
+                                        type: "RASTER",
+                                        data: `${tile[type].replace("s3:/", "/vsis3")}`
+                                    }]
+                                })
+                            });
+                        }
+                    })
+                });
+
+                ["product", "metafeatures", "confidence"].forEach((type) => {
+                    const sources = {};
+                    const caches = {};
+                    const layers = [];
+                    
+                    mapfiles
+                        .filter((mapfile) => mapfile.productName = productName && mapfile.sourceName.endsWith(`_${type}`))
+                        .forEach((mapfile) => {
+                            sources[`${productName}_${mapfile.sourceName}`] = {
+                                    type: "mapserver",
+                                    req: {
+                                        layers: mapfile.sourceName,
+                                        map: `/etc/mapproxy/conf/${mapfile.filename}`
+                                    },
+                                    coverage: {
+                                        bbox: mapfile.bbox,
+                                        srs: `epsg:4326`
+                                    },
+                                    supported_srs: [`epsg:${mapfile.epsg}`]
+                                }
+                        });
+
+                    caches[`wc_${object.data.data.tile_collection_id}_${type}`] = {
+                        sources: Object.entries(sources).map(([sourceName]) => sourceName)
+                    }
+
+                    mapproxyConfs.push({
+                        filename: `wc_${object.data.data.tile_collection_id}_${type}.yaml`,
+                        definition: mapproxy.getMapproxyYamlString({
+                            services: {
+                                demo: {},
+                                wms: {}
+                            },
+                            sources,
+                            caches,
+                            layers: [{
+                                name: `wc_${object.data.data.tile_collection_id}_${type}`,
+                                sources: [`wc_${object.data.data.tile_collection_id}_${type}`]
+                            }]
+                        })
+                    });
+                });
+            });
+
+            // console.log("mapfiles", mapfiles, "mapproxyConfs", mapproxyConfs);
+            console.log(mapproxyConfs);
         })
         .then(() => {
             if (Object.keys(rawProductMetadataToCreate).length) {
@@ -485,7 +576,6 @@ function view(request, response) {
             } else if (r.type === result.FORBIDDEN) {
                 response.status(403).end();
             } else {
-                console.log(JSON.stringify(r));
                 response.status(500).end();
             }
         })
