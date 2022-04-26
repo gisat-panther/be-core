@@ -6,10 +6,10 @@ const handler = require('./handler.js');
 
 module.exports = [
     {
-        path: '/proxy/wms/:spatialDataSourceKey',
+        path: '/download/:dataSourceKey/:itemKey',
         method: 'get',
         swagger: {
-            tags: ['wms']
+            tags: ['download']
         },
         middlewares: [
             userMiddleware,
@@ -18,20 +18,6 @@ module.exports = [
             authMiddleware,
         ],
         responses: { 200: {} },
-        handler: handler.get.wms,
-    },
-    {
-        path: '/proxy/wmts/:spatialDataSourceKey/:z/:x/:y.:ext',
-        method: 'get',
-        swagger: {
-            tags: ['wmts']
-        },
-        middlewares: [
-            userMiddleware,
-            autoLoginMiddleware,
-            authMiddleware,
-        ],
-        responses: { 200: {} },
-        handler: handler.get.wmts,
+        handler: handler.download
     }
 ];

@@ -1,5 +1,6 @@
 const uuidByString = require('uuid-by-string');
 const _ = require('lodash');
+const fs = require('fs');
 
 const result = require('../../../src/modules/rest/result');
 const handler = require('../../../src/modules/rest/handler');
@@ -289,9 +290,9 @@ async function create(request, response) {
             }
         })
         .then(async () => {
-            const coverages = [];
             const mapfiles = [];
             const mapproxyConfs = [];
+            const dataSources = [];
 
             Object.entries(
                 Object.assign(
@@ -313,12 +314,13 @@ async function create(request, response) {
                                 bbox: tile.src_bbox,
                                 definition: mapserver.getMapfileString({
                                     name: `${name}`,
-                                    projection: object.data.data.src_epsg,
+                                    projection: `epsg:${tile.src_epsg}`,
                                     config: Object.entries(config.projects.worldCereal.s3),
                                     layers: [{
                                         name,
                                         status: true,
                                         type: "RASTER",
+                                        projection: `epsg:${tile.src_epsg}`,
                                         data: `${tile[type].replace("s3:/", "/vsis3")}`
                                     }]
                                 })
@@ -330,27 +332,28 @@ async function create(request, response) {
                 ["product", "metafeatures", "confidence"].forEach((type) => {
                     const sources = {};
                     const caches = {};
-                    const layers = [];
-                    
+
                     mapfiles
                         .filter((mapfile) => mapfile.productName = productName && mapfile.sourceName.endsWith(`_${type}`))
                         .forEach((mapfile) => {
                             sources[`${productName}_${mapfile.sourceName}`] = {
-                                    type: "mapserver",
-                                    req: {
-                                        layers: mapfile.sourceName,
-                                        map: `/etc/mapproxy/conf/${mapfile.filename}`
-                                    },
-                                    coverage: {
-                                        bbox: mapfile.bbox,
-                                        srs: `epsg:4326`
-                                    },
-                                    supported_srs: [`epsg:${mapfile.epsg}`]
-                                }
+                                type: "mapserver",
+                                req: {
+                                    layers: `layer_${mapfile.sourceName}`,
+                                    map: `${config.mapproxy.paths.confLocal || config.mapproxy.paths.conf}/${mapfile.filename}`,
+                                    transparent: true
+                                },
+                                coverage: {
+                                    bbox: mapfile.bbox,
+                                    srs: `epsg:4326`
+                                },
+                                supported_srs: [`epsg:${mapfile.epsg}`]
+                            }
                         });
 
                     caches[`wc_${object.data.data.tile_collection_id}_${type}`] = {
-                        sources: Object.entries(sources).map(([sourceName]) => sourceName)
+                        sources: Object.entries(sources).map(([sourceName]) => sourceName),
+                        grids: ["GLOBAL_WEBMERCATOR"]
                     }
 
                     mapproxyConfs.push({
@@ -358,21 +361,109 @@ async function create(request, response) {
                         definition: mapproxy.getMapproxyYamlString({
                             services: {
                                 demo: {},
-                                wms: {}
+                                wms: {
+                                    srs: ["EPSG:4326"],
+                                    versions: ["1.1.1", "1.3.0"],
+                                    image_formats: ['image/png', 'image/jpeg'],
+                                    md: {
+
+                                        online_resource: `${config.projects.worldCereal.urls.backend}/proxy/wms`
+                                    }
+                                }
                             },
                             sources,
                             caches,
                             layers: [{
                                 name: `wc_${object.data.data.tile_collection_id}_${type}`,
+                                title: `wc_${object.data.data.tile_collection_id}_${type}`,
                                 sources: [`wc_${object.data.data.tile_collection_id}_${type}`]
                             }]
                         })
                     });
+
+                    const dataSourceKey = uuidByString(`wc_${object.data.data.tile_collection_id}_${type}`);
+                    const downloadItems = {};
+
+                    object.data.data.tiles.forEach((tile) => {
+                        const itemKey = uuidByString(`${tile[type]}`);
+                        downloadItems[itemKey] = `${tile[type]}`;
+                        tile[type] = `${config.url}/download/${dataSourceKey}/${itemKey}`;
+
+                        if (type === "product") {
+                            const stacItemKey = uuidByString(`${tile.stac}`);
+                            downloadItems[stacItemKey] = `${tile.stac}`;
+                            tile.stac = `${config.url}/download/${dataSourceKey}/${stacItemKey}`;
+                        }
+                    });
+
+                    dataSources.push({
+                        key: dataSourceKey,
+                        data: {
+                            type: "wms",
+                            url: `${config.projects.worldCereal.urls.backend}/proxy/wms/${dataSourceKey}`,
+                            layers: `wc_${object.data.data.tile_collection_id}_${type}`,
+                            configuration: {
+                                mapproxy: {
+                                    instance: `wc_${object.data.data.tile_collection_id}_${type}`
+                                },
+                                download: {
+                                    storageType: "s3",
+                                    credentials: {
+                                        source: "localConfig",
+                                        path: "projects.worldCereal.s3"
+                                    },
+                                    items: downloadItems
+                                }
+                            }
+                        }
+                    })
+
+                    object.data.data.dataSource = object.data.data.dataSource || {};
+                    object.data.data.dataSource[type] = dataSourceKey;
                 });
             });
 
-            // console.log("mapfiles", mapfiles, "mapproxyConfs", mapproxyConfs);
-            console.log(mapproxyConfs);
+            const promises = [];
+
+            mapfiles.forEach((mapfile) => {
+                promises.push(
+                    Promise
+                        .resolve()
+                        .then(() => fs.writeFileSync(
+                            `${config.mapproxy.paths.conf}/${mapfile.filename}`,
+                            mapfile.definition
+                        ))
+                );
+            });
+
+            mapproxyConfs.forEach((mapproxyConf) => {
+                promises.push(
+                    Promise
+                        .resolve()
+                        .then(() => fs.writeFileSync(
+                            `${config.mapproxy.paths.conf}/${mapproxyConf.filename}`,
+                            mapproxyConf.definition
+                        ))
+                );
+            });
+
+            if (dataSources.length) {
+                promises.push(
+                    handler.update(
+                        "dataSources",
+                        {
+                            user: request.user,
+                            body: {
+                                data: {
+                                    spatial: dataSources
+                                }
+                            }
+                        }
+                    )
+                );
+            }
+
+            return Promise.all(promises);
         })
         .then(() => {
             if (Object.keys(rawProductMetadataToCreate).length) {
