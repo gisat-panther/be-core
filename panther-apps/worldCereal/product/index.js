@@ -368,7 +368,7 @@ async function create(request, response) {
                             services: {
                                 demo: {},
                                 wms: {
-                                    srs: ["EPSG:4326"],
+                                    srs: ["EPSG:4326", "EPSG:3857"],
                                     versions: ["1.1.1", "1.3.0"],
                                     image_formats: ['image/png', 'image/jpeg'],
                                     md: {
