@@ -1,6 +1,7 @@
 const userMiddleware = require('../../middlewares/user');
 const authMiddleware = require('../../middlewares/auth');
 const autoLoginMiddleware = require('../../middlewares/auto-login');
+const autoLoginKongHqMiddleware = require('../../middlewares/auto-login-konghq');
 const hashMiddleware = require('../../middlewares/hash');
 const _ = require('lodash/fp');
 const commandResult = require('./result');
@@ -54,6 +55,7 @@ function createGroup(plan, group, commands) {
             responses: { 200: {} },
             middlewares: [
                 userMiddleware,
+                autoLoginKongHqMiddleware,
                 autoLoginMiddleware,
                 authMiddleware,
                 hashMiddleware,
