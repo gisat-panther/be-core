@@ -67,9 +67,9 @@ function getKeyByProductId(productMetadata) {
     return uuidByString(productMetadata.properties.tile_collection_id);
 }
 
-function setAsPublic(productKey) {
+function setAsPublic(key) {
     return db
-        .query(`SELECT "key" FROM "user"."permissions" WHERE "permission" = 'view' AND "resourceKey" = '${productKey}';`)
+        .query(`SELECT "key" FROM "user"."permissions" WHERE "permission" = 'view' AND "resourceKey" = '${key}';`)
         .then((pgResult) => pgResult.rows[0].key)
         .then((permissionKey) => {
             return db
@@ -77,9 +77,9 @@ function setAsPublic(productKey) {
         })
 }
 
-function setAsPrivate(productKey) {
+function setAsPrivate(key) {
     return db
-        .query(`SELECT "key" FROM "user"."permissions" WHERE "permission" = 'view' AND "resourceKey" = '${productKey}';`)
+        .query(`SELECT "key" FROM "user"."permissions" WHERE "permission" = 'view' AND "resourceKey" = '${key}';`)
         .then((pgResult) => pgResult.rows[0].key)
         .then((permissionKey) => {
             return db
@@ -302,6 +302,7 @@ async function create(request, response) {
                 )
             ).forEach(([key, object]) => {
                 const productName = `wc_${object.data.data.tile_collection_id}`;
+                const isPublic = object.data.data.public && object.data.data.public.toLowerCase() === "true";
                 object.data.data.tiles.forEach((tile) => {
                     ["product", "metafeatures", "confidence"].forEach((type) => {
                         if (tile[type]) {
@@ -408,6 +409,7 @@ async function create(request, response) {
                             url: `${config.projects.worldCereal.urls.backend}/proxy/wms/${dataSourceKey}`,
                             layers: `wc_${object.data.data.tile_collection_id}_${type}`,
                             configuration: {
+                                isPublic,
                                 mapproxy: {
                                     instance: `wc_${object.data.data.tile_collection_id}_${type}`
                                 },
@@ -464,7 +466,17 @@ async function create(request, response) {
                                 }
                             }
                         }
-                    )
+                    ).then((result) => {
+                        return Promise.all(
+                            result.data.data.spatial.map((dataSource) => {
+                                if (dataSource.data.configuration.isPublic) {
+                                    return setAsPublic(dataSource.key);
+                                } else {
+                                    return setAsPrivate(dataSource.key);
+                                }
+                            })
+                        );
+                    })
                 );
             }
 
@@ -496,7 +508,7 @@ async function create(request, response) {
         .then(async (createdProducts) => {
             if (createdProducts) {
                 for (let createdProduct of createdProducts) {
-                    if (createdProduct.data.data.public && createdProduct.data.data.public === "true") {
+                    if (createdProduct.data.data.public && createdProduct.data.data.public.toLowerCase() === "true") {
                         await setAsPublic(createdProduct.key);
                     } else {
                         await setAsPrivate(createdProduct.key);
@@ -530,7 +542,7 @@ async function create(request, response) {
         .then(async (updatedProducts) => {
             if (updatedProducts) {
                 for (let updatedProduct of updatedProducts) {
-                    if (updatedProduct.data.data.public && updatedProduct.data.data.public === "true") {
+                    if (updatedProduct.data.data.public && updatedProduct.data.data.public.toLowerCase() === "true") {
                         await setAsPublic(updatedProduct.key);
                     } else {
                         await setAsPrivate(updatedProduct.key);
