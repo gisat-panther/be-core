@@ -353,7 +353,12 @@ async function create(request, response) {
 
                     caches[`wc_${object.data.data.tile_collection_id}_${type}`] = {
                         sources: Object.entries(sources).map(([sourceName]) => sourceName),
-                        grids: ["GLOBAL_WEBMERCATOR"]
+                        grids: ["GLOBAL_WEBMERCATOR"],
+                        cache: {
+                            type: "sqlite",
+                            directory: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${productName}`,
+                            tile_lock_dir: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${productName}/tile_lock`
+                        }
                     }
 
                     mapproxyConfs.push({
