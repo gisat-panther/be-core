@@ -1,4 +1,3 @@
-const http = require('http');
 const path = require('path');
 const { S3Client, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { Response } = require('node-fetch');
