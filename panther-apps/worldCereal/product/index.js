@@ -373,7 +373,7 @@ async function create(request, response) {
                                     image_formats: ['image/png', 'image/jpeg'],
                                     md: {
 
-                                        online_resource: `${config.projects.worldCereal.urls.backend}/proxy/wms`
+                                        online_resource: `${config.url}/proxy/wms`
                                     }
                                 }
                             },
@@ -406,7 +406,7 @@ async function create(request, response) {
                         key: dataSourceKey,
                         data: {
                             type: "wms",
-                            url: `${config.projects.worldCereal.urls.backend}/proxy/wms/${dataSourceKey}`,
+                            url: `${config.url}/proxy/wms/${dataSourceKey}`,
                             layers: `wc_${object.data.data.tile_collection_id}_${type}`,
                             configuration: {
                                 isPublic,
