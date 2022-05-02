@@ -57,6 +57,11 @@ function getMapfileString({ name, projection, config = [], layers = [] }) {
                     mapfileLines.push(`      EXPRESSION (${style.expression})`);
                     mapfileLines.push(`      STYLE`);
                     mapfileLines.push(`        COLOR "${style.color}"`);
+
+                    if (style.hasOwnProperty("opacity")) {
+                        mapfileLines.push(`        OPACITY ${style.opacity}`);
+                    }
+
                     mapfileLines.push(`      END`);
                     mapfileLines.push(`    END`);
                 }
