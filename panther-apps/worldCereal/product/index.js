@@ -63,6 +63,72 @@ const STAC_REQUIRED_PROPERTIES_EXCEPTIONS = {
     }
 }
 
+function getMapserverStylesByProduct(productId) {
+    if (productId.includes("annualcropland_classification")) {
+        return [
+            {
+                expression: "[pixel] = 100",
+                color: "#e41a1c",
+                name: "Annual cropland"
+            }
+        ]
+    } else if (productId.includes("activecropland_classification")) {
+        return [
+            {
+                expression: "[pixel] = 0",
+                color: "#a8a8a8",
+                name: "Non-active cropland"
+            },
+            {
+                expression: "[pixel] = 100",
+                color: "#2ca52a",
+                name: "Active cropland"
+            }
+        ]
+    } else if (productId.includes("irrigation_classification")) {
+        return [
+            {
+                expression: "[pixel] = 0",
+                color: "#a8a8a8",
+                name: "Non-irrigated"
+            },
+            {
+                expression: "[pixel] = 100",
+                color: "#0065ea",
+                name: "Irrigated"
+            }
+        ];
+    } else if (productId.includes("maize_classification")) {
+        return [
+            {
+                expression: "[pixel] = 0",
+                color: "#a8a8a8",
+                name: "Other crop"
+            },
+            {
+                expression: "[pixel] = 100",
+                color: "#e0cd00",
+                name: "Maize"
+            }
+        ]
+    } else if (productId.includes("springcereals_classification")) {
+        return [
+            {
+                expression: "[pixel] = 0",
+                color: "#a8a8a8",
+                name: "Other crop"
+            },
+            {
+                expression: "[pixel] = 100",
+                color: "#ae3aba",
+                name: "Cereals"
+            }
+        ];
+    } else {
+        return [];
+    }
+}
+
 function getKeyByProductId(productMetadata) {
     return uuidByString(productMetadata.properties.tile_collection_id);
 }
@@ -322,7 +388,8 @@ async function create(request, response) {
                                         status: true,
                                         type: "RASTER",
                                         projection: `epsg:${tile.src_epsg}`,
-                                        data: `${tile[type].replace("s3:/", "/vsis3")}`
+                                        data: `${tile[type].replace("s3:/", "/vsis3")}`,
+                                        styles: getMapserverStylesByProduct(tile.id)
                                     }]
                                 })
                             });
@@ -355,6 +422,12 @@ async function create(request, response) {
                     caches[`wc_${object.data.data.tile_collection_id}_${type}`] = {
                         sources: Object.entries(sources).map(([sourceName]) => sourceName),
                         grids: ["GLOBAL_WEBMERCATOR"],
+                        image: {
+                            transparent: true,
+                            resampling_method: "nearest",
+                            colors: 0,
+                            mode: "RGBA"
+                        },
                         cache: {
                             type: "sqlite",
                             directory: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${productName}`,
