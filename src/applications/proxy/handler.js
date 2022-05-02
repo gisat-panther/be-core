@@ -54,7 +54,6 @@ function getWms(request, response) {
                                         subResponse.on("data", (chunk) => rawData += chunk);
                                         subResponse.on("end", () => {
                                             const requestUrl = new URL(`${request.protocol}://${request.get("host")}${request.originalUrl}`);
-                                            console.log(requestUrl);
                                             const updated = updateObjectWith(
                                                 xmljs.xml2js(rawData),
                                                 (property, value) => {
