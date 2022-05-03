@@ -1,11 +1,16 @@
 const uuidByString = require('uuid-by-string');
 const _ = require('lodash');
+const fs = require('fs');
 
 const result = require('../../../src/modules/rest/result');
 const handler = require('../../../src/modules/rest/handler');
 const shared = require('../shared');
 const db = require('../../../src/db');
 const s2tiles = require('../s2tiles');
+const mapserver = require('../../../src/modules/map/mapserver');
+const mapproxy = require('../../../src/modules/map/mapproxy');
+
+const config = require('../../../config');
 
 const GROUPS = {
     worldCerealPublic: "2dbc2120-b826-4649-939b-fff5a4a01866",
@@ -29,6 +34,7 @@ const STAC_REQUIRED_PROPERTIES = [
     'properties.product',
     'properties.public',
     'properties.tile_collection_id',
+    'properties.proj:epsg',
     'assets',
     'assets.product',
     'assets.product.href',
@@ -57,13 +63,79 @@ const STAC_REQUIRED_PROPERTIES_EXCEPTIONS = {
     }
 }
 
+function getMapserverStylesByProduct(productId) {
+    if (productId.includes("annualcropland_classification")) {
+        return [
+            {
+                expression: "[pixel] = 100",
+                color: "#e41a1c",
+                name: "Annual cropland"
+            }
+        ]
+    } else if (productId.includes("activecropland_classification")) {
+        return [
+            {
+                expression: "[pixel] = 0",
+                color: "#a8a8a8",
+                name: "Non-active cropland"
+            },
+            {
+                expression: "[pixel] = 100",
+                color: "#2ca52a",
+                name: "Active cropland"
+            }
+        ]
+    } else if (productId.includes("irrigation_classification")) {
+        return [
+            {
+                expression: "[pixel] = 0",
+                color: "#a8a8a8",
+                name: "Non-irrigated"
+            },
+            {
+                expression: "[pixel] = 100",
+                color: "#0065ea",
+                name: "Irrigated"
+            }
+        ];
+    } else if (productId.includes("maize_classification")) {
+        return [
+            {
+                expression: "[pixel] = 0",
+                color: "#a8a8a8",
+                name: "Other crop"
+            },
+            {
+                expression: "[pixel] = 100",
+                color: "#e0cd00",
+                name: "Maize"
+            }
+        ]
+    } else if (productId.includes("springcereals_classification")) {
+        return [
+            {
+                expression: "[pixel] = 0",
+                color: "#a8a8a8",
+                name: "Other crop"
+            },
+            {
+                expression: "[pixel] = 100",
+                color: "#ae3aba",
+                name: "Cereals"
+            }
+        ];
+    } else {
+        return [];
+    }
+}
+
 function getKeyByProductId(productMetadata) {
     return uuidByString(productMetadata.properties.tile_collection_id);
 }
 
-function setAsPublic(productKey) {
+function setAsPublic(key) {
     return db
-        .query(`SELECT "key" FROM "user"."permissions" WHERE "permission" = 'view' AND "resourceKey" = '${productKey}';`)
+        .query(`SELECT "key" FROM "user"."permissions" WHERE "permission" = 'view' AND "resourceKey" = '${key}';`)
         .then((pgResult) => pgResult.rows[0].key)
         .then((permissionKey) => {
             return db
@@ -71,9 +143,9 @@ function setAsPublic(productKey) {
         })
 }
 
-function setAsPrivate(productKey) {
+function setAsPrivate(key) {
     return db
-        .query(`SELECT "key" FROM "user"."permissions" WHERE "permission" = 'view' AND "resourceKey" = '${productKey}';`)
+        .query(`SELECT "key" FROM "user"."permissions" WHERE "permission" = 'view' AND "resourceKey" = '${key}';`)
         .then((pgResult) => pgResult.rows[0].key)
         .then((permissionKey) => {
             return db
@@ -147,7 +219,9 @@ function getProductMetadataFromStac(stac) {
                 "product": stac.assets.product.href,
                 "metafeatures": stac.assets.metafeatures && stac.assets.metafeatures.href,
                 "confidence": stac.assets.confidence && stac.assets.confidence.href,
-                "stac": _.find(stac.links, (link) => link.rel === "self").href
+                "stac": _.find(stac.links, (link) => link.rel === "self").href,
+                "src_epsg": stac.properties["proj:epsg"],
+                "src_bbox": stac.bbox
             }
         ]
     } else {
@@ -156,7 +230,9 @@ function getProductMetadataFromStac(stac) {
             "product": stac.assets.product.href,
             "metafeatures": stac.assets.metafeatures && stac.assets.metafeatures.href,
             "confidence": stac.assets.confidence && stac.assets.confidence.href,
-            "stac": _.find(stac.links, (link) => link.rel === "self").href
+            "stac": _.find(stac.links, (link) => link.rel === "self").href,
+            "src_epsg": stac.properties["proj:epsg"],
+            "src_bbox": stac.bbox
         }
     }
 
@@ -190,9 +266,7 @@ function mergeWith(object, source) {
                 });
 
                 return _.orderBy(_.map(tiles), ['tile']);
-            } else {
-                return srcValue
-            };
+            }
         }
     );
 }
@@ -250,8 +324,6 @@ async function create(request, response) {
                     rawProductMetadataToCreate[rawProductKey] = rawProduct;
                 }
             });
-
-            console.log(JSON.stringify(rawProductMetadataToUpdate));
         })
         .then(() => {
             _.each(rawProductMetadataToCreate, (rawProduct) => {
@@ -283,6 +355,206 @@ async function create(request, response) {
                 delete rawProduct.data.data.geometry;
             }
         })
+        .then(async () => {
+            const mapfiles = [];
+            const mapproxyConfs = [];
+            const dataSources = [];
+
+            Object.entries(
+                Object.assign(
+                    {},
+                    rawProductMetadataToCreate,
+                    rawProductMetadataToUpdate
+                )
+            ).forEach(([key, object]) => {
+                const productName = `wc_${object.data.data.tile_collection_id}`;
+                const isPublic = object.data.data.public && object.data.data.public.toLowerCase() === "true";
+                object.data.data.tiles.forEach((tile) => {
+                    ["product", "metafeatures", "confidence"].forEach((type) => {
+                        if (tile[type]) {
+                            const name = `wc_${tile.id}_${type}`;
+                            mapfiles.push({
+                                filename: `${name}.map`,
+                                sourceName: name,
+                                productName,
+                                epsg: tile.src_epsg,
+                                bbox: tile.src_bbox,
+                                definition: mapserver.getMapfileString({
+                                    name: `${name}`,
+                                    projection: `epsg:${tile.src_epsg}`,
+                                    config: Object.entries(config.projects.worldCereal.s3),
+                                    layers: [{
+                                        name,
+                                        status: true,
+                                        type: "RASTER",
+                                        projection: `epsg:${tile.src_epsg}`,
+                                        data: `${tile[type].replace("s3:/", "/vsis3")}`,
+                                        styles: getMapserverStylesByProduct(tile.id)
+                                    }]
+                                })
+                            });
+                        }
+                    })
+                });
+
+                ["product", "metafeatures", "confidence"].forEach((type) => {
+                    const sources = {};
+                    const caches = {};
+
+                    mapfiles
+                        .filter((mapfile) => mapfile.productName = productName && mapfile.sourceName.endsWith(`_${type}`))
+                        .forEach((mapfile) => {
+                            sources[`${productName}_${mapfile.sourceName}`] = {
+                                type: "mapserver",
+                                req: {
+                                    layers: `layer_${mapfile.sourceName}`,
+                                    map: `${config.mapproxy.paths.confLocal || config.mapproxy.paths.conf}/${mapfile.filename}`,
+                                    transparent: true
+                                },
+                                coverage: {
+                                    bbox: mapfile.bbox,
+                                    srs: `epsg:4326`
+                                },
+                                supported_srs: [`epsg:${mapfile.epsg}`]
+                            }
+                        });
+
+                    caches[`wc_${object.data.data.tile_collection_id}_${type}`] = {
+                        sources: Object.entries(sources).map(([sourceName]) => sourceName),
+                        grids: ["GLOBAL_WEBMERCATOR"],
+                        image: {
+                            transparent: true,
+                            resampling_method: "nearest",
+                            colors: 0,
+                            mode: "RGBA"
+                        },
+                        cache: {
+                            type: "sqlite",
+                            directory: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${productName}`,
+                            tile_lock_dir: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${productName}/tile_lock`
+                        }
+                    }
+
+                    mapproxyConfs.push({
+                        filename: `wc_${object.data.data.tile_collection_id}_${type}.yaml`,
+                        definition: mapproxy.getMapproxyYamlString({
+                            services: {
+                                demo: {},
+                                wms: {
+                                    srs: ["EPSG:4326", "EPSG:3857"],
+                                    versions: ["1.1.1", "1.3.0"],
+                                    image_formats: ['image/png', 'image/jpeg'],
+                                    md: {
+
+                                        online_resource: `${config.url}/proxy/wms`
+                                    }
+                                }
+                            },
+                            sources,
+                            caches,
+                            layers: [{
+                                name: `wc_${object.data.data.tile_collection_id}_${type}`,
+                                title: `wc_${object.data.data.tile_collection_id}_${type}`,
+                                sources: [`wc_${object.data.data.tile_collection_id}_${type}`]
+                            }]
+                        })
+                    });
+
+                    const dataSourceKey = uuidByString(`wc_${object.data.data.tile_collection_id}_${type}`);
+                    const downloadItems = {};
+
+                    object.data.data.tiles.forEach((tile) => {
+                        const itemKey = uuidByString(`${tile[type]}`);
+                        downloadItems[itemKey] = `${tile[type]}`;
+                        tile[type] = `${config.url}/download/${dataSourceKey}/${itemKey}`;
+
+                        if (type === "product") {
+                            const stacItemKey = uuidByString(`${tile.stac}`);
+                            downloadItems[stacItemKey] = `${tile.stac}`;
+                            tile.stac = `${config.url}/download/${dataSourceKey}/${stacItemKey}`;
+                        }
+                    });
+
+                    dataSources.push({
+                        key: dataSourceKey,
+                        data: {
+                            type: "wms",
+                            url: `${config.url}/proxy/wms/${dataSourceKey}`,
+                            layers: `wc_${object.data.data.tile_collection_id}_${type}`,
+                            configuration: {
+                                isPublic,
+                                mapproxy: {
+                                    instance: `wc_${object.data.data.tile_collection_id}_${type}`
+                                },
+                                download: {
+                                    storageType: "s3",
+                                    credentials: {
+                                        source: "localConfig",
+                                        path: "projects.worldCereal.s3"
+                                    },
+                                    items: downloadItems
+                                }
+                            }
+                        }
+                    })
+
+                    object.data.data.dataSource = object.data.data.dataSource || {};
+                    object.data.data.dataSource[type] = dataSourceKey;
+                });
+            });
+
+            const promises = [];
+
+            mapfiles.forEach((mapfile) => {
+                promises.push(
+                    Promise
+                        .resolve()
+                        .then(() => fs.writeFileSync(
+                            `${config.mapproxy.paths.conf}/${mapfile.filename}`,
+                            mapfile.definition
+                        ))
+                );
+            });
+
+            mapproxyConfs.forEach((mapproxyConf) => {
+                promises.push(
+                    Promise
+                        .resolve()
+                        .then(() => fs.writeFileSync(
+                            `${config.mapproxy.paths.conf}/${mapproxyConf.filename}`,
+                            mapproxyConf.definition
+                        ))
+                );
+            });
+
+            if (dataSources.length) {
+                promises.push(
+                    handler.update(
+                        "dataSources",
+                        {
+                            user: request.user,
+                            body: {
+                                data: {
+                                    spatial: dataSources
+                                }
+                            }
+                        }
+                    ).then((result) => {
+                        return Promise.all(
+                            result.data.data.spatial.map((dataSource) => {
+                                if (dataSource.data.configuration.isPublic) {
+                                    return setAsPublic(dataSource.key);
+                                } else {
+                                    return setAsPrivate(dataSource.key);
+                                }
+                            })
+                        );
+                    })
+                );
+            }
+
+            return Promise.all(promises);
+        })
         .then(() => {
             if (Object.keys(rawProductMetadataToCreate).length) {
                 return handler
@@ -309,7 +581,7 @@ async function create(request, response) {
         .then(async (createdProducts) => {
             if (createdProducts) {
                 for (let createdProduct of createdProducts) {
-                    if (createdProduct.data.data.public && createdProduct.data.data.public === "true") {
+                    if (createdProduct.data.data.public && createdProduct.data.data.public.toLowerCase() === "true") {
                         await setAsPublic(createdProduct.key);
                     } else {
                         await setAsPrivate(createdProduct.key);
@@ -343,7 +615,7 @@ async function create(request, response) {
         .then(async (updatedProducts) => {
             if (updatedProducts) {
                 for (let updatedProduct of updatedProducts) {
-                    if (updatedProduct.data.data.public && updatedProduct.data.data.public === "true") {
+                    if (updatedProduct.data.data.public && updatedProduct.data.data.public.toLowerCase() === "true") {
                         await setAsPublic(updatedProduct.key);
                     } else {
                         await setAsPrivate(updatedProduct.key);
@@ -485,7 +757,6 @@ function view(request, response) {
             } else if (r.type === result.FORBIDDEN) {
                 response.status(403).end();
             } else {
-                console.log(JSON.stringify(r));
                 response.status(500).end();
             }
         })

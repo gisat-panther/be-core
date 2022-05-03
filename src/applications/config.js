@@ -110,6 +110,7 @@ function get() {
         require('./data'),
         require('./timeSerieData'),
         require('./proxy'),
+        require('./download'),
         ...getExternalApplications()
     );
 
