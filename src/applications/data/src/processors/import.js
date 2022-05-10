@@ -522,7 +522,7 @@ const getLayerNamesFromPath = (path) => {
 }
 
 function getRelatedFiles(baseName, files) {
-	return relatedFiles = _.filter(files, (relatedFile) => {
+	return _.filter(files, (relatedFile) => {
 		return relatedFile.startsWith(baseName);
 	});
 }
