@@ -13,11 +13,14 @@ const config = require('../../../../../config');
 const cache = require('../../../../cache');
 const db = require('../../../../db');
 const query = require('../../../../modules/rest/query');
+const mapserver = require('../../../../modules/map/mapserver');
 
 const basePath = "/tmp/ptr_import_";
 
 const rasterStaticPath = config.mapserver.storagePath || `/srv/static`;
 const mapFileStaticPath = config.mapserver.mapsPath || `/srv/msmaps`;
+
+const validFileExtensions = [".tif", ".style"];
 
 const cleanUp = (importKey) => {
 	return new Promise((resolve, reject) => {
@@ -26,6 +29,20 @@ const cleanUp = (importKey) => {
 			resolve();
 		})
 	});
+}
+
+async function inspectFolder(folder, importKey) {
+	await fse.ensureDir(`${basePath}${importKey}`);
+
+	const files = await fse.readdir(folder);
+
+	for (let file of files) {
+		const fileExt = path.extname(file).toLowerCase();
+
+		if (validFileExtensions.includes(fileExt)) {
+			await fse.ensureSymlink(`${folder}/${file}`, `${basePath}${importKey}/${file}`);
+		}
+	}
 }
 
 const extractPackage = (file, importKey) => {
@@ -133,75 +150,11 @@ const optimizeRasterFile = (source, output) => {
 	})
 }
 
-const moveFinalProductToStaticRepository = (finalProduct) => {
-	let finalProductInStaticRepository = {
-	}
-	return Promise
-		.resolve()
-		.then(() => {
-			let fileName = path.basename(finalProduct.source);
-			let destination = `${rasterStaticPath}/${fileName}`;
-
-			finalProductInStaticRepository.source = destination;
-
-			return fse.copy(finalProduct.source, destination);
-		})
-		.then(() => {
-			let fileName = path.basename(finalProduct.optimized);
-			let destination = `${rasterStaticPath}/${fileName}`;
-
-			finalProductInStaticRepository.optimized = destination;
-
-			return fse.copy(finalProduct.optimized, destination);
-		})
-		.then(() => {
-			return finalProductInStaticRepository;
-		});
-}
-
-// TODO this is specific only for world-water project
-const generateMsMapFileForFinalProduct = (finalProduct, srid) => {
-	let layerName = path.basename(finalProduct.source, ".tif");
-	let mapFileTemplate = `MAP
-    NAME "ptr"
-
-    PROJECTION
-        "init=epsg:${srid}"
-    END
-
-    WEB
-        METADATA
-            "wms_title" "ptr"
-            "wms_onlineresource" "${config.mapserver.url}/?map=${mapFileStaticPath}/${layerName}.map&"
-            "wms_enable_request" "*"
-            "wcs_enable_request" "*"
-            "ows_sld_enabled" "true"
-        END
-    END
-
-    LAYER
-    	DATA ${finalProduct.optimized}
-        NAME "ptr_${layerName}"
-        STATUS ON
-        TYPE RASTER
-
-        PROJECTION
-            "init=epsg:${srid}"
-        END
-
-        METADATA
-            wms_title "ptr_${layerName}"
-        END
-
-        INCLUDE "${mapFileStaticPath}/ww-base-style.map"
-    END
-END`
-
-	return Promise
-		.resolve()
-		.then(() => {
-			return fse.outputFile(`${mapFileStaticPath}/${layerName}.map`, mapFileTemplate)
-		})
+async function moveFinalProductToStaticRepository(optimizedFile) {
+	let fileName = path.basename(optimizedFile);
+	let destination = `${rasterStaticPath}/${fileName}`;
+	await fse.copy(optimizedFile, destination);
+	return destination;
 }
 
 const processMsMapFile = (importKey, data, options) => {
@@ -256,14 +209,34 @@ const processRaster = (importKey, data, options) => {
 				`${basePath}${importKey}/${path.basename(data.file, '.tif')}_epsg${srid}.img`
 			)
 		})
-		.then((optimizedFile) => {
-			return moveFinalProductToStaticRepository({
-				source: sourcePath,
-				optimized: optimizedFile
-			})
+		.then(async (optimizedFile) => {
+			return moveFinalProductToStaticRepository(optimizedFile);
 		})
-		.then((finalProduct) => {
-			return generateMsMapFileForFinalProduct(finalProduct, srid);
+		.then(async (optimizedFile) => {
+			const name = path.parse(sourcePath).name;
+			const projection = `EPSG:${srid}`;
+
+			let styles = [];
+			if (data.related && data.related.style) {
+				styles = await fse.readJSON(`${basePath}${importKey}/${data.related.style}`);
+			}
+
+			const mapfile = mapserver.getMapfileString({
+				name,
+				projection,
+				layers: [{
+					name,
+					status: true,
+					data: optimizedFile,
+					type: "RASTER",
+					projection,
+					styles
+				}]
+			});
+
+			await fse.outputFile(`${mapFileStaticPath}/${name}.map`, mapfile);
+
+			log(importKey, `File ${data.file} was imported!`);
 		})
 }
 
@@ -548,6 +521,12 @@ const getLayerNamesFromPath = (path) => {
 	})
 }
 
+function getRelatedFiles(baseName, files) {
+	return relatedFiles = _.filter(files, (relatedFile) => {
+		return relatedFile.startsWith(baseName);
+	});
+}
+
 const verifyFiles = (files) => {
 	let verifiedFiles = {};
 	_.each(files, (file) => {
@@ -555,9 +534,7 @@ const verifyFiles = (files) => {
 		let baseName = path.basename(file, extName);
 
 		if (extName.toLowerCase() === ".shp") {
-			let relatedFiles = _.filter(files, (relatedFile) => {
-				return relatedFile.startsWith(baseName);
-			});
+			let relatedFiles = getRelatedFiles(baseName, files);
 
 			let dbf = _.find(relatedFiles, (relatedFile) => {
 				return path.extname(relatedFile).toLowerCase() === ".dbf";
@@ -588,9 +565,18 @@ const verifyFiles = (files) => {
 				file
 			};
 		} else if (extName.toLowerCase() === ".tif") {
+			let relatedFiles = getRelatedFiles(baseName, files);
+
+			let style = _.find(relatedFiles, (relatedFile) => {
+				return path.extname(relatedFile).toLowerCase() === ".style";
+			})
+
 			verifiedFiles[baseName] = {
 				type: "raster",
-				file
+				file,
+				related: {
+					style
+				}
 			};
 		} else if (extName.toLowerCase() === ".map") {
 			verifiedFiles[baseName] = {
@@ -636,6 +622,12 @@ const importFile = (file, user, options) => {
 				&& chp.execSync(`file --mime-type -b "${options.fs}"`).toString().trim() === "application/zip"
 			) {
 				return extractPackage(options.fs, importKey)
+			} else if (
+				options.fs
+				&& fs.existsSync(options.fs)
+				&& chp.execSync(`file --mime-type -b "${options.fs}"`).toString().trim() === "inode/directory"
+			) {
+				return inspectFolder(options.fs, importKey)
 			} else {
 				throw new Error("File not found or has unsupported type!")
 			}
