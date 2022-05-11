@@ -223,10 +223,10 @@ const processRaster = (importKey, data, options) => {
 			}
 
 			const mapfile = mapserver.getMapfileString({
-				name,
+				name: `map_${name}`,
 				projection,
 				layers: [{
-					name,
+					name: `ptr_${name}`,
 					status: true,
 					data: finalFile,
 					type: "RASTER",
