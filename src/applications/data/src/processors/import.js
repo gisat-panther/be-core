@@ -150,13 +150,6 @@ const optimizeRasterFile = (source, output) => {
 	})
 }
 
-async function moveFinalProductToStaticRepository(optimizedFile) {
-	let fileName = path.basename(optimizedFile);
-	let destination = `${rasterStaticPath}/${fileName}`;
-	await fse.copy(optimizedFile, destination);
-	return destination;
-}
-
 const processMsMapFile = (importKey, data, options) => {
 	const sourcePath = `${basePath}${importKey}/${data.file}`;
 	return Promise
