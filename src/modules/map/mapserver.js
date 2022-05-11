@@ -4,7 +4,7 @@ function getMapfileString({ name, projection, config = [], layers = [] }) {
     mapfileLines.push("MAP");
 
     if (name) {
-        mapfileLines.push(`  NAME map_${name}`);
+        mapfileLines.push(`  NAME ${name}`);
     }
 
     mapfileLines.push(`  UNITS DD`);
@@ -28,7 +28,7 @@ function getMapfileString({ name, projection, config = [], layers = [] }) {
 
     layers.forEach((layer) => {
         mapfileLines.push(`  LAYER`);
-        mapfileLines.push(`    NAME "layer_${layer.name}"`);
+        mapfileLines.push(`    NAME "${layer.name}"`);
         mapfileLines.push(`    STATUS ${layer.status ? "ON" : "OFF"}`);
 
         if (layer.data) {
