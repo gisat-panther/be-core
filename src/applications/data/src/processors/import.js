@@ -203,16 +203,24 @@ const processRaster = (importKey, data, options) => {
 				srid
 			)
 		})
-		.then((vrtFile) => {
-			return optimizeRasterFile(
+		.then(async (vrtFile) => {
+			const optimizedFile = await optimizeRasterFile(
 				vrtFile,
 				`${basePath}${importKey}/${path.basename(data.file, '.tif')}_epsg${srid}.img`
 			)
+
+			return [vrtFile, optimizedFile];
 		})
-		.then(async (optimizedFile) => {
-			return moveFinalProductToStaticRepository(optimizedFile);
+		.then(async ([vrtFile, optimizedFile]) => {
+			let fileName = path.basename(optimizedFile);
+			let destination = `${rasterStaticPath}/${fileName}`;
+			await fse.copy(optimizedFile, destination);
+			await fse.unlink(optimizedFile);
+			await fse.unlink(vrtFile);
+
+			return destination;
 		})
-		.then(async (optimizedFile) => {
+		.then(async (finalFile) => {
 			const name = path.parse(sourcePath).name;
 			const projection = `EPSG:${srid}`;
 
@@ -227,7 +235,7 @@ const processRaster = (importKey, data, options) => {
 				layers: [{
 					name,
 					status: true,
-					data: optimizedFile,
+					data: finalFile,
 					type: "RASTER",
 					projection,
 					styles
@@ -236,7 +244,7 @@ const processRaster = (importKey, data, options) => {
 
 			await fse.outputFile(`${mapFileStaticPath}/${name}.map`, mapfile);
 
-			log(importKey, `File ${data.file} was imported!`);
+			log(importKey, `file ${data.file} was processed!`);
 		})
 }
 
