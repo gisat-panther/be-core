@@ -380,7 +380,7 @@ async function create(request, response) {
                                 epsg: tile.src_epsg,
                                 bbox: tile.src_bbox,
                                 definition: mapserver.getMapfileString({
-                                    name: `${name}`,
+                                    name: `map_${name}`,
                                     projection: `epsg:${tile.src_epsg}`,
                                     config: Object.entries(config.projects.worldCereal.s3),
                                     layers: [{
