@@ -76,8 +76,8 @@ VALUES
     ('647a7004-2a62-445d-a78d-43ac8b1bdb6e', null, 'specific', 'worldCerealProductMetadata', 'delete'),
     ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'users', 'create'),
     ('5d53367f-03c4-4f93-b682-65d1e873f342', null, 'dataSources', 'spatial', 'create'),
-    ('67e3e60f-3313-4186-889d-6216347fd326', null, 'dataSources', 'spatial', 'update')
-    ('97e3cee5-bcfe-43a3-8d3e-fd8e4fa036b3', null, 'dataSources', 'spatial', 'view')
+    ('67e3e60f-3313-4186-889d-6216347fd326', null, 'dataSources', 'spatial', 'update'),
+    ('97e3cee5-bcfe-43a3-8d3e-fd8e4fa036b3', null, 'dataSources', 'spatial', 'view'),
     ('d367e5f1-b876-4f3f-a55b-9a6196e2404d', null, 'dataSources', 'spatial', 'delete')
 ON CONFLICT DO NOTHING;
 
