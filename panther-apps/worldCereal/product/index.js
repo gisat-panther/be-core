@@ -371,7 +371,7 @@ async function create(request, response) {
                 const isPublic = object.data.data.public && object.data.data.public.toLowerCase() === "true";
                 object.data.data.tiles.forEach((tile) => {
                     ["product", "metafeatures", "confidence"].forEach((type) => {
-                        if (tile[type]) {
+                        if (tile[type] && tile[type].startsWith("s3://")) {
                             const name = `wc_${tile.id}_${type}`;
                             mapfiles.push({
                                 filename: `${name}.map`,
