@@ -77,6 +77,8 @@ VALUES
     ('6897b1fc-a3e3-4195-a41a-f492d4a9df2a', null, 'user', 'users', 'create'),
     ('5d53367f-03c4-4f93-b682-65d1e873f342', null, 'dataSources', 'spatial', 'create'),
     ('67e3e60f-3313-4186-889d-6216347fd326', null, 'dataSources', 'spatial', 'update')
+    ('97e3cee5-bcfe-43a3-8d3e-fd8e4fa036b3', null, 'dataSources', 'spatial', 'view')
+    ('d367e5f1-b876-4f3f-a55b-9a6196e2404d', null, 'dataSources', 'spatial', 'delete')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO "user"."groupPermissions"
@@ -99,13 +101,17 @@ VALUES
     -- group: worldCerealUser | null specific worldCerealProductMetadata update
     ('2597df23-94d9-41e0-91f3-7ea633ae27f2', 'fd5aba3a-c8f8-493c-a304-a75e19c64df6'),
 
-    -- group: worldCerealAdmin | null dataSources spatual create
+    -- group: worldCerealAdmin | null dataSources spatial create
     ('998c5760-e42e-457f-aa6d-247af6352c73', '5d53367f-03c4-4f93-b682-65d1e873f342'),
+    -- group: worldCerealAdmin | null dataSource spatial view
+    ('998c5760-e42e-457f-aa6d-247af6352c73', '97e3cee5-bcfe-43a3-8d3e-fd8e4fa036b3'),
     -- group: worldCerealAdmin | null dataSources spatual update
     ('998c5760-e42e-457f-aa6d-247af6352c73', '67e3e60f-3313-4186-889d-6216347fd326'),
+    -- group: worldCerealAdmin | null dataSource spatial delete
+    ('998c5760-e42e-457f-aa6d-247af6352c73', 'd367e5f1-b876-4f3f-a55b-9a6196e2404d'),
 
-    -- group: worldCerealUser | null dataSources spatual create
+    -- group: worldCerealUser | null dataSources spatial create
     ('2597df23-94d9-41e0-91f3-7ea633ae27f2', '5d53367f-03c4-4f93-b682-65d1e873f342'),
-    -- group: worldCerealUser | null dataSources spatual update
+    -- group: worldCerealUser | null dataSources spatial update
     ('2597df23-94d9-41e0-91f3-7ea633ae27f2', '67e3e60f-3313-4186-889d-6216347fd326')
 ON CONFLICT DO NOTHING;
