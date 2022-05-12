@@ -407,7 +407,7 @@ async function create(request, response) {
                             sources[`${productName}_${mapfile.sourceName}`] = {
                                 type: "mapserver",
                                 req: {
-                                    layers: `layer_${mapfile.sourceName}`,
+                                    layers: `${mapfile.sourceName}`,
                                     map: `${config.mapproxy.paths.confLocal || config.mapproxy.paths.conf}/${mapfile.filename}`,
                                     transparent: true
                                 },
