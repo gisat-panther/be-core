@@ -1,6 +1,5 @@
 const uuidByString = require('uuid-by-string');
 const _ = require('lodash');
-const fs = require('fs');
 const fsp = require('fs/promises');
 
 const result = require('../../../src/modules/rest/result');
