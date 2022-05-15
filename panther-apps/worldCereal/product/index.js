@@ -4,9 +4,7 @@ const fsp = require('fs/promises');
 
 const result = require('../../../src/modules/rest/result');
 const handler = require('../../../src/modules/rest/handler');
-const shared = require('../shared');
 const db = require('../../../src/db');
-const s2tiles = require('../s2tiles');
 const mapserver = require('../../../src/modules/map/mapserver');
 const mapproxy = require('../../../src/modules/map/mapproxy');
 
@@ -187,90 +185,6 @@ function ensureArray(requestBody) {
     } else {
         return [requestBody];
     }
-}
-
-function getProductMetadataFromStac(stac) {
-    let product = {
-        key: getKeyByProductId(stac),
-        data: {
-            data: {
-                tile_collection_id: stac.properties.tile_collection_id,
-                sos: stac.properties.start_datetime,
-                eos: stac.properties.end_datetime,
-                season: stac.properties.season,
-                aez_id: stac.properties.aez_id,
-                aez_group: stac.properties.aez_group,
-                model: stac.properties.model,
-                training_refids: stac.properties.training_refids,
-                product: stac.properties.product,
-                public: stac.properties.public,
-                geometry: stac.geometry
-            }
-        }
-    };
-
-    if (
-        stac.properties.hasOwnProperty('mgrs:utm_zone')
-        && stac.properties.hasOwnProperty('mgrs:latitude_band')
-        && stac.properties.hasOwnProperty('mgrs:grid_square')
-    ) {
-        product.data.data.tiles = [
-            {
-                "id": stac.id,
-                "tile": `${stac.properties["mgrs:utm_zone"]}${stac.properties["mgrs:latitude_band"]}${stac.properties["mgrs:grid_square"]}`,
-                "product": stac.assets.product.href,
-                "metafeatures": stac.assets.metafeatures && stac.assets.metafeatures.href,
-                "confidence": stac.assets.confidence && stac.assets.confidence.href,
-                "stac": _.find(stac.links, (link) => link.rel === "self").href,
-                "src_epsg": stac.properties["proj:epsg"],
-                "src_bbox": stac.bbox
-            }
-        ]
-    } else {
-        product.data.data.merged = {
-            "id": stac.id,
-            "product": stac.assets.product.href,
-            "metafeatures": stac.assets.metafeatures && stac.assets.metafeatures.href,
-            "confidence": stac.assets.confidence && stac.assets.confidence.href,
-            "stac": _.find(stac.links, (link) => link.rel === "self").href,
-            "src_epsg": stac.properties["proj:epsg"],
-            "src_bbox": stac.bbox
-        }
-    }
-
-    return product;
-}
-
-function getGeometryForS2TilesByKeys(s2TileKeys) {
-    if (s2TileKeys) {
-        return db
-            .query(`SELECT ST_AsGeoJSON(ST_Extent(geom)) AS geometry FROM world_cereal_s2_tiles WHERE tile IN ('${s2TileKeys.join("', '")}');`)
-            .then((queryResult) => {
-                if (queryResult.rows[0] && queryResult.rows[0].geometry) {
-                    return JSON.parse(queryResult.rows[0].geometry);
-                } else {
-                    return null
-                }
-            });
-    }
-}
-
-function mergeWith(object, source) {
-    return _.mergeWith(
-        object,
-        source,
-        (objValue, srcValue, key) => {
-            if (_.isArray(objValue) && key === "tiles") {
-                let tiles = {};
-
-                _.each(objValue.concat(srcValue), (tile) => {
-                    tiles[tile.id] = tile;
-                });
-
-                return _.orderBy(_.map(tiles), ['tile']);
-            }
-        }
-    );
 }
 
 function getProductKey(stac, owner) {
@@ -710,7 +624,7 @@ function remove(request, response) {
                 response.status(500).end();
             }
         })
-        .catch((error) => {
+        .catch(() => {
             response.status(500).end();
         })
 }
