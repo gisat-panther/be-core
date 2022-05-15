@@ -585,8 +585,8 @@ function getProductMapproxyConfs(baseProduct, mapfiles) {
             },
             cache: {
                 type: "sqlite",
-                directory: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${getProductName(baseProduct)}`,
-                tile_lock_dir: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${getProductName(baseProduct)}/tile_lock`
+                directory: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${getProductName(baseProduct)}_${type}`,
+                tile_lock_dir: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${getProductName(baseProduct)}_${type}/tile_lock`
             }
         }
 
