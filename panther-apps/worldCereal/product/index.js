@@ -423,6 +423,8 @@ async function create(request, response) {
 
         await setDataSourcesAccessibility(dataSources);
 
+        await cleanMapproxyCache(baseProduct, mapproxyConfs);
+
         worldCerealProductMetadataList.push(worldCerealProductMetadata);
     }
 
@@ -435,6 +437,23 @@ function getProductName(baseProduct) {
 
 function getDataSourceKey(productName, productType) {
     return uuidByString(`${productName}_${productType}`);
+}
+
+async function cleanMapproxyCache(baseProduct, mapproxyConfs) {
+    for (const mapproxyConf of mapproxyConfs) {
+        for (const cacheConfKey of Object.keys(mapproxyConf.caches)) {
+            const cacheFolder = `${config.mapproxy.paths.cache}/${cacheConfKey}`;
+
+            try {
+                const isMapproxyCache = (await fsp.lstat(`${cacheFolder}/tile_lock`)).isDirectory();
+                if (isMapproxyCache) {
+                    await fsp.rm(`${cacheFolder}`, {recursive: true, force: true});
+                }
+            } catch (error) {
+                // console.log(error);
+            }
+        }
+    }
 }
 
 async function storeDataSources(dataSources, requestUser) {
@@ -517,7 +536,7 @@ function getProductDataSources(baseProduct) {
     productTypes.forEach((type) => {
         baseProduct.data.data.tiles.forEach((tile) => {
             downloadItems[getDownloadItemKey(tile[type])] = `${tile[type]}`;
-    
+
             if (type === "product") {
                 downloadItems[getDownloadItemKey(tile.stac)] = `${tile.stac}`;
             }
@@ -592,6 +611,7 @@ function getProductMapproxyConfs(baseProduct, mapfiles) {
 
         mapproxyConfs.push({
             filename: `${getProductName(baseProduct)}_${type}.yaml`,
+            caches,
             definition: mapproxy.getMapproxyYamlString({
                 services: {
                     demo: {},
