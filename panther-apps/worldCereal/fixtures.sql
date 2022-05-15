@@ -115,3 +115,12 @@ VALUES
     -- group: worldCerealUser | null dataSources spatial update
     ('2597df23-94d9-41e0-91f3-7ea633ae27f2', '67e3e60f-3313-4186-889d-6216347fd326')
 ON CONFLICT DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS "worldCerealStacs" (
+    "key" UUID PRIMARY KEY,
+    "productKey" UUID NOT NULL,
+    "owner" UUID NOT NULL,
+    "stac" JSONB NOT NULL,
+    "geometry" GEOMETRY NOT NULL,
+    "tile" TEXT NOT NULL
+);

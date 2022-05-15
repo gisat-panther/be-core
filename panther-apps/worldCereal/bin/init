@@ -8,4 +8,4 @@ const worldCerealInit = require('../init');
 
 worldCerealInit.loadFixtures();
 
-worldCerealInit.loadS2Tiles();
+// worldCerealInit.loadS2Tiles();

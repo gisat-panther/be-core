@@ -1,6 +1,7 @@
 const uuidByString = require('uuid-by-string');
 const _ = require('lodash');
 const fs = require('fs');
+const fsp = require('fs/promises');
 
 const result = require('../../../src/modules/rest/result');
 const handler = require('../../../src/modules/rest/handler');
@@ -62,6 +63,8 @@ const STAC_REQUIRED_PROPERTIES_EXCEPTIONS = {
         // "properties.product": "activecropland"
     }
 }
+
+const productTypes = ["product", "metafeatures", "confidence"];
 
 function getMapserverStylesByProduct(productId) {
     if (productId.includes("annualcropland_classification")) {
@@ -271,365 +274,391 @@ function mergeWith(object, source) {
     );
 }
 
+function getProductKey(stac, owner) {
+    return uuidByString(`${stac.properties.tile_collection_id}_${owner}`);
+}
+
+async function storeStacToLocalDb(stac, owner) {
+    const key = uuidByString(`${stac.id}_${owner}`);
+    const productKey = getProductKey(stac, owner);
+    const geometry = JSON.stringify(stac.geometry);
+    const tile = `${stac.properties["mgrs:utm_zone"]}${stac.properties["mgrs:latitude_band"]}${stac.properties["mgrs:grid_square"]}`;
+    const stacStr = JSON.stringify(stac);
+
+    await db.query(
+        `INSERT INTO "worldCerealStacs" 
+            (
+                "key", 
+                "productKey", 
+                "geometry", 
+                "tile", 
+                "stac",
+                "owner" 
+            )
+        VALUES
+            (
+                '${key}', 
+                '${productKey}', 
+                ST_GeomFromGeoJSON('${geometry}'), 
+                '${tile}', 
+                '${stacStr}',
+                '${owner}'
+            )
+        ON CONFLICT ("key") DO UPDATE SET
+            "productKey" = '${productKey}', 
+            "geometry" = ST_GeomFromGeoJSON('${geometry}'), 
+            "tile" = '${tile}', 
+            "stac" = '${stacStr}';`
+    );
+}
+
+async function getProductStacs(productKey) {
+    return db
+        .query(`SELECT "stac" FROM "worldCerealStacs" WHERE "productKey" = '${productKey}'`)
+        .then((result) => result.rows.map((row) => row.stac));
+}
+
+async function getProductGeometry(productKey) {
+    return db
+        .query(`SELECT ST_AsGeoJSON(ST_ForcePolygonCCW(ST_ExteriorRing((ST_Dump(ST_Union("geometry"))).geom) )) AS "geometry" FROM "worldCerealStacs" WHERE "productKey" = '${productKey}'`)
+        .then((result) => JSON.parse(result.rows[0].geometry));
+}
+
+function getBaseProduct(key, productStacs, productGeometry) {
+    const tiles = productStacs.map((productStac) => {
+        return {
+            "id": productStac.id,
+            "tile": `${productStac.properties["mgrs:utm_zone"]}${productStac.properties["mgrs:latitude_band"]}${productStac.properties["mgrs:grid_square"]}`,
+            "product": productStac.assets.product.href,
+            "metafeatures": productStac.assets.metafeatures && productStac.assets.metafeatures.href,
+            "confidence": productStac.assets.confidence && productStac.assets.confidence.href,
+            "stac": _.find(productStac.links, (link) => link.rel === "self").href,
+            "src_epsg": productStac.properties["proj:epsg"],
+            "src_bbox": productStac.bbox
+        }
+    });
+
+    return {
+        key,
+        data: {
+            tileKeys: tiles.map((tile) => tile.tile),
+            geometry: productGeometry,
+            data: {
+                tile_collection_id: productStacs[0].properties.tile_collection_id,
+                sos: productStacs[0].properties.start_datetime,
+                eos: productStacs[0].properties.end_datetime,
+                season: productStacs[0].properties.season,
+                aez_id: productStacs[0].properties.aez_id,
+                aez_group: productStacs[0].properties.aez_group,
+                model: productStacs[0].properties.model,
+                training_refids: productStacs[0].properties.training_refids,
+                product: productStacs[0].properties.product,
+                public: productStacs[0].properties.public,
+                geometry: productGeometry,
+                tiles,
+                dataSource: {
+                    product: null,
+                    metafeatures: null,
+                    confidence: null
+                }
+            }
+        }
+    };
+}
+
+async function ensureWorldCerealProductMetadata(product, requestUser) {
+    return handler
+        .update(
+            'specific',
+            {
+                user: requestUser,
+                body: {
+                    data: {
+                        worldCerealProductMetadata: [product]
+                    }
+                }
+            }
+        )
+        .then((update) => {
+            if (update.type !== result.UPDATED) {
+                throw new Error(JSON.stringify(update));
+            } else {
+                return update.data.data.worldCerealProductMetadata[0];
+            }
+        })
+}
+
 async function create(request, response) {
-    let rawProductMetadataToCreateOrUpdate = {};
-    let rawProductMetadataToCreate = {};
-    let rawProductMetadataToUpdate = {};
+    const stacArray = ensureArray(request.body);
+    const owner = request.user.realKey;
 
-    return Promise
-        .resolve()
-        .then(() => {
-            return ensureArray(request.body);
-        })
-        .then((stacList) => {
-            return checkRequiredProperties(stacList)
-                .then(() => stacList);
-        })
-        .then((stacList) => {
-            for (let stac of stacList) {
-                let productMetadata = getProductMetadataFromStac(stac);
-                if (!rawProductMetadataToCreateOrUpdate[productMetadata.key]) {
-                    rawProductMetadataToCreateOrUpdate[productMetadata.key] = _.assign({}, productMetadata);
-                } else {
-                    rawProductMetadataToCreateOrUpdate[productMetadata.key] = mergeWith(rawProductMetadataToCreateOrUpdate[productMetadata.key], productMetadata);
+    await checkRequiredProperties(stacArray);
+
+    for (const stac of stacArray) {
+        await storeStacToLocalDb(stac, owner);
+    }
+
+    const baseProductKeys = getBaseProductKeys(stacArray, owner);
+    const worldCerealProductMetadataList = [];
+
+    for (const baseProductKey of baseProductKeys) {
+        const productStacs = await getProductStacs(baseProductKey);
+        const productGeometry = await getProductGeometry(baseProductKey);
+
+        const baseProduct = getBaseProduct(baseProductKey, productStacs, productGeometry);
+
+        const mapfiles = getProductMapfiles(baseProduct);
+        const mapproxyConfs = getProductMapproxyConfs(baseProduct, mapfiles);
+        const dataSources = getProductDataSources(baseProduct);
+
+        const finalProduct = getFinalProduct(baseProduct);
+
+        const worldCerealProductMetadata = await ensureWorldCerealProductMetadata(finalProduct, request.user);
+
+        await setProductAccessibility(worldCerealProductMetadata);
+
+        await storeMapfiles(mapfiles);
+        await storeMapproxyConfs(mapproxyConfs);
+        await storeDataSources(dataSources, request.user);
+
+        await setDataSourcesAccessibility(dataSources);
+
+        worldCerealProductMetadataList.push(worldCerealProductMetadata);
+    }
+
+    response.send(worldCerealProductMetadataList);
+}
+
+function getProductName(baseProduct) {
+    return `wc_${baseProduct.data.data.tile_collection_id}`;
+}
+
+function getDataSourceKey(productName, productType) {
+    return uuidByString(`${productName}_${productType}`);
+}
+
+async function storeDataSources(dataSources, requestUser) {
+    await handler.update(
+        "dataSources",
+        {
+            user: requestUser,
+            body: {
+                data: {
+                    spatial: dataSources
                 }
             }
-        })
-        .then(() => {
-            return handler
-                .list('specific', {
-                    params: { types: 'worldCerealProductMetadata' },
-                    user: request.user,
-                    body: {
-                        filter: {
-                            key: {
-                                in: _.map(rawProductMetadataToCreateOrUpdate, 'key')
-                            }
-                        }
-                    }
-                })
-                .then((list) => list.data.data.worldCerealProductMetadata);
-        })
-        .then((existingProductMetadataList) => {
-            _.each(rawProductMetadataToCreateOrUpdate, (rawProduct, rawProductKey) => {
-                let existingProduct = _.find(existingProductMetadataList, (product) => {
-                    return product.key === rawProductKey;
-                });
+        }
+    );
+}
 
-                if (existingProduct) {
-                    delete existingProduct.permissions;
+async function storeMapfiles(mapfiles) {
+    for (const mapfile of mapfiles) {
+        await fsp.writeFile(
+            `${config.mapproxy.paths.conf}/${mapfile.filename}`,
+            mapfile.definition
+        )
+    }
+}
 
-                    rawProductMetadataToUpdate[rawProductKey] = mergeWith(existingProduct, rawProduct);
-                } else {
-                    rawProductMetadataToCreate[rawProductKey] = rawProduct;
-                }
-            });
-        })
-        .then(() => {
-            _.each(rawProductMetadataToCreate, (rawProduct) => {
-                if (rawProduct.data.data.hasOwnProperty('tiles')) {
-                    rawProduct.data.tileKeys = _.map(rawProduct.data.data.tiles, 'tile');
-                } else {
-                    rawProduct.data.tileKeys = null;
-                }
-            });
-            _.each(rawProductMetadataToUpdate, (rawProduct) => {
-                if (rawProduct.data.data.hasOwnProperty('tiles')) {
-                    rawProduct.data.tileKeys = _.map(rawProduct.data.data.tiles, 'tile');
-                } else {
-                    rawProduct.data.tileKeys = null;
-                }
-            });
-        })
-        .then(async () => {
-            for (let productKey of Object.keys(rawProductMetadataToCreate)) {
-                let rawProduct = rawProductMetadataToCreate[productKey];
+async function storeMapproxyConfs(mapproxyConfs) {
+    for (const mapproxyConf of mapproxyConfs) {
+        fsp.writeFile(
+            `${config.mapproxy.paths.conf}/${mapproxyConf.filename}`,
+            mapproxyConf.definition
+        )
+    }
+}
 
-                rawProduct.data.geometry = await getGeometryForS2TilesByKeys(rawProduct.data.tileKeys) || rawProduct.data.data.geometry;
-                delete rawProduct.data.data.geometry;
+async function setProductAccessibility(product) {
+    if (product.data.data.public && product.data.data.public.toLowerCase() === "true") {
+        await setAsPublic(product.key);
+    } else {
+        await setAsPrivate(product.key);
+    }
+}
+
+async function setDataSourcesAccessibility(dataSourcs) {
+    for (const dataSource of dataSourcs) {
+        if (dataSource.data.configuration.isPublic) {
+            await setAsPublic(dataSource.key);
+        } else {
+            await setAsPrivate(dataSource.key);
+        }
+    }
+}
+
+function getFinalProduct(baseProduct) {
+    const finalProduct = {
+        ...baseProduct
+    };
+
+    productTypes.forEach((type) => {
+        finalProduct.data.data.dataSource[type] = getDataSourceKey(getProductName(baseProduct), type);
+    })
+
+    finalProduct.data.data.tiles.forEach((tile) => {
+        tile.product = `${config.url}/download/${finalProduct.data.data.dataSource.product}/${getDownloadItemKey(tile.product)}`;
+        tile.metafeatures = `${config.url}/download/${finalProduct.data.data.dataSource.product}/${getDownloadItemKey(tile.metafeatures)}`;
+        tile.confidence = `${config.url}/download/${finalProduct.data.data.dataSource.product}/${getDownloadItemKey(tile.confidence)}`;
+        tile.stac = `${config.url}/download/${finalProduct.data.data.dataSource.product}/${getDownloadItemKey(tile.stac)}`;
+    })
+
+    return finalProduct;
+}
+
+function getDownloadItemKey(source) {
+    return uuidByString(`${source}`);
+}
+
+function getProductDataSources(baseProduct) {
+    const dataSources = [];
+    const downloadItems = {};
+
+    productTypes.forEach((type) => {
+        baseProduct.data.data.tiles.forEach((tile) => {
+            downloadItems[getDownloadItemKey(tile[type])] = `${tile[type]}`;
+    
+            if (type === "product") {
+                downloadItems[getDownloadItemKey(tile.stac)] = `${tile.stac}`;
             }
-            for (let productKey of Object.keys(rawProductMetadataToUpdate)) {
-                let rawProduct = rawProductMetadataToUpdate[productKey];
+        });
 
-                rawProduct.data.geometry = await getGeometryForS2TilesByKeys(rawProduct.data.tileKeys) || rawProduct.data.data.geometry;
-                delete rawProduct.data.data.geometry;
-            }
-        })
-        .then(async () => {
-            const mapfiles = [];
-            const mapproxyConfs = [];
-            const dataSources = [];
-
-            Object.entries(
-                Object.assign(
-                    {},
-                    rawProductMetadataToCreate,
-                    rawProductMetadataToUpdate
-                )
-            ).forEach(([key, object]) => {
-                const productName = `wc_${object.data.data.tile_collection_id}`;
-                const isPublic = object.data.data.public && object.data.data.public.toLowerCase() === "true";
-                object.data.data.tiles.forEach((tile) => {
-                    ["product", "metafeatures", "confidence"].forEach((type) => {
-                        if (tile[type] && tile[type].startsWith("s3://")) {
-                            const name = `wc_${tile.id}_${type}`;
-                            mapfiles.push({
-                                filename: `${name}.map`,
-                                sourceName: name,
-                                productName,
-                                epsg: tile.src_epsg,
-                                bbox: tile.src_bbox,
-                                definition: mapserver.getMapfileString({
-                                    name: `map_${name}`,
-                                    projection: `epsg:${tile.src_epsg}`,
-                                    config: Object.entries(config.projects.worldCereal.s3),
-                                    layers: [{
-                                        name,
-                                        status: true,
-                                        type: "RASTER",
-                                        projection: `epsg:${tile.src_epsg}`,
-                                        data: `${tile[type].replace("s3:/", "/vsis3")}`,
-                                        styles: getMapserverStylesByProduct(tile.id)
-                                    }]
-                                })
-                            });
-                        }
-                    })
-                });
-
-                ["product", "metafeatures", "confidence"].forEach((type) => {
-                    const sources = {};
-                    const caches = {};
-
-                    mapfiles
-                        .filter((mapfile) => mapfile.productName = productName && mapfile.sourceName.endsWith(`_${type}`))
-                        .forEach((mapfile) => {
-                            sources[`${productName}_${mapfile.sourceName}`] = {
-                                type: "mapserver",
-                                req: {
-                                    layers: `${mapfile.sourceName}`,
-                                    map: `${config.mapproxy.paths.confLocal || config.mapproxy.paths.conf}/${mapfile.filename}`,
-                                    transparent: true
-                                },
-                                coverage: {
-                                    bbox: mapfile.bbox,
-                                    srs: `epsg:4326`
-                                },
-                                supported_srs: [`epsg:${mapfile.epsg}`]
-                            }
-                        });
-
-                    caches[`wc_${object.data.data.tile_collection_id}_${type}`] = {
-                        sources: Object.entries(sources).map(([sourceName]) => sourceName),
-                        grids: ["GLOBAL_WEBMERCATOR"],
-                        image: {
-                            transparent: true,
-                            resampling_method: "nearest",
-                            colors: 0,
-                            mode: "RGBA"
+        dataSources.push({
+            key: getDataSourceKey(getProductName(baseProduct), type),
+            data: {
+                type: "wms",
+                url: `${config.url}/proxy/wms/${getDataSourceKey(getProductName(baseProduct), type)}`,
+                layers: `${getProductName(baseProduct)}_${type}`,
+                configuration: {
+                    isPublic: baseProduct.data.data.public && baseProduct.data.data.public.toLowerCase() === "true",
+                    mapproxy: {
+                        instance: `${getProductName(baseProduct)}_${type}`
+                    },
+                    download: {
+                        storageType: "s3",
+                        credentials: {
+                            source: "localConfig",
+                            path: "projects.worldCereal.s3"
                         },
-                        cache: {
-                            type: "sqlite",
-                            directory: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${productName}`,
-                            tile_lock_dir: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${productName}/tile_lock`
+                        items: downloadItems
+                    }
+                }
+            }
+        })
+    })
+
+    return dataSources;
+}
+
+function getProductMapproxyConfs(baseProduct, mapfiles) {
+    const mapproxyConfs = [];
+    productTypes.forEach((type) => {
+        const sources = {};
+        const caches = {};
+
+        mapfiles
+            .filter((mapfile) => mapfile.productName === getProductName(baseProduct) && mapfile.sourceName.endsWith(`_${type}`))
+            .forEach((mapfile) => {
+                sources[`${getProductName(baseProduct)}_${mapfile.sourceName}`] = {
+                    type: "mapserver",
+                    req: {
+                        layers: `${mapfile.sourceName}`,
+                        map: `${config.mapproxy.paths.confLocal || config.mapproxy.paths.conf}/${mapfile.filename}`,
+                        transparent: true
+                    },
+                    coverage: {
+                        bbox: mapfile.bbox,
+                        srs: `epsg:4326`
+                    },
+                    supported_srs: [`epsg:${mapfile.epsg}`]
+                }
+            });
+
+        caches[`${getProductName(baseProduct)}_${type}`] = {
+            sources: Object.entries(sources).map(([sourceName]) => sourceName),
+            grids: ["GLOBAL_WEBMERCATOR"],
+            image: {
+                transparent: true,
+                resampling_method: "nearest",
+                colors: 0,
+                mode: "RGBA"
+            },
+            cache: {
+                type: "sqlite",
+                directory: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${getProductName(baseProduct)}`,
+                tile_lock_dir: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${getProductName(baseProduct)}/tile_lock`
+            }
+        }
+
+        mapproxyConfs.push({
+            filename: `${getProductName(baseProduct)}_${type}.yaml`,
+            definition: mapproxy.getMapproxyYamlString({
+                services: {
+                    demo: {},
+                    wms: {
+                        srs: ["EPSG:4326", "EPSG:3857"],
+                        versions: ["1.1.1", "1.3.0"],
+                        image_formats: ['image/png', 'image/jpeg'],
+                        md: {
+
+                            online_resource: `${config.url}/proxy/wms`
                         }
                     }
+                },
+                sources,
+                caches,
+                layers: [{
+                    name: `${getProductName(baseProduct)}_${type}`,
+                    title: `${getProductName(baseProduct)}_${type}`,
+                    sources: [`${getProductName(baseProduct)}_${type}`]
+                }]
+            })
+        });
+    });
 
-                    mapproxyConfs.push({
-                        filename: `wc_${object.data.data.tile_collection_id}_${type}.yaml`,
-                        definition: mapproxy.getMapproxyYamlString({
-                            services: {
-                                demo: {},
-                                wms: {
-                                    srs: ["EPSG:4326", "EPSG:3857"],
-                                    versions: ["1.1.1", "1.3.0"],
-                                    image_formats: ['image/png', 'image/jpeg'],
-                                    md: {
+    return mapproxyConfs;
+}
 
-                                        online_resource: `${config.url}/proxy/wms`
-                                    }
-                                }
-                            },
-                            sources,
-                            caches,
-                            layers: [{
-                                name: `wc_${object.data.data.tile_collection_id}_${type}`,
-                                title: `wc_${object.data.data.tile_collection_id}_${type}`,
-                                sources: [`wc_${object.data.data.tile_collection_id}_${type}`]
-                            }]
-                        })
-                    });
+function getProductMapfiles(baseProduct) {
+    const mapfiles = [];
 
-                    const dataSourceKey = uuidByString(`wc_${object.data.data.tile_collection_id}_${type}`);
-                    const downloadItems = {};
-
-                    object.data.data.tiles.forEach((tile) => {
-                        const itemKey = uuidByString(`${tile[type]}`);
-                        downloadItems[itemKey] = `${tile[type]}`;
-                        tile[type] = `${config.url}/download/${dataSourceKey}/${itemKey}`;
-
-                        if (type === "product") {
-                            const stacItemKey = uuidByString(`${tile.stac}`);
-                            downloadItems[stacItemKey] = `${tile.stac}`;
-                            tile.stac = `${config.url}/download/${dataSourceKey}/${stacItemKey}`;
-                        }
-                    });
-
-                    dataSources.push({
-                        key: dataSourceKey,
-                        data: {
-                            type: "wms",
-                            url: `${config.url}/proxy/wms/${dataSourceKey}`,
-                            layers: `wc_${object.data.data.tile_collection_id}_${type}`,
-                            configuration: {
-                                isPublic,
-                                mapproxy: {
-                                    instance: `wc_${object.data.data.tile_collection_id}_${type}`
-                                },
-                                download: {
-                                    storageType: "s3",
-                                    credentials: {
-                                        source: "localConfig",
-                                        path: "projects.worldCereal.s3"
-                                    },
-                                    items: downloadItems
-                                }
-                            }
-                        }
+    baseProduct.data.data.tiles.forEach((tile) => {
+        productTypes.forEach((type) => {
+            if (tile[type]) {
+                const name = `wc_${tile.id}_${type}`;
+                mapfiles.push({
+                    filename: `${name}.map`,
+                    sourceName: name,
+                    productName: getProductName(baseProduct),
+                    epsg: tile.src_epsg,
+                    bbox: tile.src_bbox,
+                    definition: mapserver.getMapfileString({
+                        name: `map_${name}`,
+                        projection: `epsg:${tile.src_epsg}`,
+                        config: Object.entries(config.projects.worldCereal.s3),
+                        layers: [{
+                            name,
+                            status: true,
+                            type: "RASTER",
+                            projection: `epsg:${tile.src_epsg}`,
+                            data: `${tile[type].replace("s3:/", "/vsis3")}`,
+                            styles: getMapserverStylesByProduct(tile.id)
+                        }]
                     })
-
-                    object.data.data.dataSource = object.data.data.dataSource || {};
-                    object.data.data.dataSource[type] = dataSourceKey;
                 });
-            });
-
-            const promises = [];
-
-            mapfiles.forEach((mapfile) => {
-                promises.push(
-                    Promise
-                        .resolve()
-                        .then(() => fs.writeFileSync(
-                            `${config.mapproxy.paths.conf}/${mapfile.filename}`,
-                            mapfile.definition
-                        ))
-                );
-            });
-
-            mapproxyConfs.forEach((mapproxyConf) => {
-                promises.push(
-                    Promise
-                        .resolve()
-                        .then(() => fs.writeFileSync(
-                            `${config.mapproxy.paths.conf}/${mapproxyConf.filename}`,
-                            mapproxyConf.definition
-                        ))
-                );
-            });
-
-            if (dataSources.length) {
-                promises.push(
-                    handler.update(
-                        "dataSources",
-                        {
-                            user: request.user,
-                            body: {
-                                data: {
-                                    spatial: dataSources
-                                }
-                            }
-                        }
-                    ).then((result) => {
-                        return Promise.all(
-                            result.data.data.spatial.map((dataSource) => {
-                                if (dataSource.data.configuration.isPublic) {
-                                    return setAsPublic(dataSource.key);
-                                } else {
-                                    return setAsPrivate(dataSource.key);
-                                }
-                            })
-                        );
-                    })
-                );
-            }
-
-            return Promise.all(promises);
-        })
-        .then(() => {
-            if (Object.keys(rawProductMetadataToCreate).length) {
-                return handler
-                    .create(
-                        'specific',
-                        {
-                            user: request.user,
-                            body: {
-                                data: {
-                                    worldCerealProductMetadata: _.map(rawProductMetadataToCreate)
-                                }
-                            }
-                        }
-                    )
-                    .then((create) => {
-                        if (create.type !== result.CREATED) {
-                            throw new Error(JSON.stringify(create));
-                        } else {
-                            return create.data.data.worldCerealProductMetadata;
-                        }
-                    })
             }
         })
-        .then(async (createdProducts) => {
-            if (createdProducts) {
-                for (let createdProduct of createdProducts) {
-                    if (createdProduct.data.data.public && createdProduct.data.data.public.toLowerCase() === "true") {
-                        await setAsPublic(createdProduct.key);
-                    } else {
-                        await setAsPrivate(createdProduct.key);
-                    }
-                }
-            }
-        })
-        .then(() => {
-            if (Object.keys(rawProductMetadataToUpdate).length) {
-                return handler
-                    .update(
-                        'specific',
-                        {
-                            user: request.user,
-                            body: {
-                                data: {
-                                    worldCerealProductMetadata: _.map(rawProductMetadataToUpdate)
-                                }
-                            }
-                        }
-                    )
-                    .then((update) => {
-                        if (update.type !== result.UPDATED) {
-                            throw new Error(JSON.stringify(update));
-                        } else {
-                            return update.data.data.worldCerealProductMetadata;
-                        }
-                    })
-            }
-        })
-        .then(async (updatedProducts) => {
-            if (updatedProducts) {
-                for (let updatedProduct of updatedProducts) {
-                    if (updatedProduct.data.data.public && updatedProduct.data.data.public.toLowerCase() === "true") {
-                        await setAsPublic(updatedProduct.key);
-                    } else {
-                        await setAsPrivate(updatedProduct.key);
-                    }
-                }
-            }
-        })
-        .then(() => {
-            response.status(200).send({ created: rawProductMetadataToCreate, updated: rawProductMetadataToUpdate });
-        })
-        .catch((error) => {
-            console.log(error);
-            response.status(500).send({ error: error.message });
-        })
+    })
+
+    return mapfiles;
+}
+
+function getBaseProductKeys(stacArray, owner) {
+    const baseProductKeys = stacArray.map((stac) => {
+        return getProductKey(stac, owner);
+    });
+
+    return Array.from(new Set(baseProductKeys));
 }
 
 function remove(request, response) {
@@ -668,18 +697,8 @@ function remove(request, response) {
 }
 
 function view(request, response) {
-    let tiles = [];
     return Promise
         .resolve()
-        .then(async () => {
-            if (request.body.geometry && !request.body.tiles) {
-                tiles = await s2tiles.getTilesByGeometry(request.body.geometry);
-            } else if (request.body.tiles) {
-                tiles = request.body.tiles;
-            } else {
-                tiles = await s2tiles.getTilesAll();
-            }
-        })
         .then(() => {
             let filter = {};
 
@@ -689,9 +708,9 @@ function view(request, response) {
                 }
             }
 
-            if (request.body.tilesKeys) {
+            if (request.body.tiles) {
                 filter.tiles = {
-                    overlaps: tiles
+                    overlaps: request.body.tiles
                 }
             }
 
@@ -711,16 +730,11 @@ function view(request, response) {
         })
         .then(async (r) => {
             if (r.type === result.SUCCESS) {
-                // TODO Temporary fix product cache, find better way how to handle this, there is probably need to identify session somehow
-                // const sharedStorageKey = `${request.user.realKey}_products`;
-
-                // let sentProductKeys = await shared.get(sharedStorageKey) || [];
-
+                let tiles = [];
                 let products = r.data.data.worldCerealProductMetadata.map((product) => {
-                    // if (!sentProductKeys.includes(product.key)) {
-                    // sentProductKeys.push(product.key);
-
                     product.data.data.geometry = product.data.geometry;
+
+                    tiles = tiles.concat(product.data.tileKeys);
 
                     return Object.assign(
                         {},
@@ -734,23 +748,11 @@ function view(request, response) {
                             permissions: undefined
                         }
                     );
-                    // } else {
-                    //     return Object.assign(
-                    //         {},
-                    //         product,
-                    //         {
-                    //             data: undefined,
-                    //             permissions: undefined
-                    //         }
-                    //     );
-                    // }
                 });
-
-                // await shared.set(sharedStorageKey, sentProductKeys);
 
                 response.status(200).send({
                     products,
-                    tiles
+                    tiles: Array.from(new Set(tiles))
                 }
 
                 );
