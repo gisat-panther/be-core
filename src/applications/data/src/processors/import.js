@@ -2,6 +2,7 @@ const admZip = require('adm-zip');
 const crypto = require('crypto');
 const fs = require('fs');
 const fse = require('fs-extra');
+const fsp = require('fs/promises');
 const path = require('path');
 const _ = require('lodash');
 const chp = require('child_process');
@@ -128,7 +129,12 @@ const ensureRasterFsStructure = () => {
 
 const reProjectRasterFile = (source, output, srid) => {
 	return new Promise((resolve, reject) => {
-		exec(`gdalwarp -t_srs epsg:${srid} -of vrt ${source} ${output}`, (error) => {
+		exec(`gdalwarp -t_srs epsg:${srid} -of vrt ${source} ${output}`, async (error) => {
+			const parsedPath = path.parse(source);
+			const folder = parsedPath.dir;
+			const basename = parsedPath.name;
+			await clearFiles(folder, basename, [parsedPath.ext, path.parse(output).ext]);
+
 			if (error) {
 				reject(error);
 			} else {
@@ -140,7 +146,12 @@ const reProjectRasterFile = (source, output, srid) => {
 
 const optimizeRasterFile = (source, output) => {
 	return new Promise((resolve, reject) => {
-		exec(`gdal_translate -co COMPRESSED=YES -of HFA ${source} ${output}`, (error) => {
+		exec(`gdal_translate -co COMPRESSED=YES -of HFA ${source} ${output}`, async (error) => {
+			const parsedPath = path.parse(source);
+			const folder = parsedPath.dir;
+			const basename = parsedPath.name;
+			await clearFiles(folder, basename, [parsedPath.ext, path.parse(output).ext]);
+
 			if (error) {
 				reject(error);
 			} else {
@@ -148,6 +159,18 @@ const optimizeRasterFile = (source, output) => {
 			}
 		})
 	})
+}
+
+async function clearFiles(folder, basename, exceptionsByExt) {
+	const files = await fsp.readdir(folder);
+	for (const file of files) {
+		const fileBasename = path.parse(file).name;
+		const fileExt = path.parse(file).ext;
+
+		if (fileBasename.startsWith(basename) && !exceptionsByExt.includes(fileExt)) {
+			await fsp.rm(`${folder}/${file}`);
+		}
+	}
 }
 
 const processMsMapFile = (importKey, data, options) => {
