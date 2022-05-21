@@ -233,7 +233,7 @@ async function getProductStacs(productKey) {
 
 async function getProductGeometry(productKey) {
     return db
-        .query(`SELECT ST_AsGeoJSON(ST_ForcePolygonCCW(ST_ExteriorRing((ST_Dump(ST_Union("geometry"))).geom) )) AS "geometry" FROM "worldCerealStacs" WHERE "productKey" = '${productKey}'`)
+        .query(`SELECT ST_AsGeoJSON(ST_ForcePolygonCCW(ST_ConvexHull(ST_Union("geometry")))) AS "geometry" FROM "worldCerealStacs" WHERE "productKey" = '${productKey}'`)
         .then((result) => JSON.parse(result.rows[0].geometry));
 }
 
