@@ -627,9 +627,6 @@ async function getProductMapproxySeedConfs(baseProduct, mapproxyConfs) {
                         grids: ["GLOBAL_WEBMERCATOR"],
                         levels: {
                             to: 12
-                        },
-                        refresh_before: {
-                            minutes: 1
                         }
                     }
                 },
