@@ -301,6 +301,38 @@ async function ensureWorldCerealProductMetadata(product, requestUser) {
         })
 }
 
+async function setMapproxySeeds(mapproxyConfs) {
+    const caches = await db
+        .query(
+            `SELECT 
+                CONCAT('wc_', stac#>>'{properties, tile_collection_id}') AS "name", 
+                REPLACE(TRIM(trailing ')' FROM (TRIM(leading 'BOX(' FROM ST_Extent("geometry")::text))), ',', ' ') AS "coverage" 
+            FROM "worldCerealStacs" GROUP BY "name";`
+        ).then((result) => result.rows);
+
+    const seeds = {};
+    const coverages = {};
+    caches.forEach((cache) => {
+        seeds[cache.name] = {
+            caches: [cache.name],
+            grids: ["GLOBAL_WEBMERCATOR"],
+            levels: {
+                to: 10
+            },
+            coverages: [cache.name]
+        };
+
+        coverages[cache.name] = {
+            bbox: cache.coverage.split(" ").map(Number),
+            srs: `epsg:4326`
+        }
+    });
+
+    const mapproxySeedYamlString = mapproxy.getMapproxySeedYamlString({ seeds, coverages });
+
+    await storeMapproxySeedConf(mapproxySeedYamlString);
+}
+
 async function create(request, response) {
     const stacArray = ensureArray(request.body);
     const owner = request.user.realKey;
@@ -322,6 +354,7 @@ async function create(request, response) {
 
         const mapfiles = getProductMapfiles(baseProduct);
         const mapproxyConfs = getProductMapproxyConfs(baseProduct, mapfiles);
+        const mapproxySeedConfs = await getProductMapproxySeedConfs(baseProduct, mapproxyConfs);
         const dataSources = getProductDataSources(baseProduct);
 
         const finalProduct = getFinalProduct(baseProduct);
@@ -332,6 +365,7 @@ async function create(request, response) {
 
         await storeMapfiles(mapfiles);
         await storeMapproxyConfs(mapproxyConfs);
+        await storeMapproxySeedConfs(mapproxySeedConfs);
         await storeDataSources(dataSources, request.user);
 
         await setDataSourcesAccessibility(dataSources);
@@ -360,7 +394,7 @@ async function cleanMapproxyCache(baseProduct, mapproxyConfs) {
             try {
                 const isMapproxyCache = (await fsp.lstat(`${cacheFolder}/tile_lock`)).isDirectory();
                 if (isMapproxyCache) {
-                    await fsp.rm(`${cacheFolder}`, {recursive: true, force: true});
+                    await fsp.rm(`${cacheFolder}`, { recursive: true, force: true });
                 }
             } catch (error) {
                 // console.log(error);
@@ -392,11 +426,27 @@ async function storeMapfiles(mapfiles) {
     }
 }
 
+async function storeMapproxySeedConf(mapproxySeedConf) {
+    await fsp.writeFile(
+        `${config.mapproxy.paths.seed}/wc_seed_global.yaml`,
+        mapproxySeedConf
+    );
+}
+
 async function storeMapproxyConfs(mapproxyConfs) {
     for (const mapproxyConf of mapproxyConfs) {
         fsp.writeFile(
             `${config.mapproxy.paths.conf}/${mapproxyConf.filename}`,
             mapproxyConf.definition
+        )
+    }
+}
+
+async function storeMapproxySeedConfs(mapproxySeedConfs) {
+    for (const mapproxySeedConf of mapproxySeedConfs) {
+        fsp.writeFile(
+            `${config.mapproxy.paths.seed}/${mapproxySeedConf.filename}`,
+            mapproxySeedConf.definition
         )
     }
 }
@@ -550,6 +600,50 @@ function getProductMapproxyConfs(baseProduct, mapfiles) {
     });
 
     return mapproxyConfs;
+}
+
+async function getProductBbox(baseProduct) {
+    return await db
+        .query(
+            `SELECT 
+                REPLACE(TRIM(trailing ')' FROM (TRIM(leading 'BOX(' FROM ST_Extent("geometry")::text))), ',', ' ') AS "bbox" 
+            FROM "worldCerealStacs" WHERE "productKey" = '${baseProduct.key}';`
+        ).then((result) => result.rows[0].bbox);
+}
+
+async function getProductMapproxySeedConfs(baseProduct, mapproxyConfs) {
+    const mapproxySeedConfs = [];
+
+    const productBbox = await getProductBbox(baseProduct);
+
+    mapproxyConfs.forEach((mapproxyConf) => {
+        mapproxySeedConfs.push({
+            filename: mapproxyConf.filename,
+            definition: mapproxy.getMapproxySeedYamlString({
+                seeds: {
+                    wc_layer_seed: {
+                        caches: Object.keys(mapproxyConf.caches),
+                        coverages: ["wc_layer_coverage"],
+                        grids: ["GLOBAL_WEBMERCATOR"],
+                        levels: {
+                            to: 12
+                        },
+                        refresh_before: {
+                            minutes: 1
+                        }
+                    }
+                },
+                coverages: {
+                    wc_layer_coverage: {
+                        bbox: productBbox.split(" ").map(Number),
+                        srs: `epsg:4326`
+                    }
+                }
+            })
+        });
+    })
+
+    return mapproxySeedConfs;
 }
 
 function getProductMapfiles(baseProduct) {

@@ -37,6 +37,16 @@ function getMapproxyYamlString({services = {}, sources = {}, caches = {}, layers
     return yaml.stringify(mapproxyConfig);
 }
 
+function getMapproxySeedYamlString({seeds = {}, coverages = {}}) {
+    const mapproxyConfig = {
+        seeds,
+        coverages,
+    };
+    
+    return yaml.stringify(mapproxyConfig);
+}
+
 module.exports = {
-    getMapproxyYamlString
+    getMapproxyYamlString,
+    getMapproxySeedYamlString
 }
