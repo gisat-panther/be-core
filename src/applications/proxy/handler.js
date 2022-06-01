@@ -2,6 +2,7 @@ const http = require('http');
 const xmljs = require('xml-js');
 
 const restHandler = require('../../modules/rest/handler');
+const cache = require('./cache');
 
 const config = require('../../../config.js');
 
@@ -17,66 +18,78 @@ function updateObjectWith(object, modifier) {
     return object;
 }
 
-function getWms(request, response) {
-    restHandler
-        .list('dataSources', {
-            params: { types: 'spatial' },
-            user: request.user,
-            body: {
-                filter: {
-                    key: request.params.spatialDataSourceKey,
-                    type: "wms"
-                }
-            }
-        })
-        .then((list) => {
-            return Promise
-                .resolve()
-                .then(() => {
-                    if (list.type && list.type === "success" && list.data.data.spatial.length === 1) {
-                        const dataSource = list.data.data.spatial[0];
-                        const query = new URLSearchParams(request.query);
+async function getSpatialDataSourceByKeyAndUser(spatialDataSourceKey, user) {
+    const userKey = user.realKey;
+    const cacheKey = `${userKey}-${spatialDataSourceKey}`;
 
-                        if (!dataSource.data.configuration.mapproxy) {
-                            throw new Error();
-                        }
+    let spatialDataSource = await cache.get(cacheKey);
 
-                        const dataSourceConfiguration = dataSource.data.configuration;
-
-                        http
-                            .get(
-                                `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?${query.toString()}`,
-                                (subResponse) => {
-
-                                    if ((request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
-                                        const contentType = subResponse.headers['content-type'];
-                                        let rawData = "";
-                                        subResponse.on("data", (chunk) => rawData += chunk);
-                                        subResponse.on("end", () => {
-                                            const requestUrl = new URL(`${request.protocol}://${request.get("host")}${request.originalUrl}`);
-                                            const updated = updateObjectWith(
-                                                xmljs.xml2js(rawData),
-                                                (property, value) => {
-                                                    if (value === `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?`) {
-                                                        return `${requestUrl.origin}${requestUrl.pathname}?`;
-                                                    }
-                                                }
-                                            )
-                                            response.set("Content-Type", contentType);
-                                            response.send(xmljs.js2xml(updated));
-                                        })
-                                    } else {
-                                        subResponse.pipe(response)
-                                    }
-                                }
-                            );
-                    } else {
-                        throw new Error();
+    if (!spatialDataSource) {
+        await restHandler
+            .list('dataSources', {
+                params: { types: 'spatial' },
+                user: user,
+                body: {
+                    filter: {
+                        key: spatialDataSourceKey,
+                        type: "wms"
                     }
-                })
+                }
+            })
+            .then(async (list) => {
+                if (list.type && list.type === "success" && list.data.data.spatial.length === 1) {
+                    spatialDataSource = list.data.data.spatial[0];
+                    await cache.set(cacheKey, spatialDataSource, 3600);
+                }
+            });
+    }
 
-        })
-        .catch((error) => {
+    return spatialDataSource;
+}
+
+function getWms(request, response) {
+    getSpatialDataSourceByKeyAndUser(request.params.spatialDataSourceKey, request.user)
+        .then((spatialDataSource) => {
+            if (spatialDataSource) {
+                const query = new URLSearchParams(request.query);
+
+                if (!spatialDataSource.data.configuration.mapproxy) {
+                    throw new Error();
+                }
+
+                const dataSourceConfiguration = spatialDataSource.data.configuration;
+
+                http
+                    .get(
+                        `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?${query.toString()}`,
+                        (subResponse) => {
+
+                            if ((request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
+                                const contentType = subResponse.headers['content-type'];
+                                let rawData = "";
+                                subResponse.on("data", (chunk) => rawData += chunk);
+                                subResponse.on("end", () => {
+                                    const requestUrl = new URL(`${request.protocol}://${request.get("host")}${request.originalUrl}`);
+                                    const updated = updateObjectWith(
+                                        xmljs.xml2js(rawData),
+                                        (property, value) => {
+                                            if (value === `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?`) {
+                                                return `${requestUrl.origin}${requestUrl.pathname}?`;
+                                            }
+                                        }
+                                    )
+                                    response.set("Content-Type", contentType);
+                                    response.send(xmljs.js2xml(updated));
+                                })
+                            } else {
+                                subResponse.pipe(response)
+                            }
+                        }
+                    );
+            } else {
+                throw new Error();
+            }
+        }).catch((error) => {
             console.log(error);
             response.status(401).end();
         })
