@@ -23,14 +23,14 @@ async function connect() {
 }
 
 async function get(key) {
-    await connect();
+    connect();
     if (usableRedisClient) {
         return JSON.parse(await usableRedisClient.get(key));
     }
 }
 
 async function set(key, data, ttl) {
-    await connect();
+    connect();
     if (usableRedisClient) {
         await usableRedisClient.set(key, JSON.stringify(data));
         await usableRedisClient.expire(key, ttl);
