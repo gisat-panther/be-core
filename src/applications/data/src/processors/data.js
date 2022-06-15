@@ -445,10 +445,7 @@ async function getAttributeRelatons(filter, user) {
 			return qb.append(
 				sqlMap,
 				qb.where(
-					qb.expr.or(
-						qb.expr.not(qb.expr.fn('EXISTS', attributeKeysSqlMap)),
-						qb.expr.in(`"${alias}"."attributeKey"`, attributeKeysSqlMap)
-					)
+					qb.expr.in(`"${alias}"."attributeKey"`, attributeKeysSqlMap)
 				)
 			);
 		};
