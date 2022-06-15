@@ -49,7 +49,7 @@ jobs:
       -
         name: "Check if docker repository exists"
         run: |
-          curl --location --fail --header "Authorization: JWT $(curl --location --header "Content-type: application/json" --request POST --data '{"username": "${{ secrets.DOCKERHUB_USERNAME }}", "password": "${{ secrets.DOCKERHUB_TOKEN }}"}' https://hub.docker.com/v2/users/login | jq -r '.token')" https://hub.docker.com/v2/repositories/gisat/${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
+          curl --location --fail --header "Authorization: Bearer $(curl --location --header "Content-type: application/json" --request POST --data '{"username": "${{ secrets.DOCKERHUB_USERNAME }}", "password": "${{ secrets.DOCKERHUB_TOKEN }}"}' https://hub.docker.com/v2/users/login | jq -r '.token')" https://hub.docker.com/v2/repositories/gisat/${{ steps.convert-repository-name.outputs.DOCKER_LABEL }}
   
   build:
     runs-on: ubuntu-latest
