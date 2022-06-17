@@ -21,7 +21,8 @@ module.exports = [
             try {
                 response.send(await importFromS3(request.body));
             } catch (error) {
-                response.status(500).send(JSON.stringify(error));
+                console.log(error);
+                response.status(500).send({message: error.message});
             }
         }
     }
