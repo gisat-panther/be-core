@@ -1,6 +1,6 @@
 const yaml = require('yaml');
 
-function getMapproxyYamlString({services = {}, sources = {}, caches = {}, layers = [], demo = false} = {}) {
+function getMapproxyYamlString({services = {}, sources = {}, caches = {}, layers = []} = {}) {
     const mapproxyConfig = {
         globals: {
             mapserver: {
