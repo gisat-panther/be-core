@@ -222,6 +222,10 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 				if (dataSource.type === "tiledVector") {
 					sql += ` AND "base"."${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
 				}
+
+				if (filter.data.featureKeys &&filter.data.featureKeys.length) {
+					sql += ` ${sql.includes("WHERE") ? "AND" : "WHERE"} "base"."${dataSource.fidColumnName}" IN (${Array(filter.data.featureKeys).map((featureKey) => isNaN(featureKey) ? `"${featureKey}"` : featureKey).join(", ")})`;
+				}
 			} else {
 				sql =
 					`SELECT "${dataSource.fidColumnName}" AS "featureKey", "${dataSource.geometryColumnName}"::JSON AS geometry 
@@ -229,6 +233,10 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 
 				if (dataSource.type === "tiledVector") {
 					sql += ` WHERE "${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
+				}
+
+				if (filter.data.featureKeys &&filter.data.featureKeys.length) {
+					sql += ` ${sql.includes("WHERE") ? "AND" : "WHERE"} "${dataSource.fidColumnName}" IN (${Array(filter.data.featureKeys).map((featureKey) => isNaN(featureKey) ? `"${featureKey}"` : featureKey).join(", ")})`;
 				}
 			}
 
