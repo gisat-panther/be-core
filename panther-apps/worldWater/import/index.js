@@ -125,7 +125,7 @@ async function getMapproxyOptions(mapserverOptions, options) {
             grids: ["GLOBAL_WEBMERCATOR"],
             image: {
                 transparent: true,
-                resampling: "nearest",
+                resampling_method: "nearest",
                 colors: 0,
                 mode: "RGBA"
             },
