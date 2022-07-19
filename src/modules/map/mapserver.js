@@ -54,6 +54,11 @@ function getMapfileString({ name, projection, config = [], layers = [] }) {
             layer.styles.forEach((style) => {
                 if (style.expression && style.color) {
                     mapfileLines.push(`    CLASS`);
+
+                    if (style.hasOwnProperty("name")) {
+                        mapfileLines.push(`      NAME "${style.name}"`);
+                    }
+
                     mapfileLines.push(`      EXPRESSION (${style.expression})`);
                     mapfileLines.push(`      STYLE`);
                     mapfileLines.push(`        COLOR "${style.color}"`);
