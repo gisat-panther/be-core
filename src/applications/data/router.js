@@ -3,6 +3,7 @@ const multer = require('multer');
 const userMiddleware = require('../../middlewares/user');
 const authMiddleware = require('../../middlewares/auth');
 const autoLoginMiddleware = require('../../middlewares/auto-login');
+const autoLoginKongHqMiddleware = require('../../middlewares/auto-login-konghq');
 const fileParseMiddleware = multer().single("file");
 
 const request = require('../data/src/handlers/request');
@@ -16,6 +17,7 @@ module.exports = [
         },
         middlewares: [
             userMiddleware,
+            autoLoginKongHqMiddleware,
             autoLoginMiddleware,
             authMiddleware,
         ],
