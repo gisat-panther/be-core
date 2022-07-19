@@ -54,8 +54,15 @@ async function getMapserverOptions(vsis3Paths, options) {
 
     for (const vsis3Path of vsis3Paths) {
         const bbox = await getLayerBBOX(vsis3Path, options);
+        let name = path.parse(vsis3Path).name;
+
+        const sameLayersByName = mapserverOptions.layers.filter((layer) => layer.name === name);
+        if (sameLayersByName.length > 0) {
+            name += `_${sameLayersByName.length}`;
+        }
+
         mapserverOptions.layers.push({
-            name: path.parse(vsis3Path).name,
+            name,
             status: "on",
             data: vsis3Path,
             type: "raster",
