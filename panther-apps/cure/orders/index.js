@@ -1,3 +1,5 @@
+const fetch = require('node-fetch');
+
 const auth = require('../auth/index.js');
 const db = require('../db/index.js');
 
