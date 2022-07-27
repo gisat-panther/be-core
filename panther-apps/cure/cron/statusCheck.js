@@ -11,21 +11,20 @@ async function run() {
         const authToken = await auth.getToken();
         for(const order of savedOrders) {
             const currentOrderStatus = await orders.getOrderStatus(order.orderId, authToken);
-            const savedUserOrder = await db.saveUserOrder({realKey: order.userKey}, order.app, currentOrderStatus);
+            if (currentOrderStatus) {
+                const savedUserOrder = await db.saveUserOrder({realKey: order.userKey}, order.app, currentOrderStatus);
+                console.log(`# CURE # Order ${savedUserOrder.orderId}; Status ${savedUserOrder.status}; Result ${savedUserOrder.result}`);
+            } else {
+                console.log(`# CURE # Failed to get status for order ${order.orderId}`);
+            }
 
-            console.log(savedUserOrder);
         }
     }
-
-    
 }
 
-function init() {
-    setInterval(() => {
-        run();
-    }, 120000);
+async function init() {
+    await db.init();
+    await run();
 }
 
-module.exports = {
-    init
-}
+init();

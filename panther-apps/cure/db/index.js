@@ -65,9 +65,14 @@ async function createUser(email, password) {
     }
 }
 
+async function init() {
+    await db.init();
+}
+
 module.exports = {
     saveUserOrder,
     getUserOrders,
     getAllOrders,
-    createUser
+    createUser,
+    init
 }
