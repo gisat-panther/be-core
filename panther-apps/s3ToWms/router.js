@@ -6,10 +6,10 @@ const { s3: importFromS3 } = require('./import/index');
 
 module.exports = [
     {
-        path: '/rest/project/worldWater/import/raster',
+        path: '/rest/import/s3ToWms',
         method: 'post',
         swagger: {
-            tags: ['project', 'worldWater', 'import', 'raster']
+            tags: ['import', 's3ToWms']
         },
         middlewares: [
             userMiddleware,

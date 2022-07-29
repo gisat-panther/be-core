@@ -6,11 +6,12 @@ const {
 const path = require('path');
 const chp = require('child_process');
 const fsp = require('fs/promises');
+const fetch = require('node-fetch');
 
 const mapserver = require('../../../src/modules/map/mapserver');
 const mapproxy = require('../../../src/modules/map/mapproxy');
 
-async function listS3ObjectKeys({ s3Client, bucket, marker, prefix, files = [] }) {
+async function listS3Files({ s3Client, bucket, marker, prefix, files = [] }) {
     const listCommand = new ListObjectsCommand({
         Bucket: bucket,
         Prefix: prefix,
@@ -21,18 +22,26 @@ async function listS3ObjectKeys({ s3Client, bucket, marker, prefix, files = [] }
 
     response.Contents.forEach((object) => {
         if (object.Key.toLowerCase().endsWith(".tif") || object.Key.toLowerCase().endsWith(".tiff")) {
-            files.push(object.Key);
+            files.push({
+                type: "raster",
+                file: object.Key
+            })
+        } else if (object.Key.toLowerCase().endsWith(".style")) {
+            files.push({
+                type: "style",
+                file: object.Key
+            })
         }
     })
 
     if (response.NextMarker) {
-        return await listS3ObjectKeys({ s3Client, bucket, marker: response.NextMarker, prefix, files });
+        return await listS3Files({ s3Client, bucket, marker: response.NextMarker, prefix, files });
     } else {
         return files;
     }
 }
 
-async function getVsis3Paths(options) {
+async function updatePathsForVsi(options) {
     const s3Client = new S3Client({
         endpoint: `${options.s3.protocol ? options.s3.protocol + '://' : ''}` + options.s3.endpoint,
         region: options.s3.endpoint,
@@ -40,21 +49,52 @@ async function getVsis3Paths(options) {
         credentials: options.s3.credentials
     });
 
-    const s3ObjectKeys = await listS3ObjectKeys({ s3Client, bucket: options.s3.bucket, prefix: options.s3.prefix });
-    const vsis3FilePaths = s3ObjectKeys.map((objectKey) => `/vsis3/${options.s3.bucket}/${objectKey}`);
+    const s3Files = await listS3Files({ s3Client, bucket: options.s3.bucket, prefix: options.s3.prefix });
+    const vsis3FilePaths = s3Files.map((s3File) => {
+        if (s3File.type === "raster") {
+            return {
+                ...s3File,
+                file: `/vsis3/${options.s3.bucket}/${s3File.file}`
+            }
+        } else {
+            return {
+                ...s3File,
+                file: `${options.s3.protocol || "http"}://${options.s3.endpoint}/${options.s3.bucket}/${s3File.file}`
+            }
+        }
+    });
 
     return vsis3FilePaths;
 }
 
-async function getMapserverOptions(vsis3Paths, options) {
+async function getMapserverOptions(s3Files, options) {
     const mapserverOptions = {
         fileName: `${options.group}.map`,
         layers: []
     };
 
-    for (const vsis3Path of vsis3Paths) {
-        const bbox = await getLayerBBOX(vsis3Path, options);
-        let name = path.parse(vsis3Path).name;
+    const rasterFiles = s3Files.filter((s3File) => s3File.type === "raster");
+    const styleFiles = s3Files.filter((s3File) => s3File.type === "style");
+
+    const webMetadata = {};
+    if (options.featureinfo) {
+        webMetadata['wms_feature_info_mime_type'] = "text/html"
+    }
+
+    for (const rasterFile of rasterFiles) {
+        const bbox = await getLayerBBOX(rasterFile.file, options);
+        const styles = styleFiles.filter((styleFile) => {
+            const styleName = path.parse(styleFile.file).name;
+            return path.parse(rasterFile.file).name === styleName;
+        });
+        let name = path.parse(rasterFile.file).name;
+
+        let stylesJson;
+        if (styles.length) {
+            const style = styles[0];
+            const response = await fetch(style.file);
+            stylesJson = await response.json();
+        }
 
         const sameLayersByName = mapserverOptions.layers.filter((layer) => layer.name === name);
         if (sameLayersByName.length > 0) {
@@ -64,16 +104,21 @@ async function getMapserverOptions(vsis3Paths, options) {
         mapserverOptions.layers.push({
             name,
             status: "on",
-            data: vsis3Path,
+            data: rasterFile.file,
             type: "raster",
             projection: "epsg:" + options.epsg,
-            bbox
+            bbox,
+            template: `${options.group}.template.html`,
+            styles: stylesJson
         })
+
+        console.log(`# IMPORT # ${rasterFile.file}`);
     }
 
     mapserverOptions.mapfile = mapserver.getMapfileString({
         name: options.group,
         projection: `epsg:${options.epsg}`,
+        webMetadata,
         config: [
             ["AWS_SECRET_ACCESS_KEY", options.s3.credentials.secretAccessKey],
             ["AWS_ACCESS_KEY_ID", options.s3.credentials.accessKeyId],
@@ -107,6 +152,15 @@ async function getMapproxyOptions(mapserverOptions, options) {
     const layers = [];
 
     for (const mapserverLayer of mapserverOptions.layers) {
+        let wms_opts;
+
+        if (options.featureinfo) {
+            wms_opts = {
+                featureinfo: true,
+                featureinfo_format: "text/html"
+            }
+        }
+
         sources[mapserverLayer.name] = {
             type: "mapserver",
             req: {
@@ -118,7 +172,8 @@ async function getMapproxyOptions(mapserverOptions, options) {
                 bbox: mapserverLayer.bbox,
                 srs: `epsg:${options.epsg}`
             },
-            supported_srs: [`epsg:${options.epsg}`]
+            supported_srs: [`epsg:${options.epsg}`],
+            wms_opts
         }
         caches[mapserverLayer.name] = {
             sources: [mapserverLayer.name],
@@ -164,17 +219,25 @@ async function createMapserverMapfile(mapserverOptions) {
     await fsp.writeFile(`./${mapserverOptions.fileName}`, mapserverOptions.mapfile);
 }
 
+async function createMapserverTemplateFile(options) {
+    await fsp.writeFile(`./${options.group}.template.html`, options.template);
+}
+
 async function createMapproxyConfig(mapproxyOptions) {
     await fsp.writeFile(`./${mapproxyOptions.fileName}`, mapproxyOptions.conf);
 }
 
 async function s3(options) {
-    const vsis3Paths = await getVsis3Paths(options);
-    const mapserverOptions = await getMapserverOptions(vsis3Paths, options);
+    const vsis3Files = await updatePathsForVsi(options);
+    const mapserverOptions = await getMapserverOptions(vsis3Files, options);
     const mapproxyOptions = await getMapproxyOptions(mapserverOptions, options);
 
     await createMapserverMapfile(mapserverOptions);
     await createMapproxyConfig(mapproxyOptions);
+
+    if (options.template) {
+        await createMapserverTemplateFile(options);
+    }
 
     return Promise.resolve({ mapserverOptions, mapproxyOptions });
 }
