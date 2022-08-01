@@ -70,7 +70,8 @@ module.exports = (plan) => [
         },
     },
     {
-        path: '/api/login/getLoginInfo',
+        // path: '/api/login/getLoginInfo',
+        path: '/rest/user/current',
         method: 'get',
         swagger: {
             tags: ['login'],
