@@ -10,7 +10,8 @@ const info = require('./info');
 const LoginBodySchema = Joi.object().meta({className: 'Login'}).keys({
     username: Joi.string().required(),
     password: Joi.string().required(),
-    cookies: Joi.boolean()
+    cookies: Joi.boolean(),
+    development: Joi.boolean(),
 });
 
 module.exports = (plan) => [
@@ -42,7 +43,7 @@ module.exports = (plan) => [
         responses: {200: {}},
         middlewares: [parametersMiddleware],
         handler: async function (request, response, next) {
-            const {username, password, cookies} = request.parameters.body;
+            const {username, password, cookies, development} = request.parameters.body;
 
             try {
                 const user = await q.getUser(username, password);
@@ -55,9 +56,9 @@ module.exports = (plan) => [
 
                 if (cookies) {
                     let options = {};
-                    if (request.headers.origin && request.headers.origin.toLowerCase().includes("localhost")) {
+                    if (development) {
                         options.sameSite = "none";
-                        options.secure = request.protocol === "https" ? true : false
+                        options.secure = true
                     }
 
                     response.cookie("authToken", responsePayload.authToken, options);
