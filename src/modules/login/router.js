@@ -54,7 +54,13 @@ module.exports = (plan) => [
                 const responsePayload = await info.getWithToken(plan, user);
 
                 if (cookies) {
-                    response.cookie("authToken", responsePayload.authToken)
+                    let options = {};
+                    if (request.headers.host.toLowerCase().includes("localhost")) {
+                        options.sameSite = "none";
+                        options.secure = request.protocol === "https" ? true : false
+                    }
+
+                    response.cookie("authToken", responsePayload.authToken, options);
                 }
 
                 return response
