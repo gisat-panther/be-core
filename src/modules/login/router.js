@@ -57,7 +57,7 @@ module.exports = (plan) => [
                     let options = {};
                     if (request.headers.origin && request.headers.origin.toLowerCase().includes("localhost")) {
                         options.sameSite = "none";
-                        options.secure = request.headers.origin.startsWith("https") ? true : false
+                        options.secure = request.protocol === "https" ? true : false
                     }
 
                     response.cookie("authToken", responsePayload.authToken, options);
