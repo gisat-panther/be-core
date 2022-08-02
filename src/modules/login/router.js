@@ -10,6 +10,7 @@ const info = require('./info');
 const LoginBodySchema = Joi.object().meta({className: 'Login'}).keys({
     username: Joi.string().required(),
     password: Joi.string().required(),
+    cookies: Joi.boolean()
 });
 
 module.exports = (plan) => [
@@ -41,7 +42,7 @@ module.exports = (plan) => [
         responses: {200: {}},
         middlewares: [parametersMiddleware],
         handler: async function (request, response, next) {
-            const {username, password} = request.parameters.body;
+            const {username, password, cookies} = request.parameters.body;
 
             try {
                 const user = await q.getUser(username, password);
@@ -50,9 +51,15 @@ module.exports = (plan) => [
                     return;
                 }
 
+                const responsePayload = await info.getWithToken(plan, user);
+
+                if (cookies) {
+                    response.cookie("authToken", responsePayload.authToken)
+                }
+
                 return response
                     .status(200)
-                    .json(await info.getWithToken(plan, user));
+                    .json(responsePayload);
             } catch (err) {
                 next(err);
             }
@@ -66,6 +73,7 @@ module.exports = (plan) => [
         },
         responses: {200: {}},
         handler: function (request, response) {
+            response.clearCookie("authToken");
             response.status(200).json({});
         },
     },
