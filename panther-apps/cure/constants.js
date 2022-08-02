@@ -1,4 +1,5 @@
 module.exports = {
+    groupKeys: ['52ddabec-d01a-49a0-bb4d-5ff931bd346e', 'e56f3545-57f5-44f9-9094-2750a69ef67e'],
     geovileApi: "https://services.geoville.com/cure/v1",
     appParams: {
         app1: [

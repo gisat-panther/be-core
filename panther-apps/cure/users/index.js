@@ -4,6 +4,8 @@ const Joi = require('joi');
 const db = require('../db/index.js');
 const security = require('../../../src/security.js');
 
+const { groupKeys } = require('../constants.js');
+
 async function register(params) {
     const paramsSchema = Joi.object({
         email: Joi.string().email().required(),
@@ -14,7 +16,8 @@ async function register(params) {
 
     if (!validatedParams.error) {
         const passwordHash = await security.hashPassword(validatedParams.value.password);
-        return db.createUser(validatedParams.value.email, passwordHash);
+        const userKey = await db.createUser(validatedParams.value.email, passwordHash);
+        return await db.assingUserToGroups(userKey, groupKeys);
     }
 }
 

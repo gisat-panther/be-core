@@ -56,10 +56,24 @@ async function createUser(email, password) {
             ) VALUES (
                 '${email}',
                 '${password}'
-            )`
+            ) RETURNING "key"`
         );
     
-        return !!(result.rowCount);
+        return result.rows[0] && result.rows[0].key;
+    } catch(e) {
+
+    }
+}
+
+async function assingUserToGroups(userKey, groupKeys) {
+    try {
+        const result = await db.query(
+            `INSERT INTO "user"."userGroups" (
+                "userKey", "groupKey"
+            ) VALUES ${groupKeys.map((groupKey) => `('${userKey}', '${groupKey}')`).join(', ')}`
+        )
+
+        return !!(result.rowCount)
     } catch(e) {
 
     }
@@ -74,5 +88,6 @@ module.exports = {
     getUserOrders,
     getAllOrders,
     createUser,
+    assingUserToGroups,
     init
 }
