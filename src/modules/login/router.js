@@ -87,7 +87,7 @@ module.exports = (plan) => [
                 options.secure = true
             }
             response.clearCookie("authToken", options);
-            response.status(200).end();
+            response.status(200).json({});
         },
     },
     {
