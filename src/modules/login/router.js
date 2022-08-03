@@ -7,7 +7,7 @@ const Joi = require('../../joi');
 const sso = require('./sso');
 const info = require('./info');
 
-const LoginBodySchema = Joi.object().meta({className: 'Login'}).keys({
+const LoginBodySchema = Joi.object().meta({ className: 'Login' }).keys({
     username: Joi.string().required(),
     password: Joi.string().required(),
     cookies: Joi.boolean(),
@@ -21,13 +21,13 @@ module.exports = (plan) => [
         swagger: {
             tags: ['login'],
         },
-        responses: {200: {}},
+        responses: { 200: {} },
         middlewares: [userMiddleware],
         handler: function (request, response) {
             if (request.user) {
-                response.status(200).json({key: request.user.key});
+                response.status(200).json({ key: request.user.key });
             } else {
-                response.status(404).json({status: 'Nobody is logged in.'});
+                response.status(404).json({ status: 'Nobody is logged in.' });
             }
         },
     },
@@ -40,10 +40,10 @@ module.exports = (plan) => [
         parameters: {
             body: LoginBodySchema,
         },
-        responses: {200: {}},
+        responses: { 200: {} },
         middlewares: [parametersMiddleware],
         handler: async function (request, response, next) {
-            const {username, password, cookies, development} = request.parameters.body;
+            const { username, password, cookies, development } = request.parameters.body;
 
             try {
                 const user = await q.getUser(username, password);
@@ -78,10 +78,18 @@ module.exports = (plan) => [
         swagger: {
             tags: ['login'],
         },
-        responses: {200: {}},
+        responses: { 200: {} },
         handler: function (request, response) {
-            response.clearCookie("authToken");
-            response.status(200).json({});
+
+            let options = {};
+            if (request.body.development) {
+                if (development) {
+                    options.sameSite = "none";
+                    options.secure = true
+                }
+            }
+            response.clearCookie("authToken", options);
+            response.status(200).end();
         },
     },
     {
@@ -91,7 +99,7 @@ module.exports = (plan) => [
         swagger: {
             tags: ['login'],
         },
-        responses: {200: {}},
+        responses: { 200: {} },
         middlewares: [userMiddleware, autoLoginMiddleware, authMiddleware],
         handler: async function (request, response) {
             response
