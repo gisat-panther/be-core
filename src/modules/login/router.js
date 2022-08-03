@@ -83,10 +83,8 @@ module.exports = (plan) => [
 
             let options = {};
             if (request.body.development) {
-                if (development) {
-                    options.sameSite = "none";
-                    options.secure = true
-                }
+                options.sameSite = "none";
+                options.secure = true
             }
             response.clearCookie("authToken", options);
             response.status(200).end();
