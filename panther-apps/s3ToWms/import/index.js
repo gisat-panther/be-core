@@ -76,11 +76,6 @@ async function getMapserverOptions(s3Files, options) {
     const rasterFiles = s3Files.filter((s3File) => s3File.type === "raster");
     const styleFiles = s3Files.filter((s3File) => s3File.type === "style");
 
-    const webMetadata = {};
-    if (options.featureinfo) {
-        webMetadata['wms_feature_info_mime_type'] = "text/html"
-    }
-
     for (const rasterFile of rasterFiles) {
         const bbox = await getLayerBBOX(rasterFile.file, options);
         const styles = styleFiles.filter((styleFile) => {
@@ -106,27 +101,39 @@ async function getMapserverOptions(s3Files, options) {
             status: "on",
             data: rasterFile.file,
             type: "raster",
-            projection: "epsg:" + options.epsg,
-            bbox,
+            projection: [`init=epsg:${options.epsg}`],
+            _bbox: bbox,
             template: `${options.group}.template.html`,
-            styles: stylesJson
+            class: stylesJson
         })
 
         console.log(`# IMPORT # ${rasterFile.file}`);
     }
 
-    mapserverOptions.mapfile = mapserver.getMapfileString({
+    const mapfileOptions = {
         name: options.group,
-        projection: `epsg:${options.epsg}`,
-        webMetadata,
-        config: [
-            ["AWS_SECRET_ACCESS_KEY", options.s3.credentials.secretAccessKey],
-            ["AWS_ACCESS_KEY_ID", options.s3.credentials.accessKeyId],
-            ["AWS_S3_ENDPOINT", options.s3.endpoint],
-            ["AWS_VIRTUAL_HOSTING", String(options.s3.forcePathStyle).toUpperCase()]
-        ],
-        layers: mapserverOptions.layers
-    })
+        units: "dd",
+        projection: [`init=epsg:${options.epsg}`],
+        web: {
+            metadata: {
+                "wms_enable_request": "*",
+                "ows_enable_request": "*"
+            }
+        },
+        config: {
+            "AWS_SECRET_ACCESS_KEY": options.s3.credentials.secretAccessKey,
+            "AWS_ACCESS_KEY_ID": options.s3.credentials.accessKeyId,
+            "AWS_S3_ENDPOINT": options.s3.endpoint,
+            "AWS_VIRTUAL_HOSTING": String(options.s3.forcePathStyle).toUpperCase()
+        },
+        layer: mapserverOptions.layers
+    };
+
+    if (options.featureinfo) {
+        mapfileOptions.web.metadata["wms_feature_info_mime_type"] = "text/html";
+    }
+
+    mapserverOptions.mapfile = mapserver.getMapfileString(mapfileOptions);
 
     return mapserverOptions;
 }
@@ -169,7 +176,7 @@ async function getMapproxyOptions(mapserverOptions, options) {
                 transparent: true
             },
             coverage: {
-                bbox: mapserverLayer.bbox,
+                bbox: mapserverLayer._bbox,
                 srs: `epsg:${options.epsg}`
             },
             supported_srs: [`epsg:${options.epsg}`],

@@ -1,90 +1,83 @@
-function getMapfileString({ name, projection, config = [], layers = [] }) {
-    const mapfileLines = [];
+function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
+    const ownProperties = Object.keys(json).filter((property) => !property.startsWith("_"));
 
-    mapfileLines.push("MAP");
+    for (const property of ownProperties) {
+        if (typeof json[property] === "object" && json[property] instanceof Array) {
+            if (json[property].length) {
+                if (
+                    property.toLowerCase() === "colorrange"
+                    || property.toLowerCase() === "datarange"
+                    || property.toLowerCase() === "color"
+                ) {
+                    const values = json[property].map((value) => {
+                        if (value instanceof Array) {
+                            return value.map((arrayValue) => {
+                                return isNaN(arrayValue) ? `"${arrayValue}"` : arrayValue
+                            }).join(" ");
+                        } else {
+                            return isNaN(value) ? `"${value}"` : value
+                        }
+                    });
+                    lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} ${values.join(" ")}`)
+                } else {
+                    lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()}`);
 
-    if (name) {
-        mapfileLines.push(`  NAME ${name}`);
-    }
-
-    mapfileLines.push(`  UNITS DD`);
-
-    if (projection) {
-        mapfileLines.push(`  PROJECTION`);
-        mapfileLines.push(`    "init=${projection.toLowerCase()}"`);
-        mapfileLines.push(`  END`);
-    }
-
-    mapfileLines.push(`  WEB`);
-    mapfileLines.push(`    METADATA`);
-    mapfileLines.push(`      wms_enable_request "*"`);
-    mapfileLines.push(`      ows_enable_request "*"`);
-    mapfileLines.push(`    END`);
-    mapfileLines.push(`  END`);
-
-    config.forEach(([property, value]) => {
-        mapfileLines.push(`  CONFIG "${property}" "${value}"`);
-    })
-
-    layers.forEach((layer) => {
-        mapfileLines.push(`  LAYER`);
-        mapfileLines.push(`    NAME "${layer.name}"`);
-        mapfileLines.push(`    STATUS ${layer.status ? "ON" : "OFF"}`);
-
-        if (layer.data) {
-            mapfileLines.push(`    DATA "${layer.data}"`);
-        }
-
-        if (layer.tileIndex && layer.tileItem) {
-            mapfileLines.push(`    TILEINDEX "${layer.tileIndex}"`);
-            mapfileLines.push(`    TILEITEM "${layer.tileItem}"`);
-        }
-
-        if (layer.type) {
-            mapfileLines.push(`    TYPE ${layer.type.toUpperCase()}`);
-        }
-
-        if (layer.projection) {
-            mapfileLines.push(`    PROJECTION`);
-            mapfileLines.push(`      "init=${layer.projection.toLowerCase()}"`);
-            mapfileLines.push(`    END`);
-        }
-
-        if (layer.styles) {
-            layer.styles.forEach((style) => {
-                if (style.expression && style.color) {
-                    mapfileLines.push(`    CLASS`);
-
-                    if (style.hasOwnProperty("name")) {
-                        mapfileLines.push(`      NAME "${style.name}"`);
+                    for (const value of json[property]) {
+                        if (typeof value === "object") {
+                            jsonToLineStringArray(value, lineStringArray, indentation + 2);
+                        } else {
+                            lineStringArray.push(`${' '.repeat(indentation + 2)} ${isNaN(value) ? `"${value}"` : value}`);
+                        }
                     }
 
-                    mapfileLines.push(`      EXPRESSION (${style.expression})`);
-                    mapfileLines.push(`      STYLE`);
-                    mapfileLines.push(`        COLOR "${style.color}"`);
-
-                    if (style.hasOwnProperty("opacity")) {
-                        mapfileLines.push(`        OPACITY ${style.opacity}`);
-                    }
-
-                    mapfileLines.push(`      END`);
-                    mapfileLines.push(`    END`);
+                    lineStringArray.push(`${' '.repeat(indentation)} END`);
                 }
-            });
+            }
+        } else if (typeof json[property] === "object") {
+            if (
+                property.toLowerCase() === "config"
+                || property.toLowerCase() === "processing"
+            ) {
+                for (const property2 of Object.keys(json[property])) {
+                    lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} "${property2}" "${json[property][property2]}"`);
+                }
+            } else {
+                lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()}`);
+
+                jsonToLineStringArray(json[property], lineStringArray, indentation + 2);
+
+                lineStringArray.push(`${' '.repeat(indentation)} END`);
+            }
+        } else {
+            if (
+                property.toLowerCase() === "units"
+                || property.toLowerCase() === "status"
+                || property.toLowerCase() === "type"
+                || !isNaN(json[property])
+            ) {
+                lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} ${json[property]}`);
+            } else if (
+                property.toLowerCase() === "expression"
+            ) {
+                lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} (${json[property]})`);
+            } else {
+                lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} "${json[property]}"`);
+            }
         }
+    }
+    return lineStringArray;
+}
 
-        if (layer.processing) {
-            layer.processing.forEach((definition) => {
-                mapfileLines.push(`    PROCESSING "${definition}"`);
-            })
-        }
+function getMapfileString(json) {
+    const lineStringArray = [];
 
-        mapfileLines.push(`  END`);
-    });
+    lineStringArray.push("MAP");
 
-    mapfileLines.push("END");
+    jsonToLineStringArray(json, lineStringArray, 2);
 
-    return mapfileLines.join("\n");
+    lineStringArray.push("END");
+
+    return lineStringArray.join("\n");
 }
 
 module.exports = {
