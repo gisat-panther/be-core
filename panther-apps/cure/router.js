@@ -57,7 +57,7 @@ module.exports = [
         handler: async (request, response) => {
             const status = await handler.registerUser(request.body);
             if (status) {
-                response.status(201).end();
+                response.status(201).json({});
             } else {
                 response.status(400).end();
             }
