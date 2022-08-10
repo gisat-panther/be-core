@@ -23,13 +23,13 @@ async function listS3Files({ s3Client, bucket, marker, prefix, files = [] }) {
     response.Contents.forEach((object) => {
         if (object.Key.toLowerCase().endsWith(".tif") || object.Key.toLowerCase().endsWith(".tiff")) {
             files.push({
-                type: "raster",
-                file: object.Key
+                key: object.Key,
+                type: "raster"
             })
         } else if (object.Key.toLowerCase().endsWith(".style")) {
             files.push({
-                type: "style",
-                file: object.Key
+                key: object.Key,
+                type: "style"
             })
         }
     })
@@ -54,12 +54,12 @@ async function updatePathsForVsi(options) {
         if (s3File.type === "raster") {
             return {
                 ...s3File,
-                file: `/vsis3/${options.s3.bucket}/${s3File.file}`
+                file: `/vsis3/${options.s3.bucket}/${s3File.key}`
             }
         } else {
             return {
                 ...s3File,
-                file: `${options.s3.protocol || "http"}://${options.s3.endpoint}/${options.s3.bucket}/${s3File.file}`
+                file: `${options.s3.protocol || "http"}://${options.s3.endpoint}/${options.s3.bucket}/${s3File.key}`
             }
         }
     });
@@ -78,26 +78,37 @@ async function getMapserverOptions(s3Files, options) {
 
     for (const rasterFile of rasterFiles) {
         const bbox = await getLayerBBOX(rasterFile.file, options);
+        const rasterFilePathParsed = path.parse(rasterFile.key);
+        const rasterFileName = rasterFilePathParsed.name;
+
         const styles = styleFiles.filter((styleFile) => {
-            const styleName = path.parse(styleFile.file).name;
-            return path.parse(rasterFile.file).name === styleName;
+            const styleFilePathParsed = path.parse(styleFile.key);
+            const styleName = styleFilePathParsed.name;
+            return rasterFileName === styleName || (styleName === "default" && styleFilePathParsed.dir === rasterFilePathParsed.dir);
         });
-        let name = path.parse(rasterFile.file).name;
+
+        let rasterFileStyle = styles.find((style) => {
+            return path.parse(style.key).name === rasterFileName;
+        })
+        let rasterFileDefaultStyle = styles.find((style) => {
+            return path.parse(style.key).name === "default";
+        });
+
+        const style = rasterFileStyle || rasterFileDefaultStyle;
 
         let stylesJson;
-        if (styles.length) {
-            const style = styles[0];
+        if (style) {
             const response = await fetch(style.file);
             stylesJson = await response.json();
         }
 
-        const sameLayersByName = mapserverOptions.layers.filter((layer) => layer.name === name);
+        const sameLayersByName = mapserverOptions.layers.filter((layer) => layer.name === rasterFileName);
         if (sameLayersByName.length > 0) {
-            name += `_${sameLayersByName.length}`;
+            rasterFileName += `_${sameLayersByName.length}`;
         }
 
         mapserverOptions.layers.push({
-            name,
+            rasterFileName,
             status: "on",
             data: rasterFile.file,
             type: "raster",
@@ -107,7 +118,7 @@ async function getMapserverOptions(s3Files, options) {
             class: stylesJson
         })
 
-        console.log(`# IMPORT # ${rasterFile.file}`);
+        console.log(`# IMPORT # ${rasterFile.file} with ${style && path.parse(style.file).name} style.`);
     }
 
     const mapfileOptions = {
