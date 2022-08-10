@@ -12,25 +12,25 @@ function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
                     const values = json[property].map((value) => {
                         if (value instanceof Array) {
                             return value.map((arrayValue) => {
-                                return isNaN(arrayValue) ? `"${arrayValue}"` : arrayValue
+                                return typeof arrayValue === "string" ? `"${arrayValue}"` : arrayValue
                             }).join(" ");
                         } else {
-                            return isNaN(value) ? `"${value}"` : value
+                            return typeof value === "string" ? `"${value}"` : value
                         }
                     });
                     lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} ${values.join(" ")}`)
                 } else {
-                    lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()}`);
-
                     for (const value of json[property]) {
+                        lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()}`);
+
                         if (typeof value === "object") {
                             jsonToLineStringArray(value, lineStringArray, indentation + 2);
                         } else {
-                            lineStringArray.push(`${' '.repeat(indentation + 2)} ${isNaN(value) ? `"${value}"` : value}`);
+                            lineStringArray.push(`${' '.repeat(indentation + 2)} ${typeof value === "string" ? `"${value}"` : value}`);
                         }
+   
+                        lineStringArray.push(`${' '.repeat(indentation)} END`);
                     }
-
-                    lineStringArray.push(`${' '.repeat(indentation)} END`);
                 }
             }
         } else if (typeof json[property] === "object") {
@@ -53,7 +53,7 @@ function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
                 property.toLowerCase() === "units"
                 || property.toLowerCase() === "status"
                 || property.toLowerCase() === "type"
-                || !isNaN(json[property])
+                || typeof json[property] === "number"
             ) {
                 lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} ${json[property]}`);
             } else if (
