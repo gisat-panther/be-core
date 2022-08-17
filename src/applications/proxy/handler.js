@@ -1,4 +1,5 @@
 const http = require('http');
+const https = require('https');
 const xmljs = require('xml-js');
 
 const restHandler = require('../../modules/rest/handler');
@@ -59,7 +60,7 @@ function getWms(request, response) {
 
                 const dataSourceConfiguration = spatialDataSource.data.configuration;
 
-                http
+                (config.mapproxy.url.toLowerCase().startsWith("https") ? https : http)
                     .get(
                         `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?${query.toString()}`,
                         (subResponse) => {
