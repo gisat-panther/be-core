@@ -1,12 +1,14 @@
 const uuidByString = require('uuid-by-string');
 const _ = require('lodash');
 const fsp = require('fs/promises');
+const { execSync } = require('node:child_process');
 
 const result = require('../../../src/modules/rest/result');
 const handler = require('../../../src/modules/rest/handler');
 const db = require('../../../src/db');
 const mapserver = require('../../../src/modules/map/mapserver');
 const mapproxy = require('../../../src/modules/map/mapproxy');
+const queue = require('../queue');
 
 const config = require('../../../config');
 
@@ -62,72 +64,6 @@ const STAC_REQUIRED_PROPERTIES_EXCEPTIONS = {
 }
 
 const productTypes = ["product", "metafeatures", "confidence"];
-
-function getMapserverStylesByProduct(productId) {
-    if (productId.includes("annualcropland_classification")) {
-        return [
-            {
-                expression: "[pixel] = 100",
-                color: "#e41a1c",
-                name: "Annual cropland"
-            }
-        ]
-    } else if (productId.includes("activecropland_classification")) {
-        return [
-            {
-                expression: "[pixel] = 0",
-                color: "#a8a8a8",
-                name: "Non-active cropland"
-            },
-            {
-                expression: "[pixel] = 100",
-                color: "#2ca52a",
-                name: "Active cropland"
-            }
-        ]
-    } else if (productId.includes("irrigation_classification")) {
-        return [
-            {
-                expression: "[pixel] = 0",
-                color: "#a8a8a8",
-                name: "Non-irrigated"
-            },
-            {
-                expression: "[pixel] = 100",
-                color: "#0065ea",
-                name: "Irrigated"
-            }
-        ];
-    } else if (productId.includes("maize_classification")) {
-        return [
-            {
-                expression: "[pixel] = 0",
-                color: "#a8a8a8",
-                name: "Other crop"
-            },
-            {
-                expression: "[pixel] = 100",
-                color: "#e0cd00",
-                name: "Maize"
-            }
-        ]
-    } else if (productId.includes("springcereals_classification")) {
-        return [
-            {
-                expression: "[pixel] = 0",
-                color: "#a8a8a8",
-                name: "Other crop"
-            },
-            {
-                expression: "[pixel] = 100",
-                color: "#ae3aba",
-                name: "Cereals"
-            }
-        ];
-    } else {
-        return [];
-    }
-}
 
 function getKeyByProductId(productMetadata) {
     return uuidByString(productMetadata.properties.tile_collection_id);
@@ -344,61 +280,106 @@ async function create(request, response) {
     }
 
     const baseProductKeys = getBaseProductKeys(stacArray, owner);
-    const worldCerealProductMetadataList = [];
 
-    for (const baseProductKey of baseProductKeys) {
-        const productStacs = await getProductStacs(baseProductKey);
-        const productGeometry = await getProductGeometry(baseProductKey);
-
-        const baseProduct = getBaseProduct(baseProductKey, productStacs, productGeometry);
-
-        const mapfiles = getProductMapfiles(baseProduct);
-        const mapproxyConfs = getProductMapproxyConfs(baseProduct, mapfiles);
-        const mapproxySeedConfs = await getProductMapproxySeedConfs(baseProduct, mapproxyConfs);
-        const dataSources = getProductDataSources(baseProduct);
-
-        const finalProduct = getFinalProduct(baseProduct);
-
-        const worldCerealProductMetadata = await ensureWorldCerealProductMetadata(finalProduct, request.user);
-
-        await setProductAccessibility(worldCerealProductMetadata);
-
-        await storeMapfiles(mapfiles);
-        await storeMapproxyConfs(mapproxyConfs);
-        await storeMapproxySeedConfs(mapproxySeedConfs);
-        await storeDataSources(dataSources, request.user);
-
-        await setDataSourcesAccessibility(dataSources);
-
-        await cleanMapproxyCache(baseProduct, mapproxyConfs);
-
-        worldCerealProductMetadataList.push(worldCerealProductMetadata);
+    for (const productKey of baseProductKeys) {
+        await queue.set(productKey, "created", request.user);
     }
 
-    response.send(worldCerealProductMetadataList);
+    response.status(200).end();
+}
+
+async function createQueued(productKey, user) {
+    const productStacs = await getProductStacs(productKey);
+    const productGeometry = await getProductGeometry(productKey);
+
+    const baseProduct = getBaseProduct(productKey, productStacs, productGeometry);
+
+    const mapTileIndexes = await getMapTileIndexes(baseProduct);
+
+    const mapfile = getProductMapfile(baseProduct, mapTileIndexes);
+    const mapproxyConf = getProductMapproxyConf(baseProduct, mapfile);
+    const mapproxySeedConf = await getProductMapproxySeedConf(mapproxyConf);
+    const dataSources = getProductDataSources(baseProduct);
+
+    const finalProduct = getFinalProduct(baseProduct);
+
+    const worldCerealProductMetadata = await ensureWorldCerealProductMetadata(finalProduct, user);
+
+    await setProductAccessibility(worldCerealProductMetadata);
+
+    await storeMapfile(mapfile);
+    await storeMapproxyConf(mapproxyConf);
+    await storeMapproxySeedConf(mapproxySeedConf);
+    await storeDataSources(dataSources, user);
+
+    await setDataSourcesAccessibility(dataSources);
+
+    await cleanMapproxyCache(baseProduct, mapproxyConf);
+}
+
+async function getMapTileIndexes(baseProduct) {
+    const tilePaths = {};
+    const tileIndexes = {};
+
+    for (const tile of baseProduct.data.data.tiles) {
+        for (const type of productTypes) {
+            if (tile[type]) {
+                tilePaths[type] = tilePaths[type] || [];
+                tilePaths[type] = tilePaths[type].concat(tile[type].replace("s3:/", "/vsis3"));
+            }
+        }
+    }
+
+    const productName = getProductName(baseProduct);
+
+    for (const type of Object.keys(tilePaths)) {
+        const optfilePath = `./${productName}_${type}.optfile`;
+        const tileIndexFileName = `${productName}_${type}`;
+        const tileIndexFilePath = `${config.mapproxy.paths.conf}/${tileIndexFileName}.shp`;
+
+        await fsp.writeFile(optfilePath, tilePaths[type].join("\n"));
+
+        try {
+            execSync(
+                `gdaltindex -t_srs EPSG:3857 -src_srs_name src_srs ${tileIndexFilePath} --optfile ${optfilePath}`,
+                {
+                    env: config.projects.worldCereal.s3,
+                    stdio: 'ignore'
+                }
+            )
+            tileIndexes[type] = {
+                name: tileIndexFileName,
+                path: tileIndexFilePath
+            };
+        } catch (e) {
+
+        }
+
+        await fsp.unlink(optfilePath);
+    }
+
+    return tileIndexes;
 }
 
 function getProductName(baseProduct) {
-    return `wc_${baseProduct.data.data.tile_collection_id}`;
+    return `WorldCereal_${baseProduct.data.data.tile_collection_id}`;
 }
 
 function getDataSourceKey(productName, productType) {
     return uuidByString(`${productName}_${productType}`);
 }
 
-async function cleanMapproxyCache(baseProduct, mapproxyConfs) {
-    for (const mapproxyConf of mapproxyConfs) {
-        for (const cacheConfKey of Object.keys(mapproxyConf.caches)) {
-            const cacheFolder = `${config.mapproxy.paths.cache}/${cacheConfKey}`;
+async function cleanMapproxyCache(baseProduct, mapproxyConf) {
+    for (const cacheConfKey of Object.keys(mapproxyConf.caches)) {
+        const cacheFolder = `${config.mapproxy.paths.cache}/${cacheConfKey}`;
 
-            try {
-                const isMapproxyCache = (await fsp.lstat(`${cacheFolder}/tile_lock`)).isDirectory();
-                if (isMapproxyCache) {
-                    await fsp.rm(`${cacheFolder}`, { recursive: true, force: true });
-                }
-            } catch (error) {
-                // console.log(error);
+        try {
+            const isMapproxyCache = (await fsp.lstat(`${cacheFolder}/tile_lock`)).isDirectory();
+            if (isMapproxyCache) {
+                await fsp.rm(`${cacheFolder}`, { recursive: true, force: true });
             }
+        } catch (error) {
+            // console.log(error);
         }
     }
 }
@@ -417,38 +398,25 @@ async function storeDataSources(dataSources, requestUser) {
     );
 }
 
-async function storeMapfiles(mapfiles) {
-    for (const mapfile of mapfiles) {
-        await fsp.writeFile(
-            `${config.mapproxy.paths.conf}/${mapfile.filename}`,
-            mapfile.definition
-        )
-    }
+async function storeMapfile(mapfile) {
+    await fsp.writeFile(
+        `${config.mapproxy.paths.conf}/${mapfile.filename}`,
+        mapfile.definition
+    )
+}
+
+async function storeMapproxyConf(mapproxyConf) {
+    await fsp.writeFile(
+        `${config.mapproxy.paths.conf}/${mapproxyConf.filename}`,
+        mapproxyConf.definition
+    )
 }
 
 async function storeMapproxySeedConf(mapproxySeedConf) {
-    await fsp.writeFile(
-        `${config.mapproxy.paths.seed}/wc_seed_global.yaml`,
-        mapproxySeedConf
-    );
-}
-
-async function storeMapproxyConfs(mapproxyConfs) {
-    for (const mapproxyConf of mapproxyConfs) {
-        fsp.writeFile(
-            `${config.mapproxy.paths.conf}/${mapproxyConf.filename}`,
-            mapproxyConf.definition
-        )
-    }
-}
-
-async function storeMapproxySeedConfs(mapproxySeedConfs) {
-    for (const mapproxySeedConf of mapproxySeedConfs) {
-        fsp.writeFile(
-            `${config.mapproxy.paths.seed}/${mapproxySeedConf.filename}`,
-            mapproxySeedConf.definition
-        )
-    }
+    fsp.writeFile(
+        `${config.mapproxy.paths.seed}/${mapproxySeedConf.filename}`,
+        mapproxySeedConf.definition
+    )
 }
 
 async function setProductAccessibility(product) {
@@ -510,11 +478,11 @@ function getProductDataSources(baseProduct) {
             data: {
                 type: "wms",
                 url: `${config.url}/proxy/wms/${getDataSourceKey(getProductName(baseProduct), type)}`,
-                layers: `${getProductName(baseProduct)}_${type}`,
+                layers: type,
                 configuration: {
                     isPublic: baseProduct.data.data.public && baseProduct.data.data.public.toLowerCase() === "true",
                     mapproxy: {
-                        instance: `${getProductName(baseProduct)}_${type}`
+                        instance: getProductName(baseProduct)
                     },
                     download: {
                         storageType: "s3",
@@ -532,74 +500,71 @@ function getProductDataSources(baseProduct) {
     return dataSources;
 }
 
-function getProductMapproxyConfs(baseProduct, mapfiles) {
-    const mapproxyConfs = [];
-    productTypes.forEach((type) => {
-        const sources = {};
-        const caches = {};
+function getProductMapproxyConf(baseProduct, mapfile) {
+    const productName = getProductName(baseProduct);
 
-        mapfiles
-            .filter((mapfile) => mapfile.productName === getProductName(baseProduct) && mapfile.sourceName.endsWith(`_${type}`))
-            .forEach((mapfile) => {
-                sources[`${getProductName(baseProduct)}_${mapfile.sourceName}`] = {
-                    type: "mapserver",
-                    req: {
-                        layers: `${mapfile.sourceName}`,
-                        map: `${config.mapproxy.paths.confLocal || config.mapproxy.paths.conf}/${mapfile.filename}`,
-                        transparent: true
-                    },
-                    coverage: {
-                        bbox: mapfile.bbox,
-                        srs: `epsg:4326`
-                    },
-                    supported_srs: [`epsg:${mapfile.epsg}`]
-                }
-            });
+    const sources = {};
+    const caches = {};
+    const layers = [];
 
-        caches[`${getProductName(baseProduct)}_${type}`] = {
-            sources: Object.entries(sources).map(([sourceName]) => sourceName),
-            grids: ["GLOBAL_WEBMERCATOR"],
+    mapfile.layers.forEach((layer) => {
+        sources[`${layer.name}`] = {
+            type: "mapserver",
+            req: {
+                layers: `${layer.name}`,
+                map: `${config.mapproxy.paths.conf}/${mapfile.filename}`,
+                transparent: true
+            },
+            coverage: {
+                datasource: layer.tileindex,
+                srs: `EPSG:3857`
+            },
+            supported_srs: [`EPSG:4326`, `EPSG:3857`]
+        }
+
+        caches[`cache_${layer.name}`] = {
+            sources: [layer.name],
+            grids: ["GLOBAL_GEODETIC", "GLOBAL_WEBMERCATOR"],
             image: {
                 transparent: true,
-                resampling_method: "nearest",
-                colors: 0,
-                mode: "RGBA"
+                resampling_method: "nearest"
             },
             cache: {
                 type: "sqlite",
-                directory: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${getProductName(baseProduct)}_${type}`,
-                tile_lock_dir: `${(config.mapproxy.paths.cacheLocal || config.mapproxy.paths.cache)}/${getProductName(baseProduct)}_${type}/tile_lock`
+                directory: `${config.mapproxy.paths.cache}/${productName}/${layer.name}`,
+                tile_lock_dir: `${config.mapproxy.paths.cache}/${productName}/${layer.name}/tile_lock`
             }
         }
 
-        mapproxyConfs.push({
-            filename: `${getProductName(baseProduct)}_${type}.yaml`,
-            caches,
-            definition: mapproxy.getMapproxyYamlString({
-                services: {
-                    demo: {},
-                    wms: {
-                        srs: ["EPSG:4326", "EPSG:3857"],
-                        versions: ["1.1.1", "1.3.0"],
-                        image_formats: ['image/png', 'image/jpeg'],
-                        md: {
-
-                            online_resource: `${config.url}/proxy/wms`
-                        }
-                    }
-                },
-                sources,
-                caches,
-                layers: [{
-                    name: `${getProductName(baseProduct)}_${type}`,
-                    title: `${getProductName(baseProduct)}_${type}`,
-                    sources: [`${getProductName(baseProduct)}_${type}`]
-                }]
-            })
-        });
+        layers.push({
+            name: layer.name,
+            title: layer.name,
+            sources: [`cache_${layer.name}`]
+        })
     });
 
-    return mapproxyConfs;
+    return {
+        filename: `${productName}.yaml`,
+        caches,
+        sources,
+        definition: mapproxy.getMapproxyYamlString({
+            services: {
+                demo: {},
+                wms: {
+                    srs: ["EPSG:4326", "EPSG:3857"],
+                    versions: ["1.1.1", "1.3.0"],
+                    image_formats: ['image/png', 'image/jpeg'],
+                    md: {
+                        title: productName,
+                        online_resource: `${config.url}/proxy/wms`
+                    }
+                }
+            },
+            sources,
+            caches,
+            layers
+        })
+    }
 }
 
 async function getProductBbox(baseProduct) {
@@ -611,70 +576,70 @@ async function getProductBbox(baseProduct) {
         ).then((result) => result.rows[0].bbox);
 }
 
-async function getProductMapproxySeedConfs(baseProduct, mapproxyConfs) {
-    const mapproxySeedConfs = [];
+async function getProductMapproxySeedConf(mapproxyConf) {
+    const seeds = {};
+    const coverages = {};
 
-    const productBbox = await getProductBbox(baseProduct);
+    for (const sourceName of Object.keys(mapproxyConf.sources)) {
+        coverages[sourceName] = mapproxyConf.sources[sourceName].coverage;
+        seeds[sourceName] = {
+            caches: [`cache_${sourceName}`],
+            coverages: [sourceName],
+            grids: ["GLOBAL_GEODETIC", "GLOBAL_WEBMERCATOR"],
+            levels: {
+                to: 12
+            }
+        }
+    }
 
-    mapproxyConfs.forEach((mapproxyConf) => {
-        mapproxySeedConfs.push({
-            filename: mapproxyConf.filename,
-            definition: mapproxy.getMapproxySeedYamlString({
-                seeds: {
-                    wc_layer_seed: {
-                        caches: Object.keys(mapproxyConf.caches),
-                        coverages: ["wc_layer_coverage"],
-                        grids: ["GLOBAL_WEBMERCATOR"],
-                        levels: {
-                            to: 12
-                        }
-                    }
-                },
-                coverages: {
-                    wc_layer_coverage: {
-                        bbox: productBbox.split(" ").map(Number),
-                        srs: `epsg:4326`
-                    }
-                }
-            })
-        });
-    })
-
-    return mapproxySeedConfs;
+    return {
+        filename: mapproxyConf.filename,
+        definition: mapproxy.getMapproxySeedYamlString({
+            seeds,
+            coverages
+        })
+    };
 }
 
-function getProductMapfiles(baseProduct) {
-    const mapfiles = [];
+function getProductMapfile(baseProduct, mapTileIndexes) {
+    const productName = getProductName(baseProduct);
+    const layers = [];
 
-    baseProduct.data.data.tiles.forEach((tile) => {
-        productTypes.forEach((type) => {
-            if (tile[type]) {
-                const name = `wc_${tile.id}_${type}`;
-                mapfiles.push({
-                    filename: `${name}.map`,
-                    sourceName: name,
-                    productName: getProductName(baseProduct),
-                    epsg: tile.src_epsg,
-                    bbox: tile.src_bbox,
-                    definition: mapserver.getMapfileString({
-                        name: `map_${name}`,
-                        projection: `epsg:${tile.src_epsg}`,
-                        config: Object.entries(config.projects.worldCereal.s3),
-                        layers: [{
-                            name,
-                            status: true,
-                            type: "RASTER",
-                            projection: `epsg:${tile.src_epsg}`,
-                            data: `${tile[type].replace("s3:/", "/vsis3")}`,
-                            styles: getMapserverStylesByProduct(tile.id)
-                        }]
-                    })
-                });
-            }
+    for (const type of Object.keys(mapTileIndexes)) {
+        layers.push({
+            name: type,
+            tileindex: mapTileIndexes[type].path
         })
-    })
+    }
 
-    return mapfiles;
+    return {
+        filename: `${productName}.map`,
+        layers,
+        definition: mapserver.getMapfileString({
+            name: productName,
+            units: "DD",
+            web: {
+                metadata: {
+                    "wms_enable_request": "*",
+                    "ows_enable_request": "*",
+                    "wms_srs": "EPSG:4326 EPSG:3857"
+                }
+            },
+            projection: ["init=EPSG:4326", "init=EPSG:3857"],
+            config: config.projects.worldCereal.s3,
+            layer: layers.map((layer) => {
+                return {
+                    name: `${layer.name}`,
+                    status: "ON",
+                    type: "RASTER",
+                    projection: ["AUTO"],
+                    tileindex: layer.tileindex,
+                    tileitem: "location",
+                    tilesrs: "src_srs"
+                }
+            })
+        })
+    };
 }
 
 function getBaseProductKeys(stacArray, owner) {
@@ -794,6 +759,7 @@ function view(request, response) {
 
 module.exports = {
     create,
+    createQueued,
     remove,
     view,
     getKeyByProductId

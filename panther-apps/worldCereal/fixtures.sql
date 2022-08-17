@@ -124,3 +124,12 @@ CREATE TABLE IF NOT EXISTS "worldCerealStacs" (
     "geometry" GEOMETRY NOT NULL,
     "tile" TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS "worldCerealQueue" (
+    "key" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "productKey" UUID NOT NULL,
+    "user" JSONB NOT NULL,
+    "state" TEXT NOT NULL,
+    "time" TIMESTAMP,
+    UNIQUE("productKey")
+);
