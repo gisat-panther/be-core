@@ -41,7 +41,7 @@ async function listS3Files({ s3Client, bucket, marker, prefix, files = [] }) {
     }
 }
 
-async function updatePathsForVsi(options) {
+async function getFiles(options) {
     const s3Client = new S3Client({
         endpoint: `${options.s3.protocol ? options.s3.protocol + '://' : ''}` + options.s3.endpoint,
         region: options.s3.endpoint,
@@ -50,21 +50,36 @@ async function updatePathsForVsi(options) {
     });
 
     const s3Files = await listS3Files({ s3Client, bucket: options.s3.bucket, prefix: options.s3.prefix });
-    const vsis3FilePaths = s3Files.map((s3File) => {
+    const filesWithProps = s3Files.map((s3File) => {
+        const group = path.parse(s3File.key).dir.replaceAll("/", "_");
+
         if (s3File.type === "raster") {
             return {
                 ...s3File,
+                group,
                 file: `/vsis3/${options.s3.bucket}/${s3File.key}`
             }
         } else {
             return {
                 ...s3File,
+                group,
                 file: `${options.s3.protocol || "http"}://${options.s3.endpoint}/${options.s3.bucket}/${s3File.key}`
             }
         }
     });
 
-    return vsis3FilePaths;
+    const groupedFiles = () => {
+        let groups = {};
+
+        for (const fileWithProps of filesWithProps) {
+            groups[fileWithProps.group] = groups[fileWithProps.group] || [];
+            groups[fileWithProps.group].push(fileWithProps);
+        }
+
+        return groups;
+    }
+
+    return groupedFiles();
 }
 
 async function getMapserverOptions(s3Files, options) {
@@ -108,7 +123,7 @@ async function getMapserverOptions(s3Files, options) {
         }
 
         mapserverOptions.layers.push({
-            rasterFileName,
+            name: rasterFileName,
             status: "on",
             data: rasterFile.file,
             type: "raster",
@@ -170,6 +185,8 @@ async function getMapproxyOptions(mapserverOptions, options) {
     const layers = [];
 
     for (const mapserverLayer of mapserverOptions.layers) {
+        const sourceName = `source_${mapserverLayer.name}`;
+        const cacheName = `cache_${mapserverLayer.name}`;
         let wms_opts;
 
         if (options.featureinfo) {
@@ -179,7 +196,7 @@ async function getMapproxyOptions(mapserverOptions, options) {
             }
         }
 
-        sources[mapserverLayer.name] = {
+        sources[sourceName] = {
             type: "mapserver",
             req: {
                 layers: mapserverLayer.name,
@@ -193,8 +210,8 @@ async function getMapproxyOptions(mapserverOptions, options) {
             supported_srs: [`epsg:${options.epsg}`],
             wms_opts
         }
-        caches[mapserverLayer.name] = {
-            sources: [mapserverLayer.name],
+        caches[cacheName] = {
+            sources: [sourceName],
             grids: ["GLOBAL_WEBMERCATOR"],
             image: {
                 transparent: true,
@@ -211,7 +228,7 @@ async function getMapproxyOptions(mapserverOptions, options) {
         layers.push({
             name: mapserverLayer.name,
             title: mapserverLayer.name,
-            sources: [mapserverLayer.name]
+            sources: [cacheName]
         })
     }
 
@@ -246,18 +263,24 @@ async function createMapproxyConfig(mapproxyOptions) {
 }
 
 async function s3(options) {
-    const vsis3Files = await updatePathsForVsi(options);
-    const mapserverOptions = await getMapserverOptions(vsis3Files, options);
-    const mapproxyOptions = await getMapproxyOptions(mapserverOptions, options);
+    const files = await getFiles(options);
+    let wmsUrls = [];
 
-    await createMapserverMapfile(mapserverOptions);
-    await createMapproxyConfig(mapproxyOptions);
+    for (const group of Object.keys(files)) {
+        const mapserverOptions = await getMapserverOptions(files[group], {...options, group});
+        const mapproxyOptions = await getMapproxyOptions(mapserverOptions, {...options, group});
 
-    if (options.template) {
-        await createMapserverTemplateFile(options);
+        await createMapserverMapfile(mapserverOptions);
+        await createMapproxyConfig(mapproxyOptions);
+
+        if (options.template) {
+            await createMapserverTemplateFile({...options, group});
+        }
+
+        wmsUrls.push(`./mapproxy/${group}`);
     }
 
-    return Promise.resolve({ mapserverOptions, mapproxyOptions });
+    return Promise.resolve(wmsUrls);
 }
 
 module.exports = {
