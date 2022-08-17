@@ -20,16 +20,33 @@ function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
                     });
                     lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} ${values.join(" ")}`)
                 } else {
-                    for (const value of json[property]) {
+                    if (property.toLowerCase() === "projection") {
+
                         lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()}`);
 
-                        if (typeof value === "object") {
-                            jsonToLineStringArray(value, lineStringArray, indentation + 2);
-                        } else {
-                            lineStringArray.push(`${' '.repeat(indentation + 2)} ${typeof value === "string" ? `"${value}"` : value}`);
+                        for (const value of json[property]) {
+                            if (value.toLowerCase() === "auto") {
+                                lineStringArray.push(`${' '.repeat(indentation + 2)} ${value.toUpperCase()}`);
+                            } else {
+                                lineStringArray.push(`${' '.repeat(indentation + 2)} ${typeof value === "string" ? `"${value}"` : value}`);
+                            }
                         }
-   
+
                         lineStringArray.push(`${' '.repeat(indentation)} END`);
+                    } else {
+                        for (const value of json[property]) {
+                            lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()}`);
+
+                            if (typeof value === "object") {
+                                jsonToLineStringArray(value, lineStringArray, indentation + 2);
+                            } else if (property.toLowerCase() === "projection" && value.toLowerCase() === "auto") {
+                                lineStringArray.push(`${' '.repeat(indentation + 2)} ${value.toUpperCase()}`);
+                            } else {
+                                lineStringArray.push(`${' '.repeat(indentation + 2)} ${typeof value === "string" ? `"${value}"` : value}`);
+                            }
+
+                            lineStringArray.push(`${' '.repeat(indentation)} END`);
+                        }
                     }
                 }
             }
@@ -53,6 +70,7 @@ function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
                 property.toLowerCase() === "units"
                 || property.toLowerCase() === "status"
                 || property.toLowerCase() === "type"
+                || property.toLowerCase() === "connectiontype"
                 || typeof json[property] === "number"
             ) {
                 lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} ${json[property]}`);
