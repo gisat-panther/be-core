@@ -314,7 +314,7 @@ async function createQueued(productKey, user) {
 
     await setDataSourcesAccessibility(dataSources);
 
-    await cleanMapproxyCache(baseProduct, mapproxyConf);
+    await cleanMapproxyCache(baseProduct);
 }
 
 async function getMapTileIndexes(baseProduct) {
@@ -369,18 +369,12 @@ function getDataSourceKey(productName, productType) {
     return uuidByString(`${productName}_${productType}`);
 }
 
-async function cleanMapproxyCache(baseProduct, mapproxyConf) {
-    for (const cacheConfKey of Object.keys(mapproxyConf.caches)) {
-        const cacheFolder = `${config.mapproxy.paths.cache}/${cacheConfKey}`;
-
-        try {
-            const isMapproxyCache = (await fsp.lstat(`${cacheFolder}/tile_lock`)).isDirectory();
-            if (isMapproxyCache) {
-                await fsp.rm(`${cacheFolder}`, { recursive: true, force: true });
-            }
-        } catch (error) {
-            // console.log(error);
-        }
+async function cleanMapproxyCache(baseProduct) {
+    const productName = getProductName(baseProduct);
+    const cacheFolder = `${config.mapproxy.paths.cache}/${productName}`;
+    try {
+        await fsp.rm(`${cacheFolder}`, { recursive: true, force: true });
+    } catch (e) {
     }
 }
 
