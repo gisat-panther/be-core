@@ -156,10 +156,23 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
             },
             supported_srs: [`EPSG:4326`]
         }
+        caches[`cache_${ndvi.filename}`] = {
+            sources: [ndvi.filename],
+            grids: ["GLOBAL_GEODETIC"],
+            image: {
+                transparent: true,
+                resampling_method: "nearest"
+            },
+            cache: {
+                type: "sqlite",
+                directory: `${config.projects.samas.paths.mapproxyCache}/${ndvi.filename}`,
+                tile_lock_dir: `${config.projects.samas.paths.mapproxyCache}/${ndvi.filename}/tile_lock`
+            }
+        }
         layers.push({
             name: ndvi.filename,
             title: ndvi.filename,
-            sources: [ndvi.filename]
+            sources: [`cache_${ndvi.filename}`]
         })
 
         sources[nir_pseudocolor.filename] = {
@@ -175,10 +188,23 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
             },
             supported_srs: [`EPSG:4326`]
         }
+        caches[`cache_${nir_pseudocolor.filename}`] = {
+            sources: [nir_pseudocolor.filename],
+            grids: ["GLOBAL_GEODETIC"],
+            image: {
+                transparent: true,
+                resampling_method: "nearest"
+            },
+            cache: {
+                type: "sqlite",
+                directory: `${config.projects.samas.paths.mapproxyCache}/${nir_pseudocolor.filename}`,
+                tile_lock_dir: `${config.projects.samas.paths.mapproxyCache}/${nir_pseudocolor.filename}/tile_lock`
+            }
+        }
         layers.push({
             name: nir_pseudocolor.filename,
             title: nir_pseudocolor.filename,
-            sources: [nir_pseudocolor.filename]
+            sources: [`cache_${nir_pseudocolor.filename}`]
         })
 
         sources[true_color.filename] = {
@@ -194,10 +220,23 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
             },
             supported_srs: [`EPSG:4326`]
         }
+        caches[`cache_${true_color.filename}`] = {
+            sources: [true_color.filename],
+            grids: ["GLOBAL_GEODETIC"],
+            image: {
+                transparent: true,
+                resampling_method: "nearest"
+            },
+            cache: {
+                type: "sqlite",
+                directory: `${config.projects.samas.paths.mapproxyCache}/${true_color.filename}`,
+                tile_lock_dir: `${config.projects.samas.paths.mapproxyCache}/${true_color.filename}/tile_lock`
+            }
+        }
         layers.push({
             name: true_color.filename,
             title: true_color.filename,
-            sources: [true_color.filename]
+            sources: [`cache_${true_color.filename}`]
         })
     });
 
