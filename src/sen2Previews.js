@@ -86,6 +86,20 @@ async function createMapserverConfigurationFile(groupedFiles) {
             type: "RASTER",
             projection: ["AUTO"],
             data: nir_pseudocolor.file,
+            class: [
+                {
+                    expression: "[pixel] = 0",
+                    style: {
+                        opacity: 0
+                    }
+                },
+                {
+                    style: {
+                        colorrange: [[97, 21, 13], [16, 69, 16]],
+                        datarange: [1, 255]
+                    }
+                }
+            ]
         });
 
         layers.push({
@@ -225,6 +239,8 @@ async function run() {
     if (!status || status.last != last) {
         await createConfigurationFiles(groupedFiles);
         await setStatus({ last });
+
+        console.log("#SAMAS# WMS definitions was updated!")
     }
 
     repeat();
