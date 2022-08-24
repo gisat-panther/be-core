@@ -627,6 +627,7 @@ function getProductMapfile(baseProduct, mapTileIndexes) {
                     status: "ON",
                     type: "RASTER",
                     projection: ["AUTO"],
+                    offsite: [186, 186, 186],
                     tileindex: layer.tileindex,
                     tileitem: "location",
                     tilesrs: "src_srs"
