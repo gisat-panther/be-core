@@ -78,14 +78,6 @@ async function createMapserverConfigurationFile(groupedFiles) {
             type: "RASTER",
             projection: ["AUTO"],
             data: ndvi.file,
-        });
-
-        layers.push({
-            name: nir_pseudocolor.filename,
-            status: "ON",
-            type: "RASTER",
-            projection: ["AUTO"],
-            data: nir_pseudocolor.file,
             class: [
                 {
                     expression: "[pixel] = 0",
@@ -100,6 +92,14 @@ async function createMapserverConfigurationFile(groupedFiles) {
                     }
                 }
             ]
+        });
+
+        layers.push({
+            name: nir_pseudocolor.filename,
+            status: "ON",
+            type: "RASTER",
+            projection: ["AUTO"],
+            data: nir_pseudocolor.file
         });
 
         layers.push({
