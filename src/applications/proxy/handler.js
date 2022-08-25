@@ -1,6 +1,6 @@
 const http = require('http');
 const https = require('https');
-// const xmljs = require('xml-js');
+const xmljs = require('xml-js');
 
 const restHandler = require('../../modules/rest/handler');
 const cache = require('./cache');
@@ -63,34 +63,27 @@ function getWms(request, response) {
                 (config.mapproxy.url.toLowerCase().startsWith("https") ? https : http)
                     .get(
                         `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?${query.toString()}`,
-                        {headers: {
-                            "Host": request.get("host"),
-                            "X-Forwarded-Host": request.get("host"),
-                            "X-Forwarded-Proto": request.protocol
-                        }},
                         (subResponse) => {
-
-                            // if ((request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
-                            //     const contentType = subResponse.headers['content-type'];
-                            //     let rawData = "";
-                            //     subResponse.on("data", (chunk) => rawData += chunk);
-                            //     subResponse.on("end", () => {
-                            //         const requestUrl = new URL(`${request.protocol}://${request.get("host")}${request.originalUrl}`);
-                            //         const updated = updateObjectWith(
-                            //             xmljs.xml2js(rawData),
-                            //             (property, value) => {
-                            //                 if (value === `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?`) {
-                            //                     return `${requestUrl.origin}${requestUrl.pathname}?`;
-                            //                 }
-                            //             }
-                            //         )
-                            //         response.set("Content-Type", contentType);
-                            //         response.send(xmljs.js2xml(updated));
-                            //     })
-                            // } else {
-                            //     subResponse.pipe(response)
-                            // }
-                            subResponse.pipe(response)
+                            if ((request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
+                                const contentType = subResponse.headers['content-type'];
+                                let rawData = "";
+                                subResponse.on("data", (chunk) => rawData += chunk);
+                                subResponse.on("end", () => {
+                                    const requestUrl = new URL(`${request.protocol}://${request.get("host")}${request.originalUrl}`);
+                                    const updated = updateObjectWith(
+                                        xmljs.xml2js(rawData),
+                                        (property, value) => {
+                                            if (property === "xlink:href" && value.includes(`/${dataSourceConfiguration.mapproxy.instance}`)) {
+                                                return `${requestUrl.origin}${requestUrl.pathname}?`;
+                                            }
+                                        }
+                                    )
+                                    response.set("Content-Type", contentType);
+                                    response.send(xmljs.js2xml(updated));
+                                })
+                            } else {
+                                subResponse.pipe(response)
+                            }
                         }
                     );
             } else {
