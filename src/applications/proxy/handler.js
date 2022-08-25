@@ -64,6 +64,7 @@ function getWms(request, response) {
                     .get(
                         `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?${query.toString()}`,
                         {headers: {
+                            "Host": request.get("host"),
                             "X-Forwarded-Host": request.get("host"),
                             "X-Forwarded-Proto": request.protocol
                         }},
