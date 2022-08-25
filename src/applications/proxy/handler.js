@@ -63,6 +63,10 @@ function getWms(request, response) {
                 (config.mapproxy.url.toLowerCase().startsWith("https") ? https : http)
                     .get(
                         `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?${query.toString()}`,
+                        {headers: {
+                            "X-Forwarded-Host": request.get("host"),
+                            "X-Forwarded-Proto": request.protocol
+                        }},
                         (subResponse) => {
 
                             if ((request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
