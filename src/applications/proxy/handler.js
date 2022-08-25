@@ -1,6 +1,6 @@
 const http = require('http');
 const https = require('https');
-const xmljs = require('xml-js');
+// const xmljs = require('xml-js');
 
 const restHandler = require('../../modules/rest/handler');
 const cache = require('./cache');
