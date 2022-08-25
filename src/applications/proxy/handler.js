@@ -64,7 +64,7 @@ function getWms(request, response) {
                     .get(
                         `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?${query.toString()}`,
                         (subResponse) => {
-                            if ((request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
+                            if ((request.query.REQUEST || request.query.request) && (request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
                                 const contentType = subResponse.headers['content-type'];
                                 let rawData = "";
                                 subResponse.on("data", (chunk) => rawData += chunk);
