@@ -74,7 +74,7 @@ function getWms(request, response) {
                                         xmljs.xml2js(rawData),
                                         (property, value) => {
                                             if (property === "xlink:href" && value.includes(`/${dataSourceConfiguration.mapproxy.instance}`)) {
-                                                return `${requestUrl.origin}${requestUrl.pathname}?`;
+                                                return `${config.url}${requestUrl.pathname}?`;
                                             }
                                         }
                                     )
