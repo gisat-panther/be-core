@@ -70,26 +70,27 @@ function getWms(request, response) {
                         }},
                         (subResponse) => {
 
-                            if ((request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
-                                const contentType = subResponse.headers['content-type'];
-                                let rawData = "";
-                                subResponse.on("data", (chunk) => rawData += chunk);
-                                subResponse.on("end", () => {
-                                    const requestUrl = new URL(`${request.protocol}://${request.get("host")}${request.originalUrl}`);
-                                    const updated = updateObjectWith(
-                                        xmljs.xml2js(rawData),
-                                        (property, value) => {
-                                            if (value === `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?`) {
-                                                return `${requestUrl.origin}${requestUrl.pathname}?`;
-                                            }
-                                        }
-                                    )
-                                    response.set("Content-Type", contentType);
-                                    response.send(xmljs.js2xml(updated));
-                                })
-                            } else {
-                                subResponse.pipe(response)
-                            }
+                            // if ((request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
+                            //     const contentType = subResponse.headers['content-type'];
+                            //     let rawData = "";
+                            //     subResponse.on("data", (chunk) => rawData += chunk);
+                            //     subResponse.on("end", () => {
+                            //         const requestUrl = new URL(`${request.protocol}://${request.get("host")}${request.originalUrl}`);
+                            //         const updated = updateObjectWith(
+                            //             xmljs.xml2js(rawData),
+                            //             (property, value) => {
+                            //                 if (value === `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?`) {
+                            //                     return `${requestUrl.origin}${requestUrl.pathname}?`;
+                            //                 }
+                            //             }
+                            //         )
+                            //         response.set("Content-Type", contentType);
+                            //         response.send(xmljs.js2xml(updated));
+                            //     })
+                            // } else {
+                            //     subResponse.pipe(response)
+                            // }
+                            subResponse.pipe(response)
                         }
                     );
             } else {
