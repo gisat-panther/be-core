@@ -42,6 +42,8 @@ async function callAppApi(app, params, authToken) {
 
     if (response.status === 202) {
         return await response.json();
+    } else {
+        console.log(response.status, await response.text())
     }
 }
 
