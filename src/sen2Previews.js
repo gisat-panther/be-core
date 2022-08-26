@@ -270,16 +270,32 @@ async function createConfigurationFiles(groupedFiles) {
     await createMapproxyConfigurationFiles(groupedFiles);
 }
 
+function isComplete(groupedFiles) {
+    const state = true;
+
+    for (const groupOfFiles of groupOfFiles) {
+        if (Object.keys[groupedFiles].length !== 4) {
+            state = false;
+            break;
+        }
+    }
+
+    return state;
+}
+
 async function run() {
     const status = await getStatus();
     const groupedFiles = await getGroupedFiles();
-    const last = await getLatestFileDate(groupedFiles);
 
-    if (!status || status.last != last) {
-        await createConfigurationFiles(groupedFiles);
-        await setStatus({ last });
+    if (isComplete(groupedFiles)) {
+        const last = await getLatestFileDate(groupedFiles);
 
-        console.log("#SAMAS# WMS definitions was updated!")
+        if (!status || status.last != last) {
+            await createConfigurationFiles(groupedFiles);
+            await setStatus({ last });
+
+            console.log("#SAMAS# WMS definitions was updated!")
+        }
     }
 
     repeat();
