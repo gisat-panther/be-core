@@ -17,6 +17,10 @@ async function getGroupedFiles() {
     const files = await fsp.readdir(config.projects.samas.paths.previews);
     const grouped = {};
 
+    if (files.length === 0) {
+        return;
+    }
+
     for (const file of files) {
         const filePathParsed = path.parse(file);
         const filename = filePathParsed.name;
@@ -287,7 +291,7 @@ async function run() {
     const status = await getStatus();
     const groupedFiles = await getGroupedFiles();
 
-    if (isComplete(groupedFiles)) {
+    if (groupedFiles && isComplete(groupedFiles)) {
         const last = await getLatestFileDate(groupedFiles);
 
         if (!status || status.last != last) {
