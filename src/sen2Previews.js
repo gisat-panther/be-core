@@ -278,7 +278,7 @@ function isComplete(groupedFiles) {
     let state = true;
 
     for (const group of Object.keys(groupedFiles)) {
-        if (Object.keys[groupedFiles[group]].length !== 4) {
+        if (Object.keys(groupedFiles[group]).length !== 4) {
             state = false;
             break;
         }
