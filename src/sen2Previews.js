@@ -277,7 +277,7 @@ async function createConfigurationFiles(groupedFiles) {
 function isComplete(groupedFiles) {
     let state = true;
 
-    for (const groupOfFiles of groupOfFiles) {
+    for (const groupOfFiles of groupedFiles) {
         if (Object.keys[groupedFiles].length !== 4) {
             state = false;
             break;
