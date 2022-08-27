@@ -154,6 +154,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
             },
             coverage: {
                 datasource: footprint.file,
+                where: "DN=1",
                 srs: `EPSG:4326`
             },
             supported_srs: [`EPSG:4326`]
@@ -186,6 +187,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
             },
             coverage: {
                 datasource: footprint.file,
+                where: "DN=1",
                 srs: `EPSG:4326`
             },
             supported_srs: [`EPSG:4326`]
@@ -218,6 +220,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
             },
             coverage: {
                 datasource: footprint.file,
+                where: "DN=1",
                 srs: `EPSG:4326`
             },
             supported_srs: [`EPSG:4326`]
