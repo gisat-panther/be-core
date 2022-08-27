@@ -46,29 +46,21 @@ async function getGroupedFiles() {
     return grouped;
 }
 
-async function getLatestFileDate(groupedFiles) {
-    let lastDate;
-    for (const date of Object.keys(groupedFiles)) {
-        if (!lastDate || lastDate < date) {
-            lastDate = date;
-        }
-    }
-
-    return lastDate;
-}
-
-async function getStatus() {
+async function getExistingGroups() {
+    let groups = [];
     try {
         const statusTxt = await fsp.readFile(config.projects.samas.paths.statusFile);
-        return JSON.parse(statusTxt);
+        groups = JSON.parse(statusTxt);
     } catch (e) {
         console.log(e);
     }
+
+    return groups;
 }
 
-async function setStatus(status) {
+async function setExistingGroups(groups) {
     try {
-        await fsp.writeFile(config.projects.samas.paths.statusFile, JSON.stringify(status));
+        await fsp.writeFile(config.projects.samas.paths.statusFile, JSON.stringify(groups));
     } catch (e) {
         console.log(e);
     }
@@ -281,18 +273,14 @@ async function createConfigurationFiles(groupedFiles) {
 }
 
 async function run() {
-    const status = await getStatus();
     const groupedFiles = await getGroupedFiles();
+    const existingGroups = await getExistingGroups();
 
-    if (Object.keys(groupedFiles).length) {
-        const last = await getLatestFileDate(groupedFiles);
+    if (Object.keys(groupedFiles).length && Object.keys(groupedFiles).length !== existingGroups.length) {
+        await createConfigurationFiles(groupedFiles);
+        await setExistingGroups(Object.keys(groupedFiles));
 
-        if (!status || status.last != last) {
-            await createConfigurationFiles(groupedFiles);
-            await setStatus({ last });
-
-            console.log("#SAMAS# WMS definitions was updated!")
-        }
+        console.log("#SAMAS# WMS definitions was updated!")
     }
 
     repeat();
