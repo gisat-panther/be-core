@@ -159,7 +159,6 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
         const true_color = groupedFiles[date].true_color;
 
         const bbox = getBbox(ndvi.file);
-        console.log(bbox);
 
         sources[ndvi.filename] = {
             type: "mapserver",
