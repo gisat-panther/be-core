@@ -144,7 +144,7 @@ function getBbox(ndvi) {
             ...outputJson.cornerCoordinates.upperRight
         ].join(",");
     } catch (e) {
-
+        console.log(e);
     }
 }
 
