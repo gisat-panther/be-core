@@ -1,5 +1,6 @@
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const { execSync } = require('node:child_process');
 
 const config = require('../config');
 const mapserver = require('../src/modules/map/mapserver');
@@ -134,16 +135,31 @@ async function createMapserverConfigurationFile(groupedFiles) {
     }
 }
 
+function getBbox(ndvi) {
+    try {
+        const output = execSync(`gdalinfo -json ${ndvi}`);
+        const outputJson = JSON.parse(output);
+        return [
+            ...outputJson.cornerCoordinates.lowerLeft,
+            ...outputJson.cornerCoordinates.upperRight
+        ].join(",");
+    } catch (e) {
+
+    }
+}
+
 async function createMapproxyConfigurationFiles(groupedFiles) {
     const sources = {};
     const caches = {};
     const layers = [];
 
     Object.keys(groupedFiles).map((date) => {
-        const footprint = groupedFiles[date].footprint;
         const ndvi = groupedFiles[date].ndvi;
         const nir_pseudocolor = groupedFiles[date].nir_pseudocolor;
         const true_color = groupedFiles[date].true_color;
+
+        const bbox = getBbox(ndvi.file);
+        console.log(bbox);
 
         sources[ndvi.filename] = {
             type: "mapserver",
@@ -153,8 +169,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
                 transparent: true
             },
             coverage: {
-                datasource: footprint.file,
-                where: "DN=1",
+                bbox,
                 srs: `EPSG:4326`
             },
             supported_srs: [`EPSG:4326`]
@@ -186,8 +201,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
                 transparent: true
             },
             coverage: {
-                datasource: footprint.file,
-                where: "DN=1",
+                bbox,
                 srs: `EPSG:4326`
             },
             supported_srs: [`EPSG:4326`]
@@ -219,8 +233,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
                 transparent: true
             },
             coverage: {
-                datasource: footprint.file,
-                where: "DN=1",
+                bbox,
                 srs: `EPSG:4326`
             },
             supported_srs: [`EPSG:4326`]
