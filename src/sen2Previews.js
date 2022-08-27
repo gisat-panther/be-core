@@ -37,6 +37,12 @@ async function getGroupedFiles() {
         };
     }
 
+    for (const group of Object.keys(grouped)) {
+        if (Object.keys(grouped[group]).length !== 4) {
+            delete grouped[group];
+        }
+    }
+
     return grouped;
 }
 
@@ -274,24 +280,11 @@ async function createConfigurationFiles(groupedFiles) {
     await createMapproxyConfigurationFiles(groupedFiles);
 }
 
-function isComplete(groupedFiles) {
-    let state = true;
-
-    for (const group of Object.keys(groupedFiles)) {
-        if (Object.keys(groupedFiles[group]).length !== 4) {
-            state = false;
-            break;
-        }
-    }
-
-    return state;
-}
-
 async function run() {
     const status = await getStatus();
     const groupedFiles = await getGroupedFiles();
 
-    if (groupedFiles && isComplete(groupedFiles)) {
+    if (Object.keys(groupedFiles).length) {
         const last = await getLatestFileDate(groupedFiles);
 
         if (!status || status.last != last) {
