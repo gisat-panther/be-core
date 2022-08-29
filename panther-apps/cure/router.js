@@ -20,7 +20,7 @@ module.exports = [
         handler: async (request, response) => {
             const orders = await handler.getOrders(request.user);
             if (orders) {
-                response.send(orders);
+                response.send({data: orders});
             } else {
                 response.status(500).end();
             }
