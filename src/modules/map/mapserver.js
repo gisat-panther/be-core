@@ -79,7 +79,7 @@ function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
                 property.toLowerCase() === "expression"
             ) {
                 lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} (${json[property]})`);
-            } else {
+            } else if (json[property] !== undefined) {
                 lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} "${json[property]}"`);
             }
         }
