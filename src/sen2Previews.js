@@ -8,6 +8,8 @@ const mapproxy = require('../src/modules/map/mapproxy');
 
 const runEvery = 60000;
 
+const types = ["ndvi", "nir_pseudocolor", "true_color"];
+
 function repeat() {
     setTimeout(() => {
         run();
@@ -39,8 +41,11 @@ async function getGroupedFiles() {
     }
 
     for (const group of Object.keys(grouped)) {
-        if (Object.keys(grouped[group]).length !== 4) {
-            delete grouped[group];
+        for (const type of types) {
+            if (!grouped[group][type]) {
+                delete grouped[group];
+                break;
+            }
         }
     }
 
