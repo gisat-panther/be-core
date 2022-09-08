@@ -6,8 +6,6 @@ const config = require('../config');
 const mapserver = require('../src/modules/map/mapserver');
 const mapproxy = require('../src/modules/map/mapproxy');
 
-const runEvery = 60000;
-
 const types = ["ndvi", "nir_pseudocolor", "true_color"];
 const styles = {
     ndvi: [
@@ -24,12 +22,6 @@ const styles = {
             }
         }
     ]
-}
-
-function repeat() {
-    setTimeout(() => {
-        run();
-    }, runEvery)
 }
 
 async function getGroupedFiles() {
@@ -235,12 +227,6 @@ async function run() {
 
         console.log("#SAMAS# WMS definitions was updated!")
     }
-
-    repeat();
 }
 
-async function init() {
-    run();
-}
-
-init();
+run();
