@@ -229,7 +229,7 @@ async function run() {
     const groupedFiles = await getGroupedFiles();
     const existingGroups = await getExistingGroups();
 
-    if (Object.keys(groupedFiles).length && Object.keys(groupedFiles).length !== existingGroups.length) {
+    if (groupedFiles && Object.keys(groupedFiles).length && Object.keys(groupedFiles).length !== existingGroups.length) {
         await createConfigurationFiles(groupedFiles);
         await setExistingGroups(Object.keys(groupedFiles));
 
