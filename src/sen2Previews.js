@@ -160,11 +160,11 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
                 sources: [file.filename],
                 grids: ["KrovakEastNorth"],
                 image: {
+                    mode: "RGB",
                     colors: 0,
                     transparent: true,
-                    resampling_method: "bicubic"
                 },
-                use_direct_from_level: 14,
+                use_direct_from_level: 8,
                 cache: {
                     type: "sqlite",
                     directory: `${config.projects.samas.paths.mapproxyCache}/${file.filename}`,
