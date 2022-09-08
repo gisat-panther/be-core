@@ -1,6 +1,6 @@
 const yaml = require('yaml');
 
-function getMapproxyYamlString({services = {}, sources = {}, caches = {}, layers = []} = {}) {
+function getMapproxyYamlString({services = {}, grids = {}, sources = {}, caches = {}, layers = []} = {}) {
     const mapproxyConfig = {
         globals: {
             mapserver: {
@@ -13,6 +13,13 @@ function getMapproxyYamlString({services = {}, sources = {}, caches = {}, layers
         mapproxyConfig.services = {};
         Object.entries(services).forEach(([service, options]) => {
             mapproxyConfig.services[service] = options;
+        });
+    }
+
+    if (Object.keys(grids).length) {
+        mapproxyConfig.grids = {};
+        Object.entries(grids).forEach(([grid, options]) => {
+            mapproxyConfig.grids[grid] = options;
         });
     }
 
