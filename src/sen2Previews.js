@@ -9,6 +9,22 @@ const mapproxy = require('../src/modules/map/mapproxy');
 const runEvery = 60000;
 
 const types = ["ndvi", "nir_pseudocolor", "true_color"];
+const styles = {
+    ndvi: [
+        {
+            expression: "[pixel] = 0",
+            style: {
+                opacity: 0
+            }
+        },
+        {
+            style: {
+                colorrange: [[97, 21, 13], [16, 69, 16]],
+                datarange: [1, 255]
+            }
+        }
+    ]
+}
 
 function repeat() {
     setTimeout(() => {
@@ -76,47 +92,18 @@ async function createMapserverConfigurationFile(groupedFiles) {
     const layers = [];
 
     Object.keys(groupedFiles).map((date) => {
-        const ndvi = groupedFiles[date].ndvi;
-        const nir_pseudocolor = groupedFiles[date].nir_pseudocolor;
-        const true_color = groupedFiles[date].true_color;
+        for (const type of types) {
+            const file = groupedFiles[date][type];
 
-        layers.push({
-            name: ndvi.filename,
-            status: "ON",
-            type: "RASTER",
-            projection: ["AUTO"],
-            data: ndvi.file,
-            class: [
-                {
-                    expression: "[pixel] = 0",
-                    style: {
-                        opacity: 0
-                    }
-                },
-                {
-                    style: {
-                        colorrange: [[97, 21, 13], [16, 69, 16]],
-                        datarange: [1, 255]
-                    }
-                }
-            ]
-        });
-
-        layers.push({
-            name: nir_pseudocolor.filename,
-            status: "ON",
-            type: "RASTER",
-            projection: ["AUTO"],
-            data: nir_pseudocolor.file
-        });
-
-        layers.push({
-            name: true_color.filename,
-            status: "ON",
-            type: "RASTER",
-            projection: ["AUTO"],
-            data: true_color.file,
-        });
+            layers.push({
+                name: file.filename,
+                status: "ON",
+                type: "RASTER",
+                projection: ["AUTO"],
+                data: file.file,
+                class: styles[type]
+            });
+        }
     })
 
     const mapserverConf = {
@@ -126,10 +113,10 @@ async function createMapserverConfigurationFile(groupedFiles) {
             metadata: {
                 "wms_enable_request": "*",
                 "ows_enable_request": "*",
-                "wms_srs": "EPSG:4326"
+                "wms_srs": "EPSG:5514"
             }
         },
-        projection: ["init=EPSG:4326"],
+        projection: ["init=EPSG:5514"],
         layer: layers
     };
 
@@ -159,120 +146,66 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
     const layers = [];
 
     Object.keys(groupedFiles).map((date) => {
-        const ndvi = groupedFiles[date].ndvi;
-        const nir_pseudocolor = groupedFiles[date].nir_pseudocolor;
-        const true_color = groupedFiles[date].true_color;
+        for (const type of types) {
+            const file = groupedFiles[date][type];
 
-        const bbox = getBbox(ndvi.file);
+            const bbox = getBbox(file.file);
 
-        sources[ndvi.filename] = {
-            type: "mapserver",
-            req: {
-                layers: `${ndvi.filename}`,
-                map: `${config.projects.samas.paths.mapproxyConf}/Samas_Sen2Previews.map`,
-                transparent: true
-            },
-            coverage: {
-                bbox,
-                srs: `EPSG:4326`
-            },
-            supported_srs: [`EPSG:4326`]
-        }
-        caches[`cache_${ndvi.filename}`] = {
-            sources: [ndvi.filename],
-            grids: ["GLOBAL_GEODETIC"],
-            image: {
-                transparent: true,
-                resampling_method: "nearest"
-            },
-            cache: {
-                type: "sqlite",
-                directory: `${config.projects.samas.paths.mapproxyCache}/${ndvi.filename}`,
-                tile_lock_dir: `${config.projects.samas.paths.mapproxyCache}/${ndvi.filename}/tile_lock`
+            sources[file.filename] = {
+                type: "mapserver",
+                req: {
+                    layers: `${file.filename}`,
+                    map: `${config.projects.samas.paths.mapproxyConf}/Samas_Sen2Previews.map`,
+                    transparent: true
+                },
+                coverage: {
+                    bbox,
+                    srs: `EPSG:5514`
+                },
+                supported_srs: [`EPSG:5514`]
             }
-        }
-        layers.push({
-            name: ndvi.filename,
-            title: ndvi.filename,
-            sources: [`cache_${ndvi.filename}`]
-        })
-
-        sources[nir_pseudocolor.filename] = {
-            type: "mapserver",
-            req: {
-                layers: `${nir_pseudocolor.filename}`,
-                map: `${config.projects.samas.paths.mapproxyConf}/Samas_Sen2Previews.map`,
-                transparent: true
-            },
-            coverage: {
-                bbox,
-                srs: `EPSG:4326`
-            },
-            supported_srs: [`EPSG:4326`]
-        }
-        caches[`cache_${nir_pseudocolor.filename}`] = {
-            sources: [nir_pseudocolor.filename],
-            grids: ["GLOBAL_GEODETIC"],
-            image: {
-                transparent: true,
-                resampling_method: "nearest"
-            },
-            cache: {
-                type: "sqlite",
-                directory: `${config.projects.samas.paths.mapproxyCache}/${nir_pseudocolor.filename}`,
-                tile_lock_dir: `${config.projects.samas.paths.mapproxyCache}/${nir_pseudocolor.filename}/tile_lock`
+            caches[`cache_${file.filename}`] = {
+                sources: [file.filename],
+                grids: ["KrovakEastNorth"],
+                image: {
+                    colors: 0,
+                    transparent: true,
+                    resampling_method: "bicubic"
+                },
+                use_direct_from_level: 14,
+                cache: {
+                    type: "sqlite",
+                    directory: `${config.projects.samas.paths.mapproxyCache}/${file.filename}`,
+                    tile_lock_dir: `${config.projects.samas.paths.mapproxyCache}/${file.filename}/tile_lock`
+                }
             }
+            layers.push({
+                name: file.filename,
+                title: file.filename,
+                sources: [`cache_${file.filename}`]
+            })
         }
-        layers.push({
-            name: nir_pseudocolor.filename,
-            title: nir_pseudocolor.filename,
-            sources: [`cache_${nir_pseudocolor.filename}`]
-        })
-
-        sources[true_color.filename] = {
-            type: "mapserver",
-            req: {
-                layers: `${true_color.filename}`,
-                map: `${config.projects.samas.paths.mapproxyConf}/Samas_Sen2Previews.map`,
-                transparent: true
-            },
-            coverage: {
-                bbox,
-                srs: `EPSG:4326`
-            },
-            supported_srs: [`EPSG:4326`]
-        }
-        caches[`cache_${true_color.filename}`] = {
-            sources: [true_color.filename],
-            grids: ["GLOBAL_GEODETIC"],
-            image: {
-                transparent: true,
-                resampling_method: "nearest"
-            },
-            cache: {
-                type: "sqlite",
-                directory: `${config.projects.samas.paths.mapproxyCache}/${true_color.filename}`,
-                tile_lock_dir: `${config.projects.samas.paths.mapproxyCache}/${true_color.filename}/tile_lock`
-            }
-        }
-        layers.push({
-            name: true_color.filename,
-            title: true_color.filename,
-            sources: [`cache_${true_color.filename}`]
-        })
     });
 
     const mapproxyConf = {
         services: {
             demo: {},
             wms: {
-                srs: ["EPSG:4326"],
+                srs: ["EPSG:5514"],
                 versions: ["1.1.1", "1.3.0"],
                 image_formats: ['image/png', 'image/jpeg'],
                 md: {
                     title: "SAMAS | Sentinel-2 Previews",
                     online_resource: `${config.url}/proxy/wms`
                 }
+            }
+        },
+        grids: {
+            KrovakEastNorth: {
+                srs: "EPSG:5514",
+                bbox: [-951499.37, -1276279.09, -159365.31, -983013.08],
+                bbox_srs: "EPSG:5514",
+                origin: "ll"
             }
         },
         sources,
