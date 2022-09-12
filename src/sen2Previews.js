@@ -187,8 +187,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
                 versions: ["1.1.1", "1.3.0"],
                 image_formats: ['image/png', 'image/jpeg'],
                 md: {
-                    title: "SAMAS | Sentinel-2 Previews",
-                    online_resource: `${config.url}/proxy/wms`
+                    title: "SAMAS | Sentinel-2 Previews"
                 }
             }
         },
