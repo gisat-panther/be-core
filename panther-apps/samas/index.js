@@ -2,26 +2,13 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 
-const config = require('../config');
-const mapserver = require('../src/modules/map/mapserver');
-const mapproxy = require('../src/modules/map/mapproxy');
+const config = require('../../config');
+const mapserver = require('../../src/modules/map/mapserver');
+const mapproxy = require('../../src/modules/map/mapproxy');
 
 const types = ["ndvi", "nir_pseudocolor", "true_color"];
 const styles = {
-    ndvi: [
-        {
-            expression: "[pixel] = 0",
-            style: {
-                opacity: 0
-            }
-        },
-        {
-            style: {
-                colorrange: [[97, 21, 13], [16, 69, 16]],
-                datarange: [1, 255]
-            }
-        }
-    ]
+    ndvi: require('./styles/ndvi_spojity.json')
 }
 
 async function getGroupedFiles() {
