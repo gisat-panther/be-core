@@ -8,7 +8,7 @@ const mapproxy = require('../../src/modules/map/mapproxy');
 
 const types = ["ndvi", "nir_pseudocolor", "true_color"];
 const styles = {
-    ndvi: require('./styles/ndvi_spojity.json')
+    ndvi: require('./styles/ndvi_spojity_v2.json')
 }
 
 async function getGroupedFiles() {
