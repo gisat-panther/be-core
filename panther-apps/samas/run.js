@@ -130,7 +130,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
 
             const bbox = getBbox(file.file);
 
-            sources[file.filename] = {
+            sources[`source_${file.filename}`] = {
                 type: "mapserver",
                 req: {
                     layers: `${file.filename}`,
@@ -161,7 +161,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
             layers.push({
                 name: file.filename,
                 title: file.filename,
-                sources: [`cache_${file.filename}`]
+                sources: [`source_${file.filename}`]
             })
         }
     });
