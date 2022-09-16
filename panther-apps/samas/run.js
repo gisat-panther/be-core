@@ -227,7 +227,7 @@ async function createMapproxyConfigurationFile(groupedFiles) {
 async function createConfigurationFiles(groupedFiles) {
     await createMapserverConfigurationFile(groupedFiles);
     await createMapproxyConfigurationFile(groupedFiles);
-    await createMapproxySeedConfigurationFile(groupedFiles);
+    // await createMapproxySeedConfigurationFile(groupedFiles);
 }
 
 async function run() {
