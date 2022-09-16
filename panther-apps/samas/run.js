@@ -80,7 +80,6 @@ async function createMapserverConfigurationFile(groupedFiles) {
                 type: "RASTER",
                 projection: ["AUTO"],
                 data: file.file,
-                offsite: [0, 0, 0],
                 class: styles[type]
             });
         }
@@ -199,9 +198,36 @@ async function createMapproxyConfigurationFile(groupedFiles) {
     }
 }
 
+// async function createMapproxySeedConfigurationFile(groupedFiles) {
+//     const seeds = {};
+//     const coverages = {};
+
+//     Object.keys(groupedFiles).map((date) => {
+//         for (const type of types) {
+//             const file = groupedFiles[date][type];
+
+//             const bbox = getBbox(file.file);
+
+
+//         }
+//     });
+
+//     const mapproxySeedConf = {
+//         coverages,
+//         seeds
+//     };
+
+//     try {
+//         await fsp.writeFile(`${config.projects.samas.paths.mapproxyConf}/Samas_Sen2Previews.yaml`, mapproxy.getMapproxySeedYamlString(mapproxySeedConf));
+//     } catch (e) {
+//         console.log(e);
+//     }
+// }
+
 async function createConfigurationFiles(groupedFiles) {
     await createMapserverConfigurationFile(groupedFiles);
     await createMapproxyConfigurationFile(groupedFiles);
+    await createMapproxySeedConfigurationFile(groupedFiles);
 }
 
 async function run() {
