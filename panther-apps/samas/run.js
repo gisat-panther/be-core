@@ -120,7 +120,7 @@ function getBbox(ndvi) {
     }
 }
 
-async function createMapproxyConfigurationFiles(groupedFiles) {
+async function createMapproxyConfigurationFile(groupedFiles) {
     const sources = {};
     const caches = {};
     const layers = [];
@@ -201,7 +201,7 @@ async function createMapproxyConfigurationFiles(groupedFiles) {
 
 async function createConfigurationFiles(groupedFiles) {
     await createMapserverConfigurationFile(groupedFiles);
-    await createMapproxyConfigurationFiles(groupedFiles);
+    await createMapproxyConfigurationFile(groupedFiles);
 }
 
 async function run() {
