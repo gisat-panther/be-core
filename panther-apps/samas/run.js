@@ -80,6 +80,7 @@ async function createMapserverConfigurationFile(groupedFiles) {
                 type: "RASTER",
                 projection: ["AUTO"],
                 data: file.file,
+                offsite: [0, 0, 0],
                 class: styles[type]
             });
         }
