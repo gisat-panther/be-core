@@ -513,12 +513,12 @@ function getProductMapproxyConf(baseProduct, mapfile) {
                 datasource: layer.tileindex,
                 srs: `EPSG:3857`
             },
-            supported_srs: [`EPSG:4326`, `EPSG:3857`]
+            supported_srs: [`EPSG:3857`]
         }
 
         caches[`cache_${layer.name}`] = {
             sources: [layer.name],
-            grids: ["GLOBAL_GEODETIC", "GLOBAL_WEBMERCATOR"],
+            grids: ["GLOBAL_WEBMERCATOR"],
             image: {
                 transparent: true,
                 resampling_method: "nearest"
@@ -579,7 +579,7 @@ async function getProductMapproxySeedConf(mapproxyConf) {
         seeds[sourceName] = {
             caches: [`cache_${sourceName}`],
             coverages: [sourceName],
-            grids: ["GLOBAL_GEODETIC", "GLOBAL_WEBMERCATOR"],
+            grids: ["GLOBAL_WEBMERCATOR"],
             levels: {
                 to: 12
             }
@@ -616,10 +616,10 @@ function getProductMapfile(baseProduct, mapTileIndexes) {
                 metadata: {
                     "wms_enable_request": "*",
                     "ows_enable_request": "*",
-                    "wms_srs": "EPSG:4326 EPSG:3857"
+                    "wms_srs": "EPSG:3857"
                 }
             },
-            projection: ["init=EPSG:4326", "init=EPSG:3857"],
+            projection: ["init=EPSG:3857"],
             config: config.projects.worldCereal.s3,
             layer: layers.map((layer) => {
                 return {
