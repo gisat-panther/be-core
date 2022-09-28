@@ -619,7 +619,7 @@ function getProductMapfile(baseProduct, mapTileIndexes) {
                     "wms_srs": "EPSG:3857"
                 }
             },
-            projection: ["init=EPSG:3857"],
+            projection: ["init=epsg:3857"],
             config: config.projects.worldCereal.s3,
             layer: layers.map((layer) => {
                 return {
