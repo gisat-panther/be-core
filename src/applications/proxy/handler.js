@@ -64,8 +64,11 @@ function getWms(request, response) {
                     .get(
                         `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/service?${query.toString()}`,
                         (subResponse) => {
+                            for (const header of Object.keys(subResponse.headers)) {
+                                response.set(header, subResponse.headers[header]);
+                            }
+
                             if ((request.query.REQUEST || request.query.request) && (request.query.REQUEST || request.query.request).toLowerCase() === "getcapabilities") {
-                                const contentType = subResponse.headers['content-type'];
                                 let rawData = "";
                                 subResponse.on("data", (chunk) => rawData += chunk);
                                 subResponse.on("end", () => {
@@ -78,7 +81,6 @@ function getWms(request, response) {
                                             }
                                         }
                                     )
-                                    response.set("Content-Type", contentType);
                                     response.send(xmljs.js2xml(updated));
                                 })
                             } else {
