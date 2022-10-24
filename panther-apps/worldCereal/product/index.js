@@ -127,6 +127,17 @@ function getProductKey(stac, owner) {
     return uuidByString(`${stac.properties.tile_collection_id}_${owner}`);
 }
 
+function getGlobalProductKey(stac, owner) {
+    const globalProductCollectionId = getGlobalProductCollectionId(stac);
+    return uuidByString(`${globalProductCollectionId}_${owner}`);
+}
+
+function getGlobalProductCollectionId(stac) {
+    const tileCollectionId = stac.properties.tile_collection_id;
+    const matches = tileCollectionId.match(/^([0-9]{4}_[a-z0-9]+)_[0-9]+_(.*)$/);
+    return `${matches[1]}_${matches[2]}`;
+}
+
 async function storeStacToLocalDb(stac, owner) {
     const key = uuidByString(`${stac.id}_${owner}`);
     const productKey = getProductKey(stac, owner);
@@ -167,9 +178,21 @@ async function getProductStacs(productKey) {
         .then((result) => result.rows.map((row) => row.stac));
 }
 
+async function getGlobalProductStacs(productKeys) {
+    return db
+        .query(`SELECT "stac" FROM "worldCerealStacs" WHERE "productKey" IN ('${productKeys.join(`', '`)}')`)
+        .then((result) => result.rows.map((row) => row.stac));
+}
+
 async function getProductGeometry(productKey) {
     return db
         .query(`SELECT ST_AsGeoJSON(ST_ForcePolygonCCW(ST_ConvexHull(ST_Union("geometry")))) AS "geometry" FROM "worldCerealStacs" WHERE "productKey" = '${productKey}'`)
+        .then((result) => JSON.parse(result.rows[0].geometry));
+}
+
+async function getGlobalProductGeometry(productKeys) {
+    return db
+        .query(`SELECT ST_AsGeoJSON(ST_ForcePolygonCCW(ST_ConvexHull(ST_Union("geometry")))) AS "geometry" FROM "worldCerealStacs" WHERE "productKey" IN ('${productKeys.join(`', '`)}')`)
         .then((result) => JSON.parse(result.rows[0].geometry));
 }
 
@@ -203,6 +226,54 @@ function getBaseProduct(key, productStacs, productGeometry) {
                 training_refids: productStacs[0].properties.training_refids,
                 product: productStacs[0].properties.product,
                 public: productStacs[0].properties.public,
+                geometry: productGeometry,
+                tiles,
+                dataSource: {
+                    product: null,
+                    metafeatures: null,
+                    confidence: null
+                }
+            }
+        }
+    };
+}
+
+function getGlobalBaseProduct(key, productStacs, productGeometry) {
+    const tiles = productStacs.map((productStac) => {
+        return {
+            "id": productStac.id,
+            "tile": `${productStac.properties["mgrs:utm_zone"]}${productStac.properties["mgrs:latitude_band"]}${productStac.properties["mgrs:grid_square"]}`,
+            "product": productStac.assets.product.href,
+            "metafeatures": productStac.assets.metafeatures && productStac.assets.metafeatures.href,
+            "confidence": productStac.assets.confidence && productStac.assets.confidence.href,
+            "stac": _.find(productStac.links, (link) => link.rel === "self").href,
+            "src_epsg": productStac.properties["proj:epsg"],
+            "src_bbox": productStac.bbox
+        }
+    });
+
+    let sos = productStacs.map((productStac) => productStac.properties.start_datetime).sort();
+    sos = sos[0];
+
+    let eos = productStacs.map((productStac) => productStac.properties.end_datetime).sort();
+    eos = eos.pop();
+
+    return {
+        key,
+        data: {
+            tileKeys: tiles.map((tile) => tile.tile),
+            geometry: productGeometry,
+            global: true,
+            data: {
+                tile_collection_id: getGlobalProductCollectionId(productStacs[0]),
+                sos,
+                eos,
+                season: productStacs[0].properties.season,
+                aez_ids: Array.from(new Set(productStacs.map((productStac) => productStac.properties.aez_id))),
+                aez_groups: Array.from(new Set(productStacs.map((productStac) => productStac.properties.aez_group))),
+                product: productStacs[0].properties.product,
+                public: productStacs[0].properties.public,
+                models: Array.from(new Set(productStacs.map((productStac) => productStac.properties.model))),
                 geometry: productGeometry,
                 tiles,
                 dataSource: {
@@ -285,6 +356,11 @@ async function create(request, response) {
         await queue.set(productKey, "created", request.user);
     }
 
+    const baseGlobalProductKeys = getBaseGlobalProductKeys(stacArray, owner);
+    for (const globalProductKey of Object.keys(baseGlobalProductKeys)) {
+        await queue.setGlobal(globalProductKey, baseGlobalProductKeys[globalProductKey], "created", request.user);
+    }
+
     response.status(200).end();
 }
 
@@ -317,6 +393,37 @@ async function createQueued(productKey, user) {
     await cleanMapproxyCache(baseProduct);
 }
 
+async function createGlobalQueued(globalProductKey, productKeys, user) {
+    const productStacs = await getGlobalProductStacs(productKeys);
+
+    const productGeometry = await getGlobalProductGeometry(productKeys);
+
+    const baseProduct = getGlobalBaseProduct(globalProductKey, productStacs, productGeometry);
+
+    const mapTileIndexes = await getMapTileIndexes(baseProduct);
+
+    const mapfile = getProductMapfile(baseProduct, mapTileIndexes);
+    const mapproxyConf = getProductMapproxyConf(baseProduct, mapfile);
+    const mapproxySeedConf = await getProductMapproxySeedConf(mapproxyConf);
+    const dataSources = getProductDataSources(baseProduct);
+
+    const finalProduct = getFinalGlobalProduct(baseProduct);
+
+    const worldCerealProductMetadata = await ensureWorldCerealProductMetadata(finalProduct, user);
+
+    await setProductAccessibility(worldCerealProductMetadata);
+
+    await storeMapfile(mapfile);
+    await storeGetFeatureInfoTemplate(baseProduct); 
+    await storeMapproxyConf(mapproxyConf);
+    await storeMapproxySeedConf(mapproxySeedConf);
+    await storeDataSources(dataSources, user);
+
+    await setDataSourcesAccessibility(dataSources);
+
+    await cleanMapproxyCache(baseProduct);
+}
+
 async function getMapTileIndexes(baseProduct) {
     const tilePaths = {};
     const tileIndexes = {};
@@ -335,7 +442,7 @@ async function getMapTileIndexes(baseProduct) {
     for (const type of Object.keys(tilePaths)) {
         const optfilePath = `./${productName}_${type}.optfile`;
         const tileIndexFileName = `${productName}_${type}`;
-        const tileIndexFilePath = `${config.mapproxy.paths.conf}/${tileIndexFileName}.shp`;
+        const tileIndexFilePath = `${config.mapproxy.paths.datasource}/${tileIndexFileName}.shp`;
 
         await fsp.writeFile(optfilePath, tilePaths[type].join("\n"));
 
@@ -393,24 +500,48 @@ async function storeDataSources(dataSources, requestUser) {
 }
 
 async function storeMapfile(mapfile) {
+    const path = `${config.mapproxy.paths.conf}/${mapfile.filename}`;
+
     await fsp.writeFile(
-        `${config.mapproxy.paths.conf}/${mapfile.filename}`,
+        path,
         mapfile.definition
     )
+
+    console.log(`#WorldCerealQueue# Created ${path}`);
+}
+
+async function storeGetFeatureInfoTemplate(baseProduct) {
+    const productName = getProductName(baseProduct);
+    const path = `${config.mapproxy.paths.conf}/${productName}.getFeatureInfo.html`;
+
+    await fsp.writeFile(
+        path,
+        `<!-- mapserver template -->\n{\"layer\":\"[cl]\",\"x\":[x],\"y\":[y],\"value_list\":\"[value_list]\",\"class\":\"[class]\"}\n`
+    )
+
+    console.log(`#WorldCerealQueue# Created ${path}`);
 }
 
 async function storeMapproxyConf(mapproxyConf) {
+    const path = `${config.mapproxy.paths.conf}/${mapproxyConf.filename}`;
+
     await fsp.writeFile(
-        `${config.mapproxy.paths.conf}/${mapproxyConf.filename}`,
+        path,
         mapproxyConf.definition
     )
+
+    console.log(`#WorldCerealQueue# Created ${path}`);
 }
 
 async function storeMapproxySeedConf(mapproxySeedConf) {
+    const path = `${config.mapproxy.paths.seed}/${mapproxySeedConf.filename}`;
+
     fsp.writeFile(
-        `${config.mapproxy.paths.seed}/${mapproxySeedConf.filename}`,
+        path,
         mapproxySeedConf.definition
     )
+
+    console.log(`#WorldCerealQueue# Created ${path}`);
 }
 
 async function setProductAccessibility(product) {
@@ -446,6 +577,34 @@ function getFinalProduct(baseProduct) {
         tile.confidence = `${config.url}/download/${finalProduct.data.data.dataSource.product}/${getDownloadItemKey(tile.confidence)}`;
         tile.stac = `${config.url}/download/${finalProduct.data.data.dataSource.product}/${getDownloadItemKey(tile.stac)}`;
     })
+
+    return finalProduct;
+}
+
+function getFinalGlobalProduct(baseProduct) {
+    const finalProduct = {
+        key: baseProduct.key,
+        data: {
+            tileKeys: baseProduct.data.tileKeys,
+            geometry: baseProduct.data.geometry,
+            global: baseProduct.data.global,
+            data: {
+                dataSource: {}
+            }
+        }
+    };
+
+    productTypes.forEach((type) => {
+        finalProduct.data.data.dataSource[type] = getDataSourceKey(getProductName(baseProduct), type);
+    });
+
+    finalProduct.data.data.product = baseProduct.data.data.product;
+    finalProduct.data.data.eos = baseProduct.data.data.eos;
+    finalProduct.data.data.sos = baseProduct.data.data.sos;
+    finalProduct.data.data.public = baseProduct.data.data.public;
+    finalProduct.data.data.season = baseProduct.data.data.season;
+    finalProduct.data.data.tile_collection_id = baseProduct.data.data.tile_collection_id;
+    finalProduct.data.data.models = baseProduct.data.data.models;
 
     return finalProduct;
 }
@@ -513,7 +672,11 @@ function getProductMapproxyConf(baseProduct, mapfile) {
                 datasource: layer.tileindex,
                 srs: `EPSG:3857`
             },
-            supported_srs: [`EPSG:3857`]
+            supported_srs: [`EPSG:3857`],
+            wms_opts: {
+                featureinfo: true,
+                featureinfo_format: "text/html"
+            }
         }
 
         caches[`cache_${layer.name}`] = {
@@ -616,6 +779,7 @@ function getProductMapfile(baseProduct, mapTileIndexes) {
                 metadata: {
                     "wms_enable_request": "*",
                     "ows_enable_request": "*",
+                    "wms_feature_info_mime_type": "text/html",
                     "wms_srs": "EPSG:3857"
                 }
             },
@@ -630,7 +794,8 @@ function getProductMapfile(baseProduct, mapTileIndexes) {
                     offsite: [186, 186, 186],
                     tileindex: layer.tileindex,
                     tileitem: "location",
-                    tilesrs: "src_srs"
+                    tilesrs: "src_srs",
+                    template: `${config.mapproxy.paths.conf}/${productName}.getFeatureInfo.html`
                 }
             })
         })
@@ -638,11 +803,32 @@ function getProductMapfile(baseProduct, mapTileIndexes) {
 }
 
 function getBaseProductKeys(stacArray, owner) {
-    const baseProductKeys = stacArray.map((stac) => {
+    const productKeys = stacArray.map((stac) => {
         return getProductKey(stac, owner);
     });
 
-    return Array.from(new Set(baseProductKeys));
+    return Array.from(new Set(productKeys));
+}
+
+function getBaseGlobalProductKeys(stacArray, owner) {
+    const globalProductKeys = {
+
+    }
+
+    for (const stac of stacArray) {
+        const globalProductKey = getGlobalProductKey(stac, owner);
+        const productKey = getProductKey(stac, owner);
+
+        if (globalProductKeys[globalProductKey]) {
+            globalProductKeys[globalProductKey].push(productKey);
+        } else {
+            globalProductKeys[globalProductKey] = [productKey];
+        }
+
+        globalProductKeys[globalProductKey] = Array.from(new Set(globalProductKeys[globalProductKey]));
+    }
+
+    return globalProductKeys;
 }
 
 function remove(request, response) {
@@ -684,7 +870,9 @@ function view(request, response) {
     return Promise
         .resolve()
         .then(() => {
-            let filter = {};
+            let filter = {
+                global: false
+            };
 
             if (request.body.geometry) {
                 filter.geometry = {
@@ -752,10 +940,65 @@ function view(request, response) {
         })
 }
 
+function viewGlobal(request, response) {
+    return handler
+        .list('specific', {
+            params: { types: 'worldCerealProductMetadata' },
+            user: request.user,
+            body: {
+                filter: {
+                    global: true
+                },
+                limit: 999999
+            }
+        })
+        .then(async (r) => {
+            if (r.type === result.SUCCESS) {
+                let tiles = [];
+                let products = r.data.data.worldCerealProductMetadata.map((product) => {
+                    product.data.data.geometry = product.data.geometry;
+
+                    tiles = tiles.concat(product.data.tileKeys);
+
+                    return Object.assign(
+                        {},
+                        product,
+                        {
+                            data: {
+                                ...product.data,
+                                tileKeys: undefined,
+                                geometry: undefined
+                            },
+                            permissions: undefined
+                        }
+                    );
+                });
+
+                response.status(200).send({
+                    products,
+                    tiles: Array.from(new Set(tiles))
+                }
+
+                );
+            } else if (r.type === result.FORBIDDEN) {
+                response.status(403).end();
+            } else {
+                console.log(JSON.stringify(r));
+                response.status(500).end();
+            }
+        })
+        .catch((error) => {
+            console.log(error);
+            response.status(500).end();
+        })
+}
+
 module.exports = {
     create,
     createQueued,
+    createGlobalQueued,
     remove,
     view,
+    viewGlobal,
     getKeyByProductId
 }

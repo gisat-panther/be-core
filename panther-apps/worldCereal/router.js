@@ -103,6 +103,21 @@ module.exports = [
         handler: product.view
     },
     {
+        path: '/rest/project/worldCereal/product/global',
+        method: 'get',
+        swagger: {
+            tags: ['project', 'worldCereal', 'product', 'global']
+        },
+        middlewares: [
+            userMiddleware,
+            autoLoginKongHqMiddleware,
+            autoLoginMiddleware,
+            authMiddleware,
+        ],
+        responses: { 200: {} },
+        handler: product.viewGlobal
+    },
+    {
         path: '/rest/project/worldCereal/user',
         method: 'post',
         swagger: {

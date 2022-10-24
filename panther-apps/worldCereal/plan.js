@@ -14,7 +14,8 @@ module.exports = {
                         'key',
                         'tileKeys',
                         'geometry',
-                        'data'
+                        'data',
+                        'global'
                     ],
                 },
                 create: {
@@ -22,7 +23,8 @@ module.exports = {
                         'key',
                         'tileKeys',
                         'geometry',
-                        'data'
+                        'data',
+                        'global'
                     ],
                 },
                 update: {
@@ -30,7 +32,8 @@ module.exports = {
                         'key',
                         'tileKeys',
                         'geometry',
-                        'data'
+                        'data',
+                        'global'
                     ],
                 },
             },
@@ -60,6 +63,10 @@ module.exports = {
                 data: {
                     defaultValue: null,
                     schema: Joi.object().allow(null)
+                },
+                global: {
+                    defaultValue: false,
+                    schema: Joi.boolean()
                 }
             },
             relations: {

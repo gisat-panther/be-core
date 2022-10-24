@@ -133,3 +133,11 @@ CREATE TABLE IF NOT EXISTS "worldCerealQueue" (
     "time" TIMESTAMP,
     UNIQUE("productKey")
 );
+
+CREATE TABLE IF NOT EXISTS "worldCerealGlobalQueue" (
+    "key" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    "productKeys" UUID[] NOT NULL,
+    "user" JSONB NOT NULL,
+    "state" TEXT NOT NULL,
+    "time" TIMESTAMP
+)

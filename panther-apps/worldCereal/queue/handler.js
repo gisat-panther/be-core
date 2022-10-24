@@ -13,6 +13,31 @@ function run() {
     }, getRandomTime());
 }
 
+async function executeGlobal() {
+    try {
+        const { globalProductKey, productKeys, user } = await queue.getNextGlobal();
+
+        if (globalProductKey) {
+            console.log(`#WorldCerealQueue# Processing global ${globalProductKey}`);
+
+            await queue.setGlobal(globalProductKey, productKeys, 'running', user);
+
+            try {
+                await product.createGlobalQueued(globalProductKey, productKeys, user);
+
+                console.log(`#WorldCerealQueue# Global ${globalProductKey} was successfully processed!`);
+
+                await queue.setGlobal(globalProductKey, productKeys, 'done', user);
+            } catch (e) {
+                console.log(e);
+                await queue.setGlobal(globalProductKey, productKeys, 'failed', user);
+            }
+        }
+    } catch (e) {
+        console.log(e);
+    }
+}
+
 async function execute() {
     try {
         if (!await queue.isReady()) {
@@ -36,6 +61,8 @@ async function execute() {
                 console.log(e);
                 await queue.set(productKey, 'failed', user);
             }
+        } else {
+            await executeGlobal();
         }
     } catch (e) {
         console.log(e);
