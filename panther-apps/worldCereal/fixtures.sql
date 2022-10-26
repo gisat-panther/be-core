@@ -1,3 +1,5 @@
+BEGIN;
+
 INSERT INTO "user"."users"
     ("key", "email", "password", "phone", "name")
 VALUES
@@ -140,4 +142,6 @@ CREATE TABLE IF NOT EXISTS "worldCerealGlobalQueue" (
     "user" JSONB NOT NULL,
     "state" TEXT NOT NULL,
     "time" TIMESTAMP
-)
+);
+
+COMMIT;
