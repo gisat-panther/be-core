@@ -6,6 +6,7 @@ info:
 paths:
   /rest/project/worldCereal/init:
     get:
+      description: Initialize database and internal structures
       parameters:
         - in: header
           name: X-User-Info
