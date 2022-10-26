@@ -4,7 +4,7 @@ async function isFileDifferent({ file, hash }) {
     return db
         .query(`SELECT COUNT(*)::int FROM "fixtures" WHERE "file" = '${file}' AND "hash" = '${hash}';`)
         .then((result) => {
-            return !Boolean(result.rows[0].count);
+            return !(result.rows[0].count);
         })
 }
 
