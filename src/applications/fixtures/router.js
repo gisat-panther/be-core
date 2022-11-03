@@ -1,6 +1,8 @@
-const userMiddleware = require('../../middlewares/user');
-const authMiddleware = require('../../middlewares/auth');
-const autoLoginMiddleware = require('../../middlewares/auto-login');
+const multer = require('multer');
+
+const fileParseMiddleware = multer().array("file");
+
+const importTokenLoginMiddleware = require('../../middlewares/import-token-login');
 const handler = require('./handler');
 
 module.exports = [
@@ -11,9 +13,8 @@ module.exports = [
             tags: ['fixtures', 'import']
         },
         middlewares: [
-            userMiddleware,
-            autoLoginMiddleware,
-            authMiddleware,
+            fileParseMiddleware,
+            importTokenLoginMiddleware
         ],
         responses: { 200: {} },
         handler: handler.restImport
