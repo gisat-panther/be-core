@@ -82,7 +82,7 @@ async function getNext() {
 
 async function getNextGlobal() {
     return db.query(
-        `SELECT "key" as "globalProductKey", "productKeys", "user" FROM "worldCerealGlobalQueue" WHERE "time" < NOW() - INTERVAL '5 minutes' AND "state" = 'created' ORDER BY "time" LIMIT 1`
+        `SELECT "key" as "globalProductKey", "productKeys", "user" FROM "worldCerealGlobalQueue" WHERE "time" < NOW() - INTERVAL '60 minutes' AND "state" = 'created' ORDER BY "time" LIMIT 1`
     ).then((result) => {
         if (result.rows.length) {
             return result.rows[0];
