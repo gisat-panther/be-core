@@ -7,11 +7,15 @@ function exec() {
         if (config.projects.worldCereal.fixtures) {
             setTimeout(async () => {
                 console.log("#WorldCereal# Fixtures init!");
-                await fixturesLocal.importLocal({file: "fixtures.sql", path: `${process.cwd()}/panther-apps/worldCereal/fixtures.sql`});
+                try {
+                    await fixturesLocal.importLocal({ file: "fixtures.sql", path: `${process.cwd()}/panther-apps/worldCereal/fixtures.sql`, user: { type: "user" } });
+                } catch(e) {
+                    console.log("#WorldCereal#", e.message);
+                }
             }, 1000);
         }
-    } catch(e) {
-
+    } catch (e) {
+        console.log(e.message);
     }
 }
 
