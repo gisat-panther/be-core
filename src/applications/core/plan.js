@@ -790,6 +790,14 @@ module.exports = {
                     resourceGroup: 'application',
                     resourceType: 'applications',
                 },
+                scope: {
+                    type: 'manyToOne',
+                    relationTable: 'relations.caseRelation',
+                    ownKey: 'parentCaseKey',
+                    inverseKey: 'scopeKey',
+                    resourceGroup: 'metadata',
+                    resourceType: 'scopes',
+                },
                 tag: {
                     type: 'manyToMany',
                     relationTable: 'relations.caseRelation',
