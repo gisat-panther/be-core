@@ -384,6 +384,7 @@ async function createQueued(productKey, user) {
     await setProductAccessibility(worldCerealProductMetadata);
 
     await storeMapfile(mapfile);
+    await storeGetFeatureInfoTemplate(baseProduct); 
     await storeMapproxyConf(mapproxyConf);
     await storeMapproxySeedConf(mapproxySeedConf);
     await storeDataSources(dataSources, user);
