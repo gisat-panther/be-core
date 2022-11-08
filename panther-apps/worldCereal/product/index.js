@@ -391,7 +391,7 @@ async function createQueued(productKey, user) {
 
     await setDataSourcesAccessibility(dataSources);
 
-    await cleanMapproxyCache(baseProduct);
+    // await cleanMapproxyCache(baseProduct);
 }
 
 async function createGlobalQueued(globalProductKey, productKeys, user) {
@@ -422,7 +422,7 @@ async function createGlobalQueued(globalProductKey, productKeys, user) {
 
     await setDataSourcesAccessibility(dataSources);
 
-    await cleanMapproxyCache(baseProduct);
+    // await cleanMapproxyCache(baseProduct);
 }
 
 async function getMapTileIndexes(baseProduct) {
