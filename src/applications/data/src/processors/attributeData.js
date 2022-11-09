@@ -171,6 +171,7 @@ async function getDataForRelations(relations, filter) {
 				columns.push(`"${attributeDataSource.columnName}" AS "${attributeDataSource.key}"`);
 			});
 
+			allowedFeatureKeys = allowedFeatureKeys.map((allowedFeatureKey) => typeof allowedFeatureKey === "string" ? `'${allowedFeatureKey}'` : allowedFeatureKey);
 			const where = allowedFeatureKeys && allowedFeatureKeys.length ? `WHERE "${fidColumnName}" IN (${allowedFeatureKeys.join(", ")})` : "";
 
 			attributeQueries.push(
