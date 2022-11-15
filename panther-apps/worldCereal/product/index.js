@@ -743,6 +743,9 @@ async function getProductMapproxySeedConf(mapproxyConf) {
         seeds[sourceName] = {
             caches: [`cache_${sourceName}`],
             coverages: [sourceName],
+            refresh_before: {
+                mtime: mapproxyConf.sources[sourceName].coverage.datasource
+            },
             grids: ["GLOBAL_WEBMERCATOR"],
             levels: {
                 to: 12
