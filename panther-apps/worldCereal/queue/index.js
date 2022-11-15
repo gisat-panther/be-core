@@ -1,5 +1,7 @@
 const db = require('../../../src/db');
 
+const INTERVAL = '30 minutes';
+
 async function set(productKey, state, user) {
     const created = new Date().toISOString();
     return db.query(
@@ -61,13 +63,13 @@ async function getAll() {
 
 async function getSettled() {
     return db.query(
-        `SELECT "productKey", "user" FROM "worldCerealQueue" WHERE "time" < NOW() - INTERVAL '60 minutes'`
+        `SELECT "productKey", "user" FROM "worldCerealQueue" WHERE "time" < NOW() - INTERVAL '${INTERVAL}'`
     ).then((result) => result.rows);
 }
 
 async function getNext() {
     return db.query(
-        `SELECT "productKey", "user" FROM "worldCerealQueue" WHERE "time" < NOW() - INTERVAL '60 minutes' AND "state" = 'created' ORDER BY "time" LIMIT 1`
+        `SELECT "productKey", "user" FROM "worldCerealQueue" WHERE "time" < NOW() - INTERVAL '${INTERVAL}' AND "state" = 'created' ORDER BY "time" LIMIT 1`
     ).then((result) => {
         if (result.rows.length) {
             return result.rows[0];
@@ -82,7 +84,7 @@ async function getNext() {
 
 async function getNextGlobal() {
     return db.query(
-        `SELECT "key" as "globalProductKey", "productKeys", "user" FROM "worldCerealGlobalQueue" WHERE "time" < NOW() - INTERVAL '60 minutes' AND "state" = 'created' ORDER BY "time" LIMIT 1`
+        `SELECT "key" as "globalProductKey", "productKeys", "user" FROM "worldCerealGlobalQueue" WHERE "time" < NOW() - INTERVAL '${INTERVAL}' AND "state" = 'created' ORDER BY "time" LIMIT 1`
     ).then((result) => {
         if (result.rows.length) {
             return result.rows[0];
