@@ -10,7 +10,11 @@ function getRandomTime() {
 }
 
 function run() {
-    if (config.projects.worldCereal.ingestion) {
+    if (
+        config.projects
+        && config.projects.worldCereal
+        && config.projects.worldCereal.ingestion
+    ) {
         setTimeout(() => {
             execute();
         }, getRandomTime());
