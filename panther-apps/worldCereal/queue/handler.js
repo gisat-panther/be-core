@@ -1,6 +1,8 @@
 const queue = require('./index');
 const product = require('../product');
 
+const config = require('../../../config');
+
 function getRandomTime() {
     const min = 5000;
     const max = 15000;
@@ -8,9 +10,11 @@ function getRandomTime() {
 }
 
 function run() {
-    setTimeout(() => {
-        execute();
-    }, getRandomTime());
+    if (config.projects.worldCereal.ingestion) {
+        setTimeout(() => {
+            execute();
+        }, getRandomTime());
+    }
 }
 
 async function executeGlobal() {
