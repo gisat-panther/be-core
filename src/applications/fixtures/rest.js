@@ -1,6 +1,5 @@
-const fsp = require('fs/promises');
-
 const uuid = require('../../uuid');
+
 const { 
     getFileType, 
     importLocal,
