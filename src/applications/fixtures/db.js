@@ -17,7 +17,13 @@ async function saveFileHash({ file, hash }) {
         .query(`INSERT INTO "fixtures" ("file", "hash") VALUES ('${file}', '${hash}')`);
 }
 
+async function clearExistingLayer({ name }) {
+    return db
+        .query(`DROP TABLE IF EXISTS "${name}"`);
+}
+
 module.exports = {
     isFileDifferent,
-    saveFileHash
+    saveFileHash,
+    clearExistingLayer
 }

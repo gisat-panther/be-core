@@ -1,5 +1,5 @@
 const fsp = require('fs/promises');
-const path = require('path');
+const p = require('path');
 const objectHash = require('object-hash');
 const { spawnSync, execSync } = require('child_process');
 
@@ -65,6 +65,11 @@ async function importGeoJSON({ path, user }) {
         throw new Error("insufficient permissions");
     }
 
+    const parsedPath = p.parse(path);
+    const name = parsedPath.name;
+
+    await db.clearExistingLayer({name});
+
     const { host, user: pgUser, password, database, port = 5432 } = pgConfig.normal;
     execSync(
         `ogr2ogr -f "PostgreSQL" "PG:host=${host} user=${pgUser} password=${password} dbname=${database} port=${port}" -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -lco GEOMETRY_NAME=geom -lco LAUNDER=NO ${path}`
@@ -77,7 +82,7 @@ async function getHash(path) {
 }
 
 function getFileType({ file }) {
-    switch (path.parse(file).ext.toLowerCase()) {
+    switch (p.parse(file).ext.toLowerCase()) {
         case ".sql":
             return "SQL";
         case ".json":
