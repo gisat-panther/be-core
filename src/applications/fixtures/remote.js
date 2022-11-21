@@ -1,8 +1,6 @@
 const axios = require('axios');
-const objectHash = require('object-hash');
 
 const uuid = require('../../uuid');
-const db = require('./db');
 
 const {
     createTempLocation,
@@ -15,6 +13,8 @@ async function importRemote({ file, url, user }) {
     const processKey = uuid.generate();
     const response = await axios(url, { responseType: "arrayBuffer" });
 
+    let error;
+
     try {
         await createTempLocation(processKey);
 
@@ -22,9 +22,17 @@ async function importRemote({ file, url, user }) {
 
         await importLocal({ file, path: localPath, user });
     } catch (e) {
-        throw e;
-    } finally {
+        error = e;
+    }
+
+    try {
         await clearTempLocation(processKey);
+    } catch(e) {
+        error = e;
+    }
+
+    if (error) {
+        throw error;
     }
 }
 
