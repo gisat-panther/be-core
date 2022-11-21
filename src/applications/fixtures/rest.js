@@ -1,23 +1,13 @@
 const fsp = require('fs/promises');
 
 const uuid = require('../../uuid');
-const { getFileType, importLocal } = require('./local');
-
-async function createTemplocation(processKey) {
-    return fsp.mkdir(`/tmp/${processKey}`);
-}
-
-async function clearTempLocation(processKey) {
-    return fsp.rm(`/tmp/${processKey}`, { force: true, recursive: true });
-}
-
-async function saveFile({ processKey, name, buffer }) {
-    const path = `/tmp/${processKey}/${name}`;
-
-    await fsp.writeFile(path, buffer);
-
-    return path;
-}
+const { 
+    getFileType, 
+    importLocal,
+    createTempLocation,
+    clearTempLocation,
+    saveFile
+} = require('./local');
 
 async function importFixtures(request, response) {
     if (!request.files || !request.files.length) {
@@ -30,7 +20,7 @@ async function importFixtures(request, response) {
     }
 
     try {
-        await createTemplocation(status.processKey);
+        await createTempLocation(status.processKey);
         status.tempCreated = true;
     } catch (e) {
         status.tempCreated = false;
