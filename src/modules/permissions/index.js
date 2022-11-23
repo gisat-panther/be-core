@@ -317,7 +317,7 @@ async function ensurePermissions(client, permissions) {
  *
  * @returns {string[]}
  */
-function groupKeys(client, groups) {
+async function getGroupKeys(client, groups) {
     if (groups.length === 0) {
         return [];
     }
@@ -354,7 +354,7 @@ async function ensureGroups(client, groups) {
 
     await client.query(qb.toSql(insertSqlMap));
 
-    return groupKeys(client, groups);
+    return getGroupKeys(client, groups);
 }
 
 /**
@@ -763,7 +763,7 @@ async function manageGroups({client, tableToType}, {permission, name}) {
                             await Promise.all([
                                 ensureGroups(client, [newGroup]),
                                 ensurePermissions(client, permissions),
-                                groupKeys(client, [oldGroup]),
+                                getGroupKeys(client, [oldGroup]),
                             ]);
 
                         await Promise.all([
