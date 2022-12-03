@@ -688,7 +688,7 @@ function getProductMapproxyConf(baseProduct, mapfile) {
                 resampling_method: "nearest"
             },
             cache: {
-                type: "sqlite",
+                type: "file",
                 directory: `${config.mapproxy.paths.cache}/${productName}/${layer.name}`,
                 tile_lock_dir: `${config.mapproxy.paths.cache}/${productName}/${layer.name}/tile_lock`
             }
