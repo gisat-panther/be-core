@@ -2,6 +2,7 @@ const uuidByString = require('uuid-by-string');
 const _ = require('lodash');
 const fsp = require('fs/promises');
 const { execSync } = require('node:child_process');
+const axios = require('axios');
 
 const result = require('../../../src/modules/rest/result');
 const handler = require('../../../src/modules/rest/handler');
@@ -364,65 +365,61 @@ async function create(request, response) {
     response.status(200).end();
 }
 
-async function createQueued(productKey, user) {
-    const productStacs = await getProductStacs(productKey);
-    const productGeometry = await getProductGeometry(productKey);
+async function createProduct(globalProductKey, productKeys, user) {
+    const productGlobalStacs = await getGlobalProductStacs(productKeys);
+    const productGlobalGeometry = await getGlobalProductGeometry(productKeys);
+    const baseGlobalProduct = getGlobalBaseProduct(globalProductKey, productGlobalStacs, productGlobalGeometry);
 
-    const baseProduct = getBaseProduct(productKey, productStacs, productGeometry);
+    const baseProducts = {};
 
-    const mapTileIndexes = await getMapTileIndexes(baseProduct);
+    for (const productKey of productKeys) {
+        const productStacs = await getProductStacs(productKey);
+        const productGeometry = await getProductGeometry(productKey);
+        const baseProduct = getBaseProduct(productKey, productStacs, productGeometry);
 
-    const mapfile = getProductMapfile(baseProduct, mapTileIndexes);
-    const mapproxyConf = getProductMapproxyConf(baseProduct, mapfile);
-    const mapproxySeedConf = await getProductMapproxySeedConf(mapproxyConf);
-    const dataSources = getProductDataSources(baseProduct);
+        const productTileIndexs = await getMapTileIndexes(baseProduct);
 
-    const finalProduct = getFinalProduct(baseProduct);
+        baseProducts[productKey] = {
+            baseProduct,
+            productTileIndexs
+        }
+    }
 
-    const worldCerealProductMetadata = await ensureWorldCerealProductMetadata(finalProduct, user);
+    const mapfile = getProductMapfile(baseGlobalProduct, baseProducts);
+    const mapproxyConf = getProductMapproxyConf(baseGlobalProduct, mapfile);
+    const mapproxySeedConf = getProductMapproxySeedConf(mapproxyConf);
+    const dataSources = getProductDataSources(baseGlobalProduct, Object.entries(baseProducts).map(([productKey, { baseProduct, productTileIndexs }]) => baseProduct));
 
-    await setProductAccessibility(worldCerealProductMetadata);
+    const finalGlobalProduct = getFinalGlobalProduct(baseGlobalProduct);
+    const worldCerealGlobalProductMetadata = await ensureWorldCerealProductMetadata(finalGlobalProduct, user);
+    await setProductAccessibility(worldCerealGlobalProductMetadata);
+
+    for (const baseProduct of Object.entries(baseProducts).map(([productKey, { baseProduct, productTileIndexs }]) => baseProduct)) {
+        const finalProduct = getFinalProduct(baseProduct);
+        const worldCerealProductMetadata = await ensureWorldCerealProductMetadata(finalProduct, user);
+        await setProductAccessibility(worldCerealProductMetadata);
+    }
 
     await storeMapfile(mapfile);
-    await storeGetFeatureInfoTemplate(baseProduct); 
+    await storeGetFeatureInfoTemplate(baseGlobalProduct);
     await storeMapproxyConf(mapproxyConf);
     await storeMapproxySeedConf(mapproxySeedConf);
     await storeDataSources(dataSources, user);
 
     await setDataSourcesAccessibility(dataSources);
 
-    // await cleanMapproxyCache(baseProduct);
+    seedLayers(mapproxySeedConf);
 }
 
-async function createGlobalQueued(globalProductKey, productKeys, user) {
-    const productStacs = await getGlobalProductStacs(productKeys);
-
-    const productGeometry = await getGlobalProductGeometry(productKeys);
-
-    const baseProduct = getGlobalBaseProduct(globalProductKey, productStacs, productGeometry);
-
-    const mapTileIndexes = await getMapTileIndexes(baseProduct);
-
-    const mapfile = getProductMapfile(baseProduct, mapTileIndexes);
-    const mapproxyConf = getProductMapproxyConf(baseProduct, mapfile);
-    const mapproxySeedConf = await getProductMapproxySeedConf(mapproxyConf);
-    const dataSources = getProductDataSources(baseProduct);
-
-    const finalProduct = getFinalGlobalProduct(baseProduct);
-
-    const worldCerealProductMetadata = await ensureWorldCerealProductMetadata(finalProduct, user);
-
-    await setProductAccessibility(worldCerealProductMetadata);
-
-    await storeMapfile(mapfile);
-    await storeGetFeatureInfoTemplate(baseProduct); 
-    await storeMapproxyConf(mapproxyConf);
-    await storeMapproxySeedConf(mapproxySeedConf);
-    await storeDataSources(dataSources, user);
-
-    await setDataSourcesAccessibility(dataSources);
-
-    // await cleanMapproxyCache(baseProduct);
+function seedLayers(mapproxySeedConf) {
+    for (const seed of Object.keys(mapproxySeedConf.seeds)) {
+        if (seed.endsWith("_product")) {
+            axios({
+                method: 'get',
+                url: `${config.mapproxy.seedApiUrl}/seed/${mapproxySeedConf.filename}/${mapproxySeedConf.filename}/${seed}`
+            }).catch((error) => console.log(error.message));
+        }
+    }
 }
 
 async function getMapTileIndexes(baseProduct) {
@@ -537,7 +534,7 @@ async function storeMapproxyConf(mapproxyConf) {
 async function storeMapproxySeedConf(mapproxySeedConf) {
     const path = `${config.mapproxy.paths.seed}/${mapproxySeedConf.filename}`;
 
-    fsp.writeFile(
+    await fsp.writeFile(
         path,
         mapproxySeedConf.definition
     )
@@ -614,42 +611,47 @@ function getDownloadItemKey(source) {
     return uuidByString(`${source}`);
 }
 
-function getProductDataSources(baseProduct) {
+function getProductDataSources(baseGlobalProduct, baseProducts) {
     const dataSources = [];
     const downloadItems = {};
 
-    productTypes.forEach((type) => {
-        baseProduct.data.data.tiles.forEach((tile) => {
-            downloadItems[getDownloadItemKey(tile[type])] = `${tile[type]}`;
+    for (const baseProduct of [baseGlobalProduct, ...baseProducts]) {
+        productTypes.forEach((type) => {
+            baseProduct.data.data.tiles.forEach((tile) => {
+                downloadItems[getDownloadItemKey(tile[type])] = `${tile[type]}`;
 
-            if (type === "product") {
-                downloadItems[getDownloadItemKey(tile.stac)] = `${tile.stac}`;
-            }
-        });
+                if (type === "product") {
+                    downloadItems[getDownloadItemKey(tile.stac)] = `${tile.stac}`;
+                }
+            });
 
-        dataSources.push({
-            key: getDataSourceKey(getProductName(baseProduct), type),
-            data: {
-                type: "wms",
-                url: `${config.url}/proxy/wms/${getDataSourceKey(getProductName(baseProduct), type)}`,
-                layers: type,
-                configuration: {
-                    isPublic: baseProduct.data.data.public && baseProduct.data.data.public.toLowerCase() === "true",
-                    mapproxy: {
-                        instance: getProductName(baseProduct)
-                    },
-                    download: {
-                        storageType: "s3",
-                        credentials: {
-                            source: "localConfig",
-                            path: "projects.worldCereal.s3"
+            const dataSourceKey = getDataSourceKey(getProductName(baseProduct), type);
+            const layerName = getProductName(baseProduct);
+
+            dataSources.push({
+                key: dataSourceKey,
+                data: {
+                    type: "wms",
+                    url: `${config.url}/proxy/wms/${dataSourceKey}`,
+                    layers: `${layerName}_${type}`,
+                    configuration: {
+                        isPublic: baseProduct.data.data.public && baseProduct.data.data.public.toLowerCase() === "true",
+                        mapproxy: {
+                            instance: getProductName(baseGlobalProduct)
                         },
-                        items: downloadItems
+                        download: {
+                            storageType: "s3",
+                            credentials: {
+                                source: "localConfig",
+                                path: "projects.worldCereal.s3"
+                            },
+                            items: downloadItems
+                        }
                     }
                 }
-            }
+            })
         })
-    })
+    }
 
     return dataSources;
 }
@@ -660,8 +662,10 @@ function getProductMapproxyConf(baseProduct, mapfile) {
     const sources = {};
     const caches = {};
     const layers = [];
+    const globalLayers = {};
 
     mapfile.layers.forEach((layer) => {
+        const layerType = layer.name.split("_").pop();
         sources[`${layer.name}`] = {
             type: "mapserver",
             req: {
@@ -699,12 +703,27 @@ function getProductMapproxyConf(baseProduct, mapfile) {
             title: layer.name,
             sources: [`cache_${layer.name}`]
         })
+
+        if (!globalLayers[layerType]) {
+            globalLayers[layerType] = {
+                name: `${productName}_${layerType}`,
+                title: `${productName}_${layerType}`,
+                sources: [`cache_${layer.name}`]
+            }
+        } else {
+            globalLayers[layerType].sources.push(`cache_${layer.name}`)
+        }
     });
+
+    for (const [layerType, globalLayer] of Object.entries(globalLayers)) {
+        layers.push(globalLayer);
+    }
 
     return {
         filename: `${productName}.yaml`,
         caches,
         sources,
+        layers,
         definition: mapproxy.getMapproxyYamlString({
             services: {
                 demo: {},
@@ -725,16 +744,7 @@ function getProductMapproxyConf(baseProduct, mapfile) {
     }
 }
 
-async function getProductBbox(baseProduct) {
-    return await db
-        .query(
-            `SELECT 
-                REPLACE(TRIM(trailing ')' FROM (TRIM(leading 'BOX(' FROM ST_Extent("geometry")::text))), ',', ' ') AS "bbox" 
-            FROM "worldCerealStacs" WHERE "productKey" = '${baseProduct.key}';`
-        ).then((result) => result.rows[0].bbox);
-}
-
-async function getProductMapproxySeedConf(mapproxyConf) {
+function getProductMapproxySeedConf(mapproxyConf) {
     const seeds = {};
     const coverages = {};
 
@@ -755,6 +765,7 @@ async function getProductMapproxySeedConf(mapproxyConf) {
 
     return {
         filename: mapproxyConf.filename,
+        seeds,
         definition: mapproxy.getMapproxySeedYamlString({
             seeds,
             coverages
@@ -762,22 +773,25 @@ async function getProductMapproxySeedConf(mapproxyConf) {
     };
 }
 
-function getProductMapfile(baseProduct, mapTileIndexes) {
-    const productName = getProductName(baseProduct);
+function getProductMapfile(baseGlobalProduct, baseProducts) {
+    const productGlobalName = getProductName(baseGlobalProduct);
     const layers = [];
 
-    for (const type of Object.keys(mapTileIndexes)) {
-        layers.push({
-            name: type,
-            tileindex: mapTileIndexes[type].path
-        })
+    for (const [productKey, { baseProduct, productTileIndexs }] of Object.entries(baseProducts)) {
+        const productName = getProductName(baseProduct);
+        for (const type of Object.keys(productTileIndexs)) {
+            layers.push({
+                name: `${productName}_${type}`,
+                tileindex: productTileIndexs[type].path
+            })
+        }
     }
 
     return {
-        filename: `${productName}.map`,
+        filename: `${productGlobalName}.map`,
         layers,
         definition: mapserver.getMapfileString({
-            name: productName,
+            name: productGlobalName,
             units: "DD",
             web: {
                 metadata: {
@@ -799,7 +813,7 @@ function getProductMapfile(baseProduct, mapTileIndexes) {
                     tileindex: layer.tileindex,
                     tileitem: "location",
                     tilesrs: "src_srs",
-                    template: `${config.mapproxy.paths.conf}/${productName}.getFeatureInfo.html`
+                    template: `${config.mapproxy.paths.conf}/${productGlobalName}.getFeatureInfo.html`
                 }
             })
         })
@@ -999,8 +1013,7 @@ function viewGlobal(request, response) {
 
 module.exports = {
     create,
-    createQueued,
-    createGlobalQueued,
+    createProduct,
     remove,
     view,
     viewGlobal,

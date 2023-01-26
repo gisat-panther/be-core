@@ -21,19 +21,19 @@ function run() {
     }
 }
 
-async function executeGlobal() {
+async function executeProduct() {
     try {
         const { globalProductKey, productKeys, user } = await queue.getNextGlobal();
 
         if (globalProductKey) {
-            console.log(`#WorldCerealQueue# Processing global ${globalProductKey}`);
+            console.log(`#WorldCerealQueue# Processing ${globalProductKey}`);
 
             await queue.setGlobal(globalProductKey, productKeys, 'running', user);
 
             try {
-                await product.createGlobalQueued(globalProductKey, productKeys, user);
+                await product.createProduct(globalProductKey, productKeys, user);
 
-                console.log(`#WorldCerealQueue# Global ${globalProductKey} was successfully processed!`);
+                console.log(`#WorldCerealQueue# ${globalProductKey} was successfully processed!`);
 
                 await queue.setGlobal(globalProductKey, productKeys, 'done', user);
             } catch (e) {
@@ -41,7 +41,7 @@ async function executeGlobal() {
                 await queue.setGlobal(globalProductKey, productKeys, 'failed', user);
             }
         }
-    } catch (e) {
+    } catch(e) {
         console.log(e);
     }
 }
@@ -51,27 +51,7 @@ async function execute() {
         if (!await queue.isReady()) {
             return;
         }
-
-        const { productKey, user } = await queue.getNext();
-
-        if (productKey) {
-            console.log(`#WorldCerealQueue# Processing ${productKey}`);
-
-            await queue.set(productKey, 'running', user);
-
-            try {
-                await product.createQueued(productKey, user);
-
-                console.log(`#WorldCerealQueue# ${productKey} was successfully processed!`);
-
-                await queue.set(productKey, 'done', user);
-            } catch (e) {
-                console.log(e);
-                await queue.set(productKey, 'failed', user);
-            }
-        } else {
-            await executeGlobal();
-        }
+        await executeProduct();
     } catch (e) {
         console.log(e);
     }
