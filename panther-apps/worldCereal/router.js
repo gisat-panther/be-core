@@ -176,5 +176,20 @@ module.exports = [
         ],
         responses: { 200: {} },
         handler: user.sessionStart
+    },
+    {
+        path: '/rest/project/worldCereal/seedWmsLayers',
+        method: 'get',
+        swagger: {
+            tags: ['project', 'worldCereal', 'user']
+        },
+        middlewares: [
+            userMiddleware,
+            autoLoginKongHqMiddleware,
+            autoLoginMiddleware,
+            authMiddleware,
+        ],
+        responses: { 200: {} },
+        handler: product.seedWmsLayers
     }
 ];

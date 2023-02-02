@@ -413,13 +413,42 @@ async function createProduct(globalProductKey, productKeys, user) {
 
 function seedLayers(mapproxySeedConf) {
     for (const seed of Object.keys(mapproxySeedConf.seeds)) {
-        if (seed.endsWith("_product")) {
+        if (seed.endsWith("_product") || seed.endsWith("_confidence")) {
             axios({
                 method: 'get',
                 url: `${config.mapproxy.seedApiUrl}/seed/${mapproxySeedConf.filename}/${mapproxySeedConf.filename}/${seed}`
             }).catch((error) => console.log(error.message));
         }
     }
+}
+
+async function seedWmsLayers(request, response) {
+    const user = request.user;
+    const dataSources = await handler.list("dataSources", {
+        user,
+        params: {
+            types: 'spatial'
+        },
+        body: {
+            filter: {}
+        }
+    });
+
+    const seedOptions = dataSources.data.data.spatial.map((dataSource) => {
+        return {
+            layer: dataSource.data.layers,
+            instance: dataSource.data.configuration.mapproxy.instance
+        }
+    }).filter((seedParams) => seedParams.layer.endsWith("_product") || seedParams.layer.endsWith("_confidence"));
+
+    for (const seedOption of seedOptions) {
+        axios({
+            method: "get",
+            url: `${config.mapproxy.seedApiUrl}/seed/${seedOption.instance}.yaml/${seedOption.instance}.yaml/${seedOption.layer}`
+        }).catch((error) => console.log(error.message));
+    }
+
+    response.send(seedOptions);
 }
 
 async function getMapTileIndexes(baseProduct) {
@@ -1017,5 +1046,6 @@ module.exports = {
     remove,
     view,
     viewGlobal,
-    getKeyByProductId
+    getKeyByProductId,
+    seedWmsLayers
 }
