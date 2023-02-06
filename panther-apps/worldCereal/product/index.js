@@ -435,9 +435,15 @@ async function seedWmsLayers(request, response) {
     });
 
     const seedOptions = dataSources.data.data.spatial.map((dataSource) => {
-        return {
-            layer: dataSource.data.layers,
-            instance: dataSource.data.configuration.mapproxy.instance
+        try {
+            return {
+                layer: dataSource.data.layers,
+                instance: dataSource.data.configuration.mapproxy.instance
+            }
+        } catch(e) {
+            return {
+                layer: ""
+            }
         }
     }).filter((seedParams) => seedParams.layer.endsWith("_product") || seedParams.layer.endsWith("_confidence"));
 
