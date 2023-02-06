@@ -760,6 +760,7 @@ function getProductMapproxyConf(baseProduct, mapfile) {
                     srs: ["EPSG:4326", "EPSG:3857"],
                     versions: ["1.1.1", "1.3.0"],
                     image_formats: ['image/png', 'image/jpeg'],
+                    on_source_errors: "raise",
                     md: {
                         title: productName,
                         online_resource: `${config.url}/proxy/wms`
