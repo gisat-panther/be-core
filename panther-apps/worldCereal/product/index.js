@@ -3,6 +3,8 @@ const _ = require('lodash');
 const fsp = require('fs/promises');
 const { execSync } = require('node:child_process');
 const axios = require('axios');
+const path = require('path');
+const { utimes } = require('utimes');
 
 const result = require('../../../src/modules/rest/result');
 const handler = require('../../../src/modules/rest/handler');
@@ -424,23 +426,27 @@ function seedLayers(mapproxySeedConf) {
 
 async function seedWmsLayers(request, response) {
     const user = request.user;
-    const dataSources = await handler.list("dataSources", {
+    const dataSourcesListResult = await handler.list("dataSources", {
         user,
         params: {
             types: 'spatial'
         },
         body: {
-            filter: {}
+            filter: {
+                type: "wms"
+            },
+            limit: 9999
         }
     });
+    const dataSources = dataSourcesListResult.data.data.spatial;
 
-    const seedOptions = dataSources.data.data.spatial.map((dataSource) => {
+    const seedOptions = dataSources.map((dataSource) => {
         try {
             return {
                 layer: dataSource.data.layers,
                 instance: dataSource.data.configuration.mapproxy.instance
             }
-        } catch(e) {
+        } catch (e) {
             return {
                 layer: ""
             }
@@ -448,9 +454,10 @@ async function seedWmsLayers(request, response) {
     }).filter((seedParams) => seedParams.layer.endsWith("_product") || seedParams.layer.endsWith("_confidence"));
 
     for (const seedOption of seedOptions) {
+        const url = `${config.mapproxy.seedApiUrl}/seed/${seedOption.instance}.yaml/${seedOption.instance}.yaml/${seedOption.layer}`;
         axios({
             method: "get",
-            url: `${config.mapproxy.seedApiUrl}/seed/${seedOption.instance}.yaml/${seedOption.instance}.yaml/${seedOption.layer}`
+            url
         }).catch((error) => console.log(error.message));
     }
 
@@ -487,12 +494,24 @@ async function getMapTileIndexes(baseProduct) {
                     stdio: 'ignore'
                 }
             )
+
+            const time = Date.now();
+            let tileIndexFiles = await fsp.readdir(config.mapproxy.paths.datasource);
+            tileIndexFiles = tileIndexFiles.filter((file) => {
+                const pathParts = path.parse(file);
+                return pathParts.name === tileIndexFileName;
+            })
+
+            for (const tileIndexFile of tileIndexFiles) {
+                await utimes(`${config.mapproxy.paths.datasource}/${tileIndexFile}`, time);
+            }
+
             tileIndexes[type] = {
                 name: tileIndexFileName,
                 path: tileIndexFilePath
             };
         } catch (e) {
-
+            console.log(e);
         }
 
         await fsp.unlink(optfilePath);
@@ -648,10 +667,10 @@ function getDownloadItemKey(source) {
 
 function getProductDataSources(baseGlobalProduct, baseProducts) {
     const dataSources = [];
-    const downloadItems = {};
 
     for (const baseProduct of [baseGlobalProduct, ...baseProducts]) {
         productTypes.forEach((type) => {
+            const downloadItems = {};
             baseProduct.data.data.tiles.forEach((tile) => {
                 downloadItems[getDownloadItemKey(tile[type])] = `${tile[type]}`;
 
@@ -701,6 +720,8 @@ function getProductMapproxyConf(baseProduct, mapfile) {
 
     mapfile.layers.forEach((layer) => {
         const layerType = layer.name.split("_").pop();
+        console.log(layerType);
+        const resampling_method = layerType === "confidence" ? "bilinear" : "nearest";
         sources[`${layer.name}`] = {
             type: "mapserver",
             req: {
@@ -724,7 +745,7 @@ function getProductMapproxyConf(baseProduct, mapfile) {
             grids: ["GLOBAL_WEBMERCATOR"],
             image: {
                 transparent: true,
-                resampling_method: "nearest"
+                resampling_method
             },
             cache: {
                 type: "file",
@@ -816,10 +837,20 @@ function getProductMapfile(baseGlobalProduct, baseProducts) {
     for (const [productKey, { baseProduct, productTileIndexs }] of Object.entries(baseProducts)) {
         const productName = getProductName(baseProduct);
         for (const type of Object.keys(productTileIndexs)) {
-            layers.push({
-                name: `${productName}_${type}`,
-                tileindex: productTileIndexs[type].path
-            })
+            if (type === "confidence") {
+                layers.push({
+                    name: `${productName}_${type}`,
+                    tileindex: productTileIndexs[type].path,
+                    processing: {
+                        RESAMPLE: "BILINEAR"
+                    }
+                })
+            } else {
+                layers.push({
+                    name: `${productName}_${type}`,
+                    tileindex: productTileIndexs[type].path
+                })
+            }
         }
     }
 
@@ -849,6 +880,7 @@ function getProductMapfile(baseGlobalProduct, baseProducts) {
                     tileindex: layer.tileindex,
                     tileitem: "location",
                     tilesrs: "src_srs",
+                    processing: layer.processing,
                     template: `${config.mapproxy.paths.conf}/${productGlobalName}.getFeatureInfo.html`
                 }
             })
