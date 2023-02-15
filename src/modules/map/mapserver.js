@@ -54,10 +54,13 @@ function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
         } else if (typeof json[property] === "object") {
             if (
                 property.toLowerCase() === "config"
-                || property.toLowerCase() === "processing"
             ) {
                 for (const property2 of Object.keys(json[property])) {
                     lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} "${property2}" "${json[property][property2]}"`);
+                }
+            } else if (property.toLowerCase() === "processing") {
+                for (const property2 of Object.keys(json[property])) {
+                    lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} "${property2}=${json[property][property2]}"`);
                 }
             } else {
                 lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()}`);
