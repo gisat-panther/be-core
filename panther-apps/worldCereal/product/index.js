@@ -720,7 +720,6 @@ function getProductMapproxyConf(baseProduct, mapfile) {
 
     mapfile.layers.forEach((layer) => {
         const layerType = layer.name.split("_").pop();
-        console.log(layerType);
         const resampling_method = layerType === "confidence" ? "bilinear" : "nearest";
         sources[`${layer.name}`] = {
             type: "mapserver",
