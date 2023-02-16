@@ -4,7 +4,6 @@ const fsp = require('fs/promises');
 const { execSync } = require('node:child_process');
 const axios = require('axios');
 const path = require('path');
-const { utimes } = require('utimes');
 
 const result = require('../../../src/modules/rest/result');
 const handler = require('../../../src/modules/rest/handler');
@@ -487,15 +486,6 @@ async function getMapTileIndexes(baseProduct) {
         await fsp.writeFile(optfilePath, tilePaths[type].join("\n"));
 
         try {
-            execSync(
-                `gdaltindex -t_srs EPSG:3857 -src_srs_name src_srs ${tileIndexFilePath} --optfile ${optfilePath}`,
-                {
-                    env: config.projects.worldCereal.s3,
-                    stdio: 'ignore'
-                }
-            )
-
-            const time = Date.now();
             let tileIndexFiles = await fsp.readdir(config.mapproxy.paths.datasource);
             tileIndexFiles = tileIndexFiles.filter((file) => {
                 const pathParts = path.parse(file);
@@ -503,8 +493,16 @@ async function getMapTileIndexes(baseProduct) {
             })
 
             for (const tileIndexFile of tileIndexFiles) {
-                await utimes(`${config.mapproxy.paths.datasource}/${tileIndexFile}`, time);
+                await fsp.unlink(tileIndexFile);
             }
+
+            execSync(
+                `gdaltindex -t_srs EPSG:3857 -src_srs_name src_srs ${tileIndexFilePath} --optfile ${optfilePath}`,
+                {
+                    env: config.projects.worldCereal.s3,
+                    stdio: 'ignore'
+                }
+            )
 
             tileIndexes[type] = {
                 name: tileIndexFileName,
