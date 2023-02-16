@@ -41,7 +41,6 @@
     "redis": "^4.1.0",
     "sql-template-strings": "^2.2.2",
     "swagger-ui-express": "^4.1.6",
-    "utimes": "^5.1.1",
     "uuid": "^8.3.2",
     "uuid-by-string": "^3.0.4",
     "xml-js": "^1.6.11",
