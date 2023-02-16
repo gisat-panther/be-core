@@ -493,7 +493,7 @@ async function getMapTileIndexes(baseProduct) {
             })
 
             for (const tileIndexFile of tileIndexFiles) {
-                await fsp.unlink(tileIndexFile);
+                await fsp.unlink(`${config.mapproxy.paths.datasource}/${tileIndexFile}`);
             }
 
             execSync(
