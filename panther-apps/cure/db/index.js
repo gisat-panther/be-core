@@ -33,7 +33,7 @@ async function saveUserOrder(user, app, order) {
 
 async function getUserOrders(userKey) {
     const result = await db.query(
-        `SELECT "key", "orderId", "app", "status", "result"->>'result' AS "result", "result"->>'expiration' AS "expiration", created FROM "cureUserOrders" WHERE "userKey" = '${userKey}'`
+        `SELECT "key", "orderId", "app", "status", "result"->>'result' AS "result", "result"->>'expiration' AS "expiration", created FROM "cureUserOrders" WHERE "userKey" = '${userKey}' AND created > now() - ( result->>'expiration' || 'days')::interval;`
     );
 
     return result.rows;
@@ -41,7 +41,7 @@ async function getUserOrders(userKey) {
 
 async function getAllOrders() {
     const result = await db.query(
-        `SELECT "key", "userKey", "orderId", "app", "status", "result"->>'result' AS "result", "result"->>'expiration' AS "expiration", created FROM "cureUserOrders"`
+        `SELECT "key", "userKey", "orderId", "app", "status", "result"->>'result' AS "result", "result"->>'expiration' AS "expiration", created FROM "cureUserOrders";`
     );
 
     return result.rows;
