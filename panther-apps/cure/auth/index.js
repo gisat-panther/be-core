@@ -24,6 +24,7 @@ async function getToken() {
 
         return body.access_token;
     } catch (e) {
+        console.log(e);
         return null;
     }
 }
