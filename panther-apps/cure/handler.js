@@ -12,6 +12,8 @@ async function executeOrder(user, params) {
         if (!authToken) {
             const order = await services.callAppApi(params.app, params, authToken);
 
+            console.log(`[CURE] Order result: ${JSON.stringify(order)}`);
+
             if (order) {
                 const orderStatus = await orders.getOrderStatus(order.links.order_id, authToken);
                 if (orderStatus) {
