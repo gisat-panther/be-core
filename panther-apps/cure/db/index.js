@@ -41,7 +41,7 @@ async function getUserOrders(userKey) {
 
 async function getAllOrders() {
     const result = await db.query(
-        `SELECT "key", "userKey", "orderId", "app", "status", "result"->>'result' AS "result", "result"->>'expiration' AS "expiration", created FROM "cureUserOrders";`
+        `SELECT "key", "userKey", "orderId", "app", "status", "result"->>'result' AS "result", "result"->>'expiration' AS "expiration", created FROM "cureUserOrders" WHERE created > now() - ( result->>'expiration' || 'days')::interval;`
     );
 
     return result.rows;
