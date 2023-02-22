@@ -9,12 +9,14 @@ const { appParams } = require('./constants.js');
 async function executeOrder(user, params) {
     if (appParams.hasOwnProperty(params.app)) {
         const authToken = await auth.getToken();
-        const order = await services.callAppApi(params.app, params, authToken);
+        if (!authToken) {
+            const order = await services.callAppApi(params.app, params, authToken);
 
-        if (order) {
-            const orderStatus = await orders.getOrderStatus(order.links.order_id, authToken);
-            if (orderStatus) {
-                return db.saveUserOrder(user, params.app, orderStatus);
+            if (order) {
+                const orderStatus = await orders.getOrderStatus(order.links.order_id, authToken);
+                if (orderStatus) {
+                    return db.saveUserOrder(user, params.app, orderStatus);
+                }
             }
         }
     }

@@ -22,6 +22,10 @@ async function getToken() {
 
         const body = await response.json();
 
+        if (!body.access_token) {
+            console.log(body);;
+        }
+
         return body.access_token;
     } catch (e) {
         console.log(e);
