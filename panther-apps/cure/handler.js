@@ -8,19 +8,26 @@ const { appParams } = require('./constants.js');
 
 async function executeOrder(user, params) {
     if (appParams.hasOwnProperty(params.app)) {
-        const authToken = await auth.getToken();
-        if (!authToken) {
+        const authToken = await auth.getToken()
+        if (authToken) {
             const order = await services.callAppApi(params.app, params, authToken);
-
-            console.log(`[CURE] Order result: ${JSON.stringify(order)}`);
 
             if (order) {
                 const orderStatus = await orders.getOrderStatus(order.links.order_id, authToken);
+
                 if (orderStatus) {
                     return db.saveUserOrder(user, params.app, orderStatus);
+                } else {
+                    console.log("[CURE] Unable to get status of created order!");
                 }
+            } else {
+                console.log("[CURE] Unable to create new order!");
             }
+        } else {
+            console.log("[CURE] Unable to obtain auth token!");
         }
+    } else {
+        console.log("[CURE] App is not specified!");
     }
 }
 
