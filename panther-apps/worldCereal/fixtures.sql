@@ -13,7 +13,9 @@ VALUES
     ('5db9613d-f8da-4167-bde6-11f9d84df775', 'cs_admin', null, null, null),
     ('8c676118-a49e-4817-8b3f-edc742fdf43c', 'demo_rdm', null, null, null),
     ('a7365eb7-e986-4660-8eed-3dd3a6350024', 'ewoc_internal', null, null, null),
-    ('0abe901d-c320-4a93-8c1c-444176ed0f2c', 'worldcereal', null, null, null)
+    ('0abe901d-c320-4a93-8c1c-444176ed0f2c', 'worldcereal', null, null, null),
+    ('10a90703-2370-4e45-9697-675a5d62b0f4', 'demo_consortium', null, null, null),
+    ('590314e1-e676-433b-8791-03ae9477fe5c', 'demo_public', null, null, null)
 ON CONFLICT DO NOTHING;
 
 INSERT INTO "user"."groups"
@@ -71,7 +73,15 @@ VALUES
     -- user: worldcereal | group: worldCerealUser
     ('0abe901d-c320-4a93-8c1c-444176ed0f2c', '2597df23-94d9-41e0-91f3-7ea633ae27f2'),
     -- user: worldcereal | group: worldCerealPublic
-    ('0abe901d-c320-4a93-8c1c-444176ed0f2c', '2dbc2120-b826-4649-939b-fff5a4a01866')
+    ('0abe901d-c320-4a93-8c1c-444176ed0f2c', '2dbc2120-b826-4649-939b-fff5a4a01866'),
+    -- user: demo_consortium | group: worldCerealUser
+    ('10a90703-2370-4e45-9697-675a5d62b0f4', '2597df23-94d9-41e0-91f3-7ea633ae27f2'),
+    -- user: demo_consortium | group: worldCerealPublic
+    ('10a90703-2370-4e45-9697-675a5d62b0f4', '2dbc2120-b826-4649-939b-fff5a4a01866'),
+    -- user: demo_public | group: worldCerealUser
+    ('590314e1-e676-433b-8791-03ae9477fe5c', '2597df23-94d9-41e0-91f3-7ea633ae27f2'),
+    -- user: demo_public | group: worldCerealPublic
+    ('590314e1-e676-433b-8791-03ae9477fe5c', '2dbc2120-b826-4649-939b-fff5a4a01866')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO "user"."permissions"
