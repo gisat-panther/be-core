@@ -414,7 +414,8 @@ async function createProduct(globalProductKey, productKeys, user) {
 
 function seedLayers(mapproxySeedConf) {
     for (const seed of Object.keys(mapproxySeedConf.seeds)) {
-        if (seed.endsWith("_product") || seed.endsWith("_confidence")) {
+        // if (seed.endsWith("_product") || seed.endsWith("_confidence")) {
+        if (seed.endsWith("_product")) {
             axios({
                 method: 'get',
                 url: `${config.mapproxy.seedApiUrl}/seed/${mapproxySeedConf.filename}/${mapproxySeedConf.filename}/${seed}`
@@ -744,6 +745,7 @@ function getProductMapproxyConf(baseProduct, mapfile) {
                 transparent: true,
                 resampling_method
             },
+            use_direct_from_level: 10,
             cache: {
                 type: "file",
                 directory: `${config.mapproxy.paths.cache}/${productName}/${layer.name}`,
@@ -812,7 +814,7 @@ function getProductMapproxySeedConf(mapproxyConf) {
             },
             grids: ["GLOBAL_WEBMERCATOR"],
             levels: {
-                to: 12
+                to: 10
             }
         }
     }
