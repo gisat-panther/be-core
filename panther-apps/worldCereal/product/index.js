@@ -669,14 +669,14 @@ function getProductDataSources(baseGlobalProduct, baseProducts) {
 
     for (const baseProduct of [baseGlobalProduct, ...baseProducts]) {
         productTypes.forEach((type) => {
-            const downloadItems = {};
-            baseProduct.data.data.tiles.forEach((tile) => {
-                downloadItems[getDownloadItemKey(tile[type])] = `${tile[type]}`;
+            // const downloadItems = {};
+            // baseProduct.data.data.tiles.forEach((tile) => {
+            //     downloadItems[getDownloadItemKey(tile[type])] = `${tile[type]}`;
 
-                if (type === "product") {
-                    downloadItems[getDownloadItemKey(tile.stac)] = `${tile.stac}`;
-                }
-            });
+            //     if (type === "product") {
+            //         downloadItems[getDownloadItemKey(tile.stac)] = `${tile.stac}`;
+            //     }
+            // });
 
             const dataSourceKey = getDataSourceKey(getProductName(baseProduct), type);
             const layerName = getProductName(baseProduct);
@@ -691,15 +691,15 @@ function getProductDataSources(baseGlobalProduct, baseProducts) {
                         isPublic: baseProduct.data.data.public && baseProduct.data.data.public.toLowerCase() === "true",
                         mapproxy: {
                             instance: getProductName(baseGlobalProduct)
-                        },
-                        download: {
-                            storageType: "s3",
-                            credentials: {
-                                source: "localConfig",
-                                path: "projects.worldCereal.s3"
-                            },
-                            items: downloadItems
                         }
+                        // download: {
+                        //     storageType: "s3",
+                        //     credentials: {
+                        //         source: "localConfig",
+                        //         path: "projects.worldCereal.s3"
+                        //     },
+                        //     items: downloadItems
+                        // }
                     }
                 }
             })
