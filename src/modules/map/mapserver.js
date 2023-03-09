@@ -80,6 +80,7 @@ function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
                 lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} ${json[property]}`);
             } else if (
                 property.toLowerCase() === "expression"
+                || property.toLowerCase() === "filter"
             ) {
                 lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} (${json[property]})`);
             } else if (json[property] !== undefined) {
