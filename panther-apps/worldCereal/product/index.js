@@ -754,7 +754,7 @@ function getProductMapproxyConf(baseProduct, mapfile) {
             // use_direct_from_level: 10,
             cache: {
                 type: "couchdb",
-                db_name: `${productName}-${layer.name}`,
+                db_name: layer.name,
                 url: `http://${config.couchdb.user}:${config.couchdb.password}@${config.couchdb.host}:${config.couchdb.port}`,
                 // directory: `${config.mapproxy.paths.cache}/${productName}/${layer.name}`,
                 tile_lock_dir: `${config.mapproxy.paths.cache}/${productName}/${layer.name}/tile_lock`
@@ -833,7 +833,7 @@ function getGlobalProductMapproxyConf(baseProduct, mapfile) {
             use_direct_from_level: 12,
             cache: {
                 type: "couchdb",
-                db_name: `${productName}-${layer.name}`,
+                db_name: layer.name,
                 url: `http://${config.couchdb.user}:${config.couchdb.password}@${config.couchdb.host}:${config.couchdb.port}`,
                 tile_lock_dir: `${config.mapproxy.paths.cache}/${productName}/${layer.name}/tile_lock`
             }
