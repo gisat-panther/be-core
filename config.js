@@ -30,7 +30,14 @@ const ptr4 = {
 		}
 	},
 	redisConfig: {
-		host: 'localhost'
+		host: 'localhost',
+		port: 6379
+	},
+	couchdb: {
+		user: "panther",
+		password: "panther",
+		host: "couchdb",
+		port: 5984
 	},
 	pgSchema: {
 		analysis: `analysis`,
