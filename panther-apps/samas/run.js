@@ -114,7 +114,7 @@ async function createMapserverConfigurationFile(objects) {
     };
 
     if (wmsOnlineresourceUrl) {
-        mapserverConf.web.metadata.wms_onlineresource = `${wmsOnlineresourceUrl}&`
+        mapserverConf.web.metadata.wms_onlineresource = wmsOnlineresourceUrl
     }
 
     for (const [key, object] of Object.entries(objects)) {
