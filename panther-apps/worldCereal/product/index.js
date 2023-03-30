@@ -726,6 +726,11 @@ function getProductMapproxyConf(baseProduct, mapfile) {
     mapfile.layers.forEach((layer) => {
         const layerType = layer.name.split("_").pop();
         const resampling_method = "nearest";
+        
+        if (layerType === "confidence") {
+            resampling_method = "bilinear";
+        }
+        
         sources[`${layer.name}`] = {
             type: "mapserver",
             req: {
@@ -751,12 +756,10 @@ function getProductMapproxyConf(baseProduct, mapfile) {
                 transparent: true,
                 resampling_method
             },
-            // use_direct_from_level: 10,
             cache: {
                 type: "couchdb",
                 db_name: layer.name,
                 url: `http://${config.couchdb.user}:${config.couchdb.password}@${config.couchdb.host}:${config.couchdb.port}`,
-                // directory: `${config.mapproxy.paths.cache}/${productName}/${layer.name}`,
                 tile_lock_dir: `${config.mapproxy.paths.cache}/${productName}/${layer.name}/tile_lock`
             }
         }
@@ -805,6 +808,11 @@ function getGlobalProductMapproxyConf(baseProduct, mapfile) {
     mapfile.layers.forEach((layer) => {
         const layerType = layer.name.split("_").pop();
         const resampling_method = "nearest";
+
+        if (layerType === "confidence") {
+            resampling_method = "bilinear";
+        }
+
         sources[`${layer.name}`] = {
             type: "mapserver",
             req: {
@@ -830,7 +838,6 @@ function getGlobalProductMapproxyConf(baseProduct, mapfile) {
                 transparent: true,
                 resampling_method
             },
-            use_direct_from_level: 12,
             cache: {
                 type: "couchdb",
                 db_name: layer.name,
@@ -920,9 +927,18 @@ function getProductMapfile(baseProduct, productTileIndexs) {
     const layers = [];
 
     for (const type of Object.keys(productTileIndexs)) {
+        let processing;
+
+        if (type === "confidence") {
+            processing = {
+                resample: "average"
+            }
+        }
+
         layers.push({
             name: `${productName}_${type}`,
-            tileindex: productTileIndexs[type].path
+            tileindex: productTileIndexs[type].path,
+            processing
         })
     }
 
@@ -967,9 +983,18 @@ function getGlobalProductMapfile(baseGlobalProduct, baseProducts) {
     for (const [productKey, { baseProduct, productTileIndexs }] of Object.entries(baseProducts)) {
         const productName = getProductName(baseProduct);
         for (const type of Object.keys(productTileIndexs)) {
+            let processing;
+
+            if (type === "confidence") {
+                processing = {
+                    resample: "average"
+                }
+            }
+
             layers.push({
                 name: `${productName}_${type}`,
-                tileindex: productTileIndexs[type].path
+                tileindex: productTileIndexs[type].path,
+                processing
             })
         }
     }
