@@ -931,7 +931,7 @@ function getProductMapfile(baseProduct, productTileIndexs) {
 
         if (type === "confidence") {
             processing = {
-                resample: "average"
+                RESAMPLE: "AVERAGE"
             }
         }
 
@@ -987,7 +987,7 @@ function getGlobalProductMapfile(baseGlobalProduct, baseProducts) {
 
             if (type === "confidence") {
                 processing = {
-                    resample: "average"
+                    RESAMPLE: "AVERAGE"
                 }
             }
 
