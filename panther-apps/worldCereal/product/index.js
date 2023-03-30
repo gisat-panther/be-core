@@ -725,7 +725,7 @@ function getProductMapproxyConf(baseProduct, mapfile) {
 
     mapfile.layers.forEach((layer) => {
         const layerType = layer.name.split("_").pop();
-        const resampling_method = "nearest";
+        let resampling_method = "nearest";
         
         if (layerType === "confidence") {
             resampling_method = "bilinear";
@@ -807,7 +807,7 @@ function getGlobalProductMapproxyConf(baseProduct, mapfile) {
 
     mapfile.layers.forEach((layer) => {
         const layerType = layer.name.split("_").pop();
-        const resampling_method = "nearest";
+        let resampling_method = "nearest";
 
         if (layerType === "confidence") {
             resampling_method = "bilinear";
