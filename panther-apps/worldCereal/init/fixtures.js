@@ -19,27 +19,12 @@ function exec() {
                 }
 
                 try {
-                    await fixturesRemote.importRemote({ file: "global.geojson", url: `http://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/fixtures/production/global.geojson`, user: { key: "ba621c03-bc65-4669-8df9-fc621143a99f", realKey: "ba621c03-bc65-4669-8df9-fc621143a99f", type: "user" } });
+                    await fixturesRemote.s3({ s3: {
+                        host: "https://gisat-gis.eu-central-1.linodeobjects.com",
+                        prefix: "worldcereal/fixtures/production/"
+                    }, user: { key: "ba621c03-bc65-4669-8df9-fc621143a99f", realKey: "ba621c03-bc65-4669-8df9-fc621143a99f", type: "user" } })
                 } catch (e) {
-                    console.log("#WorldCereal# global.geojson |", e.message);
-                }
-
-                try {
-                    await fixturesRemote.importRemote({ file: "brazil.geojson", url: `http://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/fixtures/production/brazil.geojson`, user: { key: "ba621c03-bc65-4669-8df9-fc621143a99f", realKey: "ba621c03-bc65-4669-8df9-fc621143a99f", type: "user" } });
-                } catch (e) {
-                    console.log("#WorldCereal# brazil.geojson |", e.message);
-                }
-
-                try {
-                    await fixturesRemote.importRemote({ file: "ukraine.geojson", url: `http://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/fixtures/production/ukraine.geojson`, user: { key: "ba621c03-bc65-4669-8df9-fc621143a99f", realKey: "ba621c03-bc65-4669-8df9-fc621143a99f", type: "user" } });
-                } catch (e) {
-                    console.log("#WorldCereal# ukraine.geojson |", e.message);
-                }
-
-                try {
-                    await fixturesRemote.importRemote({ file: "fixtures.json", url: `http://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/fixtures/production/fixtures.json`, user: { key: "ba621c03-bc65-4669-8df9-fc621143a99f", realKey: "ba621c03-bc65-4669-8df9-fc621143a99f", type: "user" } });
-                } catch (e) {
-                    console.log("#WorldCereal# fixtures.json |", e.message);
+                    console.log("#WorldCereal# S3 import errors:", JSON.stringify(e, null, 2));
                 }
             }, 10000);
         }

@@ -37,9 +37,17 @@ async function importMetadata({ file, path, user }) {
 
     for (const group of Object.keys(metadata)) {
         for (const type of Object.keys(metadata[group])) {
-            const updateResult = await restHandler.update(group, { user, body: { data: { [type]: metadata[group][type] } } });
-            if (updateResult.type === restResult.FORBIDDEN || updateResult.type === restResult.BAD_REQUEST) {
-                throw new Error(`${updateResult.type} - ${group} - ${type}`);
+            const chunkSize = 100;
+            for (let i = 0; i < metadata[group][type].length; i += chunkSize) {
+                let records = metadata[group][type].slice(i, i + chunkSize);
+                try {
+                    const updateResult = await restHandler.update(group, { user, body: { data: { [type]: records } } });
+                    if (updateResult.type === restResult.FORBIDDEN || updateResult.type === restResult.BAD_REQUEST) {
+                        throw new Error(`${updateResult.type} - ${group} - ${type}`);
+                    }
+                } catch (e) {
+                    throw e;
+                }
             }
         }
     }
@@ -68,11 +76,14 @@ async function importGeoJSON({ path, user }) {
     const parsedPath = p.parse(path);
     const name = parsedPath.name;
 
-    await db.clearExistingLayer({name});
+    await db.clearExistingLayer({ name });
 
     const { host, user: pgUser, password, database, port = 5432 } = pgConfig.normal;
     execSync(
-        `ogr2ogr -f "PostgreSQL" "PG:host=${host} user=${pgUser} password=${password} dbname=${database} port=${port}" -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -lco GEOMETRY_NAME=geom -lco LAUNDER=NO ${path}`
+        `ogr2ogr -f "PostgreSQL" "PG:host=${host} user=${pgUser} password=${password} dbname=${database} port=${port}" -overwrite -nln ${name} -lco NAME=${name} -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -lco GEOMETRY_NAME=geom -lco LAUNDER=NO ${path}`,
+        {
+            stdio: "ignore"
+        }
     )
 }
 
@@ -138,6 +149,7 @@ async function saveFile({ processKey, name, buffer }) {
 
 module.exports = {
     importLocal,
+    importLocalFile,
     getFileType,
     createTempLocation,
     clearTempLocation,
