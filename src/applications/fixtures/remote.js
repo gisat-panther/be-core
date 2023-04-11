@@ -60,12 +60,12 @@ async function s3({ s3, user }) {
                 try {
                     const localPath = await saveFile({ processKey, name: file, buffer: response.data });
 
-                    console.log(`#IMPORT# Importing file ${localPath}`);
+                    console.log(`#IMPORT# Importing file ${file}`);
 
                     await importLocalFile({ file, path: localPath, user });
                     await db.saveFileHash({ file, hash });
 
-                    console.log(`#IMPORT# File ${localPath} was imported`);
+                    console.log(`#IMPORT# File ${file} was imported`);
 
                 } catch (e) {
                     errors.push(e);
@@ -73,7 +73,7 @@ async function s3({ s3, user }) {
 
                 await clearTempLocation(processKey);
             } else {
-                console.log(`#IMPORT# Same version of file ${localPath} was already imported`);
+                console.log(`#IMPORT# Same version of file ${file} was already imported`);
             }
         } catch (e) {
             errors.push(`${file} - ${e.message}`);
