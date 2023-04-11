@@ -40,13 +40,9 @@ async function importMetadata({ file, path, user }) {
             const chunkSize = 100;
             for (let i = 0; i < metadata[group][type].length; i += chunkSize) {
                 let records = metadata[group][type].slice(i, i + chunkSize);
-                try {
-                    const updateResult = await restHandler.update(group, { user, body: { data: { [type]: records } } });
-                    if (updateResult.type === restResult.FORBIDDEN || updateResult.type === restResult.BAD_REQUEST) {
-                        throw new Error(`${updateResult.type} - ${group} - ${type}`);
-                    }
-                } catch (e) {
-                    throw e;
+                const updateResult = await restHandler.update(group, { user, body: { data: { [type]: records } } });
+                if (updateResult.type === restResult.FORBIDDEN || updateResult.type === restResult.BAD_REQUEST) {
+                    throw new Error(`${updateResult.type} - ${group} - ${type}`);
                 }
             }
         }
