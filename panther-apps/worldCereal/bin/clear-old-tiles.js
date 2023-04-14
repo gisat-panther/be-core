@@ -1,5 +1,6 @@
 const axios = require('axios');
 const fsp = require('fs/promises');
+const path = require('path');
 
 const config = require('../../../config.js');
 
@@ -7,21 +8,26 @@ function getCouchDbHost() {
     return `http://${config.couchdb.user}:${config.couchdb.password}@${config.couchdb.host}:${config.couchdb.port}`;
 }
 
-async function getTileIndexes() {
+async function getTileIndexes(databases) {
     const content = await fsp.readdir(config.mapproxy.paths.datasource);
-    return content.filter((file) => file.startsWith("WorldCereal_") && file.endsWith(".shp"));
+    return content.filter((file) => {
+        const lowerCaseFileName = file.toLowerCase();
+        for (const database of databases) {
+            if (lowerCaseFileName.startsWith(database) && file.endsWith(".shp")) {
+                return true;
+            }
+        }
+    });
 }
 
-async function getTimeIndex(tileIndexes) {
-    let timeIndex;
+async function getTimeIndexes(tileIndexes) {
+    let timeIndexes = {};
     for (const tileIndex of tileIndexes) {
         const stats = await fsp.stat(`${config.mapproxy.paths.datasource}/${tileIndex}`);
-        if (stats.mtimeMs && (!timeIndex || stats.mtimeMs < timeIndex)) {
-            timeIndex = stats.mtimeMs;
-        }
+        timeIndexes[path.parse(tileIndex.toLowerCase()).name] = stats.mtimeMs / 1000;
     }
 
-    return timeIndex / 1000;
+    return timeIndexes;
 }
 
 async function getDatabases() {
@@ -66,9 +72,10 @@ async function deleteTile(database, tileId) {
     }
 }
 
-async function clearOldTiles(databases, timeIndex) {
+async function clearOldTiles(databases, timeIndexes) {
     for (const database of databases) {
-        console.log(`Deleting old tiles from ${database} database`);
+        const timeIndex = timeIndexes[database];
+        console.log(`Deleting tiles older than ${timeIndex} from ${database} database`);
 
         await createTimestampIndex(database);
 
@@ -96,11 +103,11 @@ async function clearOldTiles(databases, timeIndex) {
 }
 
 async function run() {
-    const tileIndexes = await getTileIndexes();
-    const timeIndex = await getTimeIndex(tileIndexes);
     const databases = await getDatabases();
+    const tileIndexes = await getTileIndexes(databases);
+    const timeIndexes = await getTimeIndexes(tileIndexes);
 
-    await clearOldTiles(databases, timeIndex);
+    await clearOldTiles(databases, timeIndexes);
 }
 
 run();
