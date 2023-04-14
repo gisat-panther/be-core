@@ -79,6 +79,35 @@ async function compactDatabase(database) {
     }
 }
 
+async function purgeDatabase(database) {
+    console.log(`Purging deleted data from database ${database}`);
+    while (true) {
+        const response = await axios.get(`${getCouchDbHost()}/${database}/_changes`);
+        const purge = [];
+        for (const result of response.data.results) {
+            if (result.deleted) {
+                purge.push({
+                    [result.id]: result.changes.map((change) => change.rev)
+                });
+            }
+        }
+
+        if (purge.length) {
+            const chunkSize = 100;
+            for (let i = 0; i < purge.length; i += chunkSize) {
+                const chunk = purge.slice(i, i + chunkSize);
+
+                await axios.post(`${getCouchDbHost()}/${database}/_purge`, Object.assign({}, ...chunk))
+                process.stdout.write(".");
+            }
+        } else {
+            break;
+        }
+    }
+
+    process.stdout.write("\n");
+}
+
 async function clearOldTiles(databases, timeIndexes) {
     for (const database of databases) {
         const timeIndex = timeIndexes[database];
@@ -106,6 +135,8 @@ async function clearOldTiles(databases, timeIndexes) {
         }
 
         console.log(`${deletedOldTiles} old tiles was deleted from ${database} database`);
+
+        await purgeDatabase(database);
 
         await compactDatabase(database);
 
