@@ -72,6 +72,13 @@ async function deleteTile(database, tileId) {
     }
 }
 
+async function compactDatabase(database) {
+    const response = await axios.post(`${getCouchDbHost()}/${database}/_compact`, {});
+    if (response.status === 202) {
+        console.log(`Compacting database ${database}`);
+    }
+}
+
 async function clearOldTiles(databases, timeIndexes) {
     for (const database of databases) {
         const timeIndex = timeIndexes[database];
@@ -98,7 +105,11 @@ async function clearOldTiles(databases, timeIndexes) {
             }
         }
 
-        console.log(`${deletedOldTiles} old tiles was deleted from ${database} database\n`);
+        console.log(`${deletedOldTiles} old tiles was deleted from ${database} database`);
+
+        await compactDatabase(database);
+
+        console.log(`---`);
     }
 }
 
