@@ -67,6 +67,10 @@ const STAC_REQUIRED_PROPERTIES_EXCEPTIONS = {
 
 const productTypes = ["product", "metafeatures", "confidence"];
 
+const styles = {
+    confidence: require('../assets/confidence.style.json')
+}
+
 function getKeyByProductId(productMetadata) {
     return uuidByString(productMetadata.properties.tile_collection_id);
 }
@@ -388,7 +392,7 @@ async function createProduct(globalProductKey, productKeys, user) {
         await storeMapproxyConf(mapproxyConfProduct);
         await storeMapproxySeedConf(mapproxySeedConfProduct);
 
-        seedLayers(mapproxySeedConfProduct);
+        seedAndCleanupLayerCaches(mapproxySeedConfProduct);
 
         baseProducts[productKey] = {
             baseProduct,
@@ -396,7 +400,7 @@ async function createProduct(globalProductKey, productKeys, user) {
         }
     }
 
-    const mapfileGlobal = getGlobalProductMapfile(baseGlobalProduct, baseProducts);
+    const mapfileGlobal = await getGlobalProductMapfile(baseGlobalProduct, baseProducts);
     const mapproxyConfGlobal = getGlobalProductMapproxyConf(baseGlobalProduct, mapfileGlobal);
     const mapproxySeedConfGlobal = getProductMapproxySeedConf(mapproxyConfGlobal);
     const dataSources = getProductDataSources(baseGlobalProduct, Object.entries(baseProducts).map(([productKey, { baseProduct, productTileIndexs }]) => baseProduct));
@@ -420,7 +424,7 @@ async function createProduct(globalProductKey, productKeys, user) {
     await setDataSourcesAccessibility(dataSources);
 }
 
-function seedLayers(mapproxySeedConf) {
+function seedAndCleanupLayerCaches(mapproxySeedConf) {
     for (const seed of Object.keys(mapproxySeedConf.seeds)) {
         if (seed.endsWith("_product") || seed.endsWith("_confidence")) {
             axios({
@@ -726,11 +730,11 @@ function getProductMapproxyConf(baseProduct, mapfile) {
     mapfile.layers.forEach((layer) => {
         const layerType = layer.name.split("_").pop();
         let resampling_method = "nearest";
-        
+
         if (layerType === "confidence") {
             resampling_method = "bilinear";
         }
-        
+
         sources[`${layer.name}`] = {
             type: "mapserver",
             req: {
@@ -756,10 +760,21 @@ function getProductMapproxyConf(baseProduct, mapfile) {
                 transparent: true,
                 resampling_method
             },
+            use_direct_from_level: 13,
+            meta_size: [8, 8],
+            meta_buffer: 256,
+            bulk_meta_tiles: true,
             cache: {
                 type: "couchdb",
                 db_name: layer.name,
                 url: `http://${config.couchdb.user}:${config.couchdb.password}@${config.couchdb.host}:${config.couchdb.port}`,
+                tile_metadata: {
+                    tile_col: '{{x}}',
+                    tile_row: '{{y}}',
+                    tile_level: '{{z}}',
+                    created: '{{utc_iso}}',
+                    center: '{{wgs_tile_centroid}}'
+                },
                 tile_lock_dir: `${config.mapproxy.paths.cache}/${productName}/${layer.name}/tile_lock`
             }
         }
@@ -788,7 +803,8 @@ function getProductMapproxyConf(baseProduct, mapfile) {
                         title: productName,
                         online_resource: `${config.url}/proxy/wms`
                     }
-                }
+                },
+                wmts: {}
             },
             sources,
             caches,
@@ -838,10 +854,21 @@ function getGlobalProductMapproxyConf(baseProduct, mapfile) {
                 transparent: true,
                 resampling_method
             },
+            use_direct_from_level: 13,
+            meta_size: [8, 8],
+            meta_buffer: 256,
+            bulk_meta_tiles: true,
             cache: {
                 type: "couchdb",
                 db_name: layer.name,
                 url: `http://${config.couchdb.user}:${config.couchdb.password}@${config.couchdb.host}:${config.couchdb.port}`,
+                tile_metadata: {
+                    tile_col: '{{x}}',
+                    tile_row: '{{y}}',
+                    tile_level: '{{z}}',
+                    created: '{{utc_iso}}',
+                    center: '{{wgs_tile_centroid}}'
+                },
                 tile_lock_dir: `${config.mapproxy.paths.cache}/${productName}/${layer.name}/tile_lock`
             }
         }
@@ -884,7 +911,8 @@ function getGlobalProductMapproxyConf(baseProduct, mapfile) {
                         title: productName,
                         online_resource: `${config.url}/proxy/wms`
                     }
-                }
+                },
+                wmts: {}
             },
             sources,
             caches,
@@ -895,6 +923,7 @@ function getGlobalProductMapproxyConf(baseProduct, mapfile) {
 
 function getProductMapproxySeedConf(mapproxyConf) {
     const seeds = {};
+    const cleanups = {};
     const coverages = {};
 
     for (const sourceName of Object.keys(mapproxyConf.sources)) {
@@ -910,14 +939,27 @@ function getProductMapproxySeedConf(mapproxyConf) {
                 to: 12
             }
         }
+        cleanups[sourceName] = {
+            caches: [`cache_${sourceName}`],
+            coverages: [sourceName],
+            remove_before: {
+                mtime: mapproxyConf.sources[sourceName].coverage.datasource
+            },
+            levels: {
+                to: 12
+            },
+            grids: ["GLOBAL_WEBMERCATOR"]
+        }
     }
 
     return {
         filename: mapproxyConf.filename,
         seeds,
+        cleanups,
         definition: mapproxy.getMapproxySeedYamlString({
             seeds,
-            coverages
+            coverages,
+            cleanups
         })
     };
 }
@@ -938,7 +980,8 @@ function getProductMapfile(baseProduct, productTileIndexs) {
         layers.push({
             name: `${productName}_${type}`,
             tileindex: productTileIndexs[type].path,
-            processing
+            processing,
+            class: styles[type]
         })
     }
 
@@ -969,6 +1012,7 @@ function getProductMapfile(baseProduct, productTileIndexs) {
                     tileitem: "location",
                     tilesrs: "src_srs",
                     processing: layer.processing,
+                    class: layer.class,
                     template: `${config.mapproxy.paths.conf}/${productName}.getFeatureInfo.html`
                 }
             })
@@ -976,7 +1020,7 @@ function getProductMapfile(baseProduct, productTileIndexs) {
     };
 }
 
-function getGlobalProductMapfile(baseGlobalProduct, baseProducts) {
+async function getGlobalProductMapfile(baseGlobalProduct, baseProducts) {
     const productGlobalName = getProductName(baseGlobalProduct);
     const layers = [];
 
@@ -994,7 +1038,8 @@ function getGlobalProductMapfile(baseGlobalProduct, baseProducts) {
             layers.push({
                 name: `${productName}_${type}`,
                 tileindex: productTileIndexs[type].path,
-                processing
+                processing,
+                class: styles[type]
             })
         }
     }
@@ -1026,6 +1071,7 @@ function getGlobalProductMapfile(baseGlobalProduct, baseProducts) {
                     tileitem: "location",
                     tilesrs: "src_srs",
                     processing: layer.processing,
+                    class: layer.class,
                     template: `${config.mapproxy.paths.conf}/${productGlobalName}.getFeatureInfo.html`
                 }
             })
