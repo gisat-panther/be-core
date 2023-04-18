@@ -135,9 +135,10 @@ async function clearOldTiles(databases, timeIndexes) {
 
         console.log(`${deletedOldTiles} old tiles was deleted from ${database} database`);
 
-        await purgeDatabase(database);
-
-        await compactDatabase(database);
+        if (deletedOldTiles) {
+            await purgeDatabase(database);
+            await compactDatabase(database);
+        }
 
         console.log(`---`);
     }
