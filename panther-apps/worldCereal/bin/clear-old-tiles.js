@@ -100,8 +100,8 @@ async function purgeDatabase(database) {
                 await axios.post(`${getCouchDbHost()}/${database}/_purge`, Object.assign({}, ...chunk))
                 process.stdout.write(".");
             }
-        } else {
             process.stdout.write("\n");
+        } else {
             break;
         }
     }
