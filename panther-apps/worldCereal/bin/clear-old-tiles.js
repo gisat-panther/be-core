@@ -101,11 +101,10 @@ async function purgeDatabase(database) {
                 process.stdout.write(".");
             }
         } else {
+            process.stdout.write("\n");
             break;
         }
     }
-
-    process.stdout.write("\n");
 }
 
 async function clearOldTiles(databases, timeIndexes) {
