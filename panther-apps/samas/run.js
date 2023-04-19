@@ -154,7 +154,7 @@ async function createMapserverConfigurationFile(objects) {
             const location = `/vsis3/samas-mapservice/${object.Key}`;
             const time = path.parse(object.Key).name.split("_")[0];
 
-            const momentTime = moment(time);
+            const momentTime = moment(time).startOf("day");
             const timeString = moment(momentTime).utc().format("");
 
             availableTimes.push(timeString);
