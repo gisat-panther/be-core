@@ -155,7 +155,7 @@ async function createMapserverConfigurationFile(objects) {
             const time = path.parse(object.Key).name.split("_")[0];
 
             const momentTime = moment(time).startOf("day");
-            const timeString = moment(momentTime).utc().format("");
+            const timeString = moment(momentTime).utc().startOf("day").format("");
 
             availableTimes.push(timeString);
 
