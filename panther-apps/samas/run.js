@@ -22,13 +22,56 @@ const s3Client = new S3Client({
     region: config.projects.samas.s3.region
 })
 
-const types = ["ndvi", "nir_pseudocolor", "true_color"];
-const styles = {
-    ndvi: require('./styles/ndvi_spojity_v2.json')
+const products = {
+    ndvi: {
+        match: (filename) => filename.endsWith("_ndvi"),
+        style: require('./styles/ndvi_spojity_v2.json'),
+        time: (filename) => {
+            const dateStr = filename.split("_")[0];
+            return moment.utc(dateStr).startOf('day');
+        }
+    },
+    nir_pseudocolor: {
+        match: (filename) => filename.endsWith("_nir_pseudocolor"),
+        time: (filename) => {
+            const dateStr = filename.split("_")[0];
+            return moment.utc(dateStr).startOf('day');
+        }
+    },
+    true_color: {
+        match: (filename) => filename.endsWith("_true_color"),
+        time: (filename) => {
+            const dateStr = filename.split("_")[0];
+            return moment.utc(dateStr).startOf('day');
+        }
+    },
+    slb_hm: {
+        match: (filename) => filename.startsWith("SLB_HM"),
+        time: (filename) => {
+            const dateStr = filename.split("_")[2];
+            return moment.utc(dateStr).startOf('day');
+        }
+    },
+    slb_multict_crop1: {
+        match: (filename) => filename.startsWith("SLB_CT") && filename.includes("CROP1"),
+        time: (filename) => {
+            const dateStr = filename.split("_")[2];
+            return moment.utc(dateStr).startOf('day');
+        }
+    },
+    slb_multict_crop2: {
+        match: (filename) => filename.startsWith("SLB_CT") && filename.includes("CROP2"),
+        time: (filename) => {
+            const dateStr = filename.split("_")[2];
+            return moment.utc(dateStr).startOf('day');
+        }
+    }
 }
 
-async function getS3Objects(objects = [], nextMarker) {
-    const command = new ListObjectsCommand({ Bucket: config.projects.samas.s3.bucket, Prefix: config.projects.samas.s3.prefix, Marker: nextMarker });
+let updates = 0;
+
+async function getS3Objects(prefix, objects = [], nextMarker) {
+    const command = new ListObjectsCommand({ Bucket: config.projects.samas.s3.bucket, Prefix: prefix, Marker: nextMarker });
     const response = await s3Client.send(command);
 
     for (const content of response.Contents) {
@@ -36,7 +79,7 @@ async function getS3Objects(objects = [], nextMarker) {
     }
 
     if (response.NextMarker) {
-        return getS3Objects(objects, response.NextMarker)
+        return getS3Objects(prefix, objects, response.NextMarker)
     } else {
         return objects;
     }
@@ -118,20 +161,20 @@ async function createMapserverConfigurationFile(objects) {
     }
 
     for (const [key, object] of Object.entries(objects)) {
-        for (const type of types) {
+        for (const type of Object.keys(products)) {
             const filename = path.parse(object.Key).name;
 
             if (!indexes[type]) {
                 indexes[type] = [];
             }
 
-            if (filename.endsWith(type)) {
+            if (products[type].match(filename)) {
                 indexes[type].push(object);
             }
         }
     }
 
-    for (const type of types) {
+    for (const type of Object.keys(products)) {
         const typeIndexes = indexes[type];
         const tileIndexGeoJson = {
             type: "FeatureCollection",
@@ -143,7 +186,7 @@ async function createMapserverConfigurationFile(objects) {
             },
             features: []
         }
-        
+
         const tileIndexTempFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-TIME-${type}.geojson`;
         const tileIndexFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-TIME-${type}.shp`;
 
@@ -152,10 +195,9 @@ async function createMapserverConfigurationFile(objects) {
 
         for (const object of typeIndexes) {
             const location = `/vsis3/samas-mapservice/${object.Key}`;
-            const time = path.parse(object.Key).name.split("_")[0];
 
-            const momentTime = moment(time).startOf("day");
-            const timeString = moment(momentTime).utc().startOf("day").format("");
+            const momentTime = products[type].time(path.parse(object.Key).name);
+            const timeString = momentTime.format("");
 
             availableTimes.push(timeString);
 
@@ -225,7 +267,7 @@ async function createMapserverConfigurationFile(objects) {
             tileitem: "location",
             tilesrs: "src_srs",
             projection: ["init=EPSG:5514"],
-            class: styles[type],
+            class: products[type].style,
             extent: [minX, minY, maxX, maxY],
             metadata: {
                 wms_title: `SAMAS-TIME-${type}`,
@@ -292,7 +334,7 @@ async function createMapproxyConfigurationFile(groupedFiles) {
     const layers = [];
 
     for (const date of Object.keys(groupedFiles)) {
-        for (const type of types) {
+        for (const type of products) {
             const file = groupedFiles[date][type];
 
             const bbox = [
@@ -373,7 +415,7 @@ async function createMapproxySeedConfigurationFile(groupedFiles) {
     const coverages = {};
 
     Object.keys(groupedFiles).map((date) => {
-        for (const type of types) {
+        for (const type of products) {
             const file = groupedFiles[date][type];
 
             const bbox = getBbox(file.file);
@@ -394,8 +436,8 @@ async function createMapproxySeedConfigurationFile(groupedFiles) {
     }
 }
 
-async function createConfigurationFiles(updatedObjects, currentObjects) {
-    const objectToSave = {
+async function saveUpdatedObjects(updatedObjects, currentObjects) {
+    const objectsToSave = {
         ...currentObjects
     };
 
@@ -409,33 +451,70 @@ async function createConfigurationFiles(updatedObjects, currentObjects) {
             gdalInfo
         }
 
-        if (objectToSave[key]) {
-            objectToSave[key] = {
-                ...objectToSave[key],
+        if (objectsToSave[key]) {
+            objectsToSave[key] = {
+                ...objectsToSave[key],
                 ...extendedObject
             }
         } else {
-            objectToSave[key] = {
+            objectsToSave[key] = {
                 ...extendedObject
             }
         }
 
-        console.log(`#SAMAS# Map service > ${object.Key} was updated`);
+        console.log(`#SAMAS# Map service > GDALInfo obtained for ${key}, ${object.Key}`);
     }
 
-    await createMapserverConfigurationFile(objectToSave);
-
-    return objectToSave;
+    await saveObjects(objectsToSave);
 }
 
-async function run() {
-    const nextObjects = await getS3Objects();
+async function runPreviews() {
+    console.log(`#SAMAS# Map service > Checking previews...`);
+
+    const nextObjects = await getS3Objects(config.projects.samas.products.previews.prefix);
     const currentObjects = await getCurrectObjects();
     const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
 
     if (Object.keys(updatedObjects).length) {
-        const objectsToSave = await createConfigurationFiles(updatedObjects, currentObjects);
-        await saveObjects(objectsToSave);
+        await saveUpdatedObjects(updatedObjects, currentObjects);
+        updates += Object.keys(updatedObjects).length;
+    }
+}
+
+async function runSlbHm() {
+    console.log(`#SAMAS# Map service > Checking slb_hm...`);
+
+    const nextObjects = await getS3Objects(config.projects.samas.products.slb_hm.prefix);
+    const currentObjects = await getCurrectObjects();
+    const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
+
+    if (Object.keys(updatedObjects).length) {
+        await saveUpdatedObjects(updatedObjects, currentObjects);
+        updates += Object.keys(updatedObjects).length;
+    }
+}
+
+async function runSlbMulticrop() {
+    console.log(`#SAMAS# Map service > Checking slb_multicrops...`);
+
+    const nextObjects = await getS3Objects(config.projects.samas.products.slb_multicrop.prefix);
+    const currentObjects = await getCurrectObjects();
+    const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
+
+    if (Object.keys(updatedObjects).length) {
+        await saveUpdatedObjects(updatedObjects, currentObjects);
+        updates += Object.keys(updatedObjects).length;
+    }
+}
+
+async function run() {
+    await runPreviews();
+    await runSlbHm();
+    await runSlbMulticrop();
+
+    if (updates) {
+        console.log(`#SAMAS# Map service > ${updates} products were updated. Recreating mapserver configuration files.`)
+        await createMapserverConfigurationFile(await getCurrectObjects());
     }
 }
 
