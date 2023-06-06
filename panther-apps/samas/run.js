@@ -71,8 +71,10 @@ const products = {
 let updates = 0;
 
 async function getS3Objects(prefix, objects = [], nextMarker) {
-    const command = new ListObjectsCommand({ Bucket: config.projects.samas.s3.bucket, Prefix: prefix, Marker: nextMarker });
+    const command = new ListObjectsCommand({ Bucket: config.projects.samas.s3.bucket, Prefix: prefix, Marker: nextMarker, MaxKeys: 100 });
     const response = await s3Client.send(command);
+
+    process.stdout.write(".");
 
     for (const content of response.Contents) {
         objects.push(content);
@@ -197,7 +199,10 @@ async function createMapserverConfigurationFile(objects) {
             const location = `/vsis3/samas-mapservice/${object.Key}`;
 
             const momentTime = products[type].time(path.parse(object.Key).name);
-            const timeString = momentTime.format("");
+            let timeString = momentTime.format("YYYY-MM-DD");
+            if (type.startsWith("slb_")) {
+                timeString = momentTime.format("YYYY-MM");
+            }
 
             availableTimes.push(timeString);
 
@@ -244,7 +249,7 @@ async function createMapserverConfigurationFile(objects) {
                 geometry: geom,
                 properties: {
                     location,
-                    acquired: `#${timeString}`,
+                    acquired: timeString,
                     src_srs: object.srs
                 }
             })
@@ -253,11 +258,16 @@ async function createMapserverConfigurationFile(objects) {
         await fsp.writeFile(tileIndexTempFile, JSON.stringify(tileIndexGeoJson, null, 2));
 
         chp.execSync(`ogr2ogr -f "ESRI Shapefile" -overwrite ${tileIndexFile} ${tileIndexTempFile}`);
-        chp.execSync(`ogrinfo -dialect sqlite -sql 'UPDATE "${path.parse(tileIndexFile).name}" SET acquired = substr(acquired, 2)' ${tileIndexFile}`);
+        // chp.execSync(`ogrinfo -dialect sqlite -sql 'UPDATE "${path.parse(tileIndexFile).name}" SET acquired = substr(acquired, 2)' ${tileIndexFile}`);
 
         await fsp.unlink(tileIndexTempFile);
 
         availableTimes = availableTimes.sort();
+
+        let wmsTimeExtent = `${minTime}/${maxTime}/P1D`;
+        if (type.startsWith("slb_")) {
+            wmsTimeExtent = `${availableTimes.join(",")}`;
+        }
 
         mapserverConf.layer.push({
             name: `SAMAS-TIME-${type}`,
@@ -273,8 +283,7 @@ async function createMapserverConfigurationFile(objects) {
                 wms_title: `SAMAS-TIME-${type}`,
                 wms_srs: "EPSG:5514",
                 wms_timeitem: "acquired",
-                wms_timeextent: availableTimes.join(",")
-                // wms_timedefault: maxTime
+                wms_timeextent: wmsTimeExtent
             }
         })
     }
@@ -469,9 +478,12 @@ async function saveUpdatedObjects(updatedObjects, currentObjects) {
 }
 
 async function runPreviews() {
-    console.log(`#SAMAS# Map service > Checking previews...`);
+    process.stdout.write(`#SAMAS# Map service > Checking previews`);
 
     const nextObjects = await getS3Objects(config.projects.samas.products.previews.prefix);
+
+    process.stdout.write("Done!\n\r");
+
     const currentObjects = await getCurrectObjects();
     const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
 
@@ -482,9 +494,12 @@ async function runPreviews() {
 }
 
 async function runSlbHm() {
-    console.log(`#SAMAS# Map service > Checking slb_hm...`);
+    process.stdout.write(`#SAMAS# Map service > Checking slb_hm`);
 
     const nextObjects = await getS3Objects(config.projects.samas.products.slb_hm.prefix);
+
+    process.stdout.write("Done!\n\r");
+
     const currentObjects = await getCurrectObjects();
     const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
 
@@ -495,9 +510,12 @@ async function runSlbHm() {
 }
 
 async function runSlbMulticrop() {
-    console.log(`#SAMAS# Map service > Checking slb_multicrops...`);
+    process.stdout.write(`#SAMAS# Map service > Checking slb_multicrops`);
 
     const nextObjects = await getS3Objects(config.projects.samas.products.slb_multicrop.prefix);
+
+    process.stdout.write("Done!\n\r");
+
     const currentObjects = await getCurrectObjects();
     const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
 
@@ -507,10 +525,26 @@ async function runSlbMulticrop() {
     }
 }
 
+async function checkDataAccessibility(objects) {
+    process.stdout.write(`#SAMAS# Map service > Checking availibility of s3 objects`);
+
+    for (const [key, object] of Object.entries(objects)) {
+        const gdalInfo = await getGdalInfo(object.Key);
+        process.stdout.write(".");
+        if(!gdalInfo.bands) {
+            console.log(object);
+            process.exit(1);
+        }
+    }
+
+    process.stdout.write("Done!\n\r");
+}
+
 async function run() {
     await runPreviews();
     await runSlbHm();
     await runSlbMulticrop();
+    // await checkDataAccessibility(await getCurrectObjects());
 
     if (updates) {
         console.log(`#SAMAS# Map service > ${updates} products were updated. Recreating mapserver configuration files.`)

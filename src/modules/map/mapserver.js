@@ -63,6 +63,14 @@ function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
                 for (const property2 of Object.keys(json[property])) {
                     lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()} "${property2}=${json[property][property2]}"`);
                 }
+            } else if (property.toLowerCase() === "metadata") {
+                lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()}`);
+
+                for (const property2 of Object.keys(json[property])) {
+                    lineStringArray.push(`${' '.repeat(indentation + 2)}"${property2}" "${json[property][property2]}"`);
+                }
+
+                lineStringArray.push(`${' '.repeat(indentation)} END`);
             } else {
                 lineStringArray.push(`${' '.repeat(indentation)} ${property.toUpperCase()}`);
 
