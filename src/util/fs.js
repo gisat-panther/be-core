@@ -15,7 +15,7 @@ async function getFilesAtPathRecursive(path, files = []) {
             }
         }
     } catch (e) {
-
+        console.log(e);
     }
 
     return files;
