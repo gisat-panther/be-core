@@ -7,11 +7,16 @@ const path = require('path');
 const chp = require('child_process');
 const fsp = require('fs/promises');
 const fetch = require('node-fetch');
+const xml2js = require('xml-js');
 
 const mapserver = require('../../../src/modules/map/mapserver');
 const mapproxy = require('../../../src/modules/map/mapproxy');
 
+const fsUtils = require('../../../src/util/fs');
+
 const config = require('../../../config');
+
+const DEFAULT_TEMPLATE = `<!-- mapserver template -->\n{\"layer\":\"[cl]\",\"x\":[x],\"y\":[y],\"value_list\":\"[value_list]\",\"class\":\"[class]\"}`;
 
 async function getFilesRecursive({ basePath, files = [] }) {
     console.log(basePath);
@@ -69,7 +74,7 @@ async function listS3Files({ s3Client, options, marker, files = [] }) {
                 type: "raster",
                 path: `/vsis3/${options.s3.bucket}/${object.Key}`
             })
-        } else if (object.Key.toLowerCase().endsWith(".style")) {
+        } else if (object.Key.toLowerCase().endsWith(".style") || object.Key.toLowerCase().endsWith(".sld")) {
             files.push({
                 key: object.Key,
                 type: "style",
@@ -153,6 +158,65 @@ async function getFiles(options, storage) {
     return groupedFiles();
 }
 
+async function getJsonStyleFromS3(styleFileMeta, options) {
+    const s3Client = new S3Client({
+        endpoint: `${options.s3.protocol ? options.s3.protocol + '://' : ''}` + options.s3.endpoint,
+        region: options.s3.endpoint,
+        forcePathStyle: options.s3.forcePathStyle,
+        credentials: options.s3.credentials
+    });
+
+    const s3GetObjectCommandInput = {
+        Bucket: options.s3.bucket,
+        Key: styleFileMeta.key
+    };
+
+    const s3GetObjectCommand = new GetObjectCommand(s3GetObjectCommandInput);
+    const response = await s3Client.send(s3GetObjectCommand);
+
+    const streamToString = async (stream) => {
+        const chunks = [];
+        for await (const chunk of stream) {
+            chunks.push(chunk);
+        }
+        return Buffer.concat(chunks).toString('utf-8');
+    }
+
+    const content = await streamToString(response.Body);
+
+    if (styleFileMeta.key.endsWith(".style")) {
+        return JSON.parse(content);
+    } else if (styleFileMeta.key.endsWith(".sld")) {
+        const jsonSld = xml2js.xml2js(content, { compact: true });
+        const colorMap = jsonSld.StyledLayerDescriptor.UserLayer['sld:UserStyle']['sld:FeatureTypeStyle']['sld:Rule']['sld:RasterSymbolizer']['sld:ColorMap']['sld:ColorMapEntry'].map((entry) => entry._attributes);
+
+        if (!colorMap) {
+            console.log(`Unable to parse color map from ${styleFileMeta.key}`);
+            return;
+        }
+
+        let style = [];
+
+        for (const colorEntry of colorMap) {
+            const pixel = Number(colorEntry.quantity);
+            const opacity = Number(colorEntry.opacity || 1) * 100
+            const name = colorEntry.label;
+            const color = colorEntry.color;
+
+            style.push({
+                name,
+                expression: `[pixel] = ${pixel}`,
+                style: {
+                    color,
+                    opacity
+                }
+            });
+        }
+
+        return style;
+    }
+}
+
 async function getMapserverOptions(s3Files, options, storage) {
     const mapserverOptions = {
         fileName: `${options.group}.map`,
@@ -186,8 +250,7 @@ async function getMapserverOptions(s3Files, options, storage) {
 
         let stylesJson;
         if (style) {
-            const response = await fetch(style.path);
-            stylesJson = await response.json();
+            stylesJson = await getJsonStyleFromS3(style, options);
         }
 
         const sameLayersByName = mapserverOptions.layers.filter((layer) => layer.name === rasterFileName);
@@ -195,7 +258,7 @@ async function getMapserverOptions(s3Files, options, storage) {
             rasterFileName += `_${sameLayersByName.length}`;
         }
 
-        mapserverOptions.layers.push({
+        let layer = {
             name: rasterFileName,
             status: "on",
             data: rasterFile.path,
@@ -205,7 +268,13 @@ async function getMapserverOptions(s3Files, options, storage) {
             _epsg: epsg,
             template: `${options.group}.template.html`,
             class: stylesJson
-        })
+        }
+
+        if (options.public) {
+            layer._publicPath = `${options.s3.protocol}://${options.s3.bucket}.${options.s3.endpoint}/${rasterFile.key}`;
+        }
+
+        mapserverOptions.layers.push(layer)
 
         console.log(`# IMPORT # ${rasterFile.path} with ${style && path.parse(style.path).name} style.`);
     }
@@ -257,7 +326,7 @@ async function getMapserverOptions(s3Files, options, storage) {
             class: stylesJson
         })
 
-        console.log(`# IMPORT # ${vectorFile.path} with ${style && path.parse(style.path).name} style.`);
+        console.log(`# IMPORT # ${vectorFile.path} with ${style ? path.parse(style.path).name : "no"} style.`);
     }
 
     const mapfileOptions = {
@@ -373,15 +442,27 @@ async function getMapproxyOptions(mapserverOptions, options) {
                 tile_lock_dir: `../cache/${options.group}/${mapserverLayer.name}/tile_lock`
             }
         }
-        layers.push({
+
+        let layer = {
             name: mapserverLayer.name,
             title: mapserverLayer.name,
             sources: [cacheName]
-        })
+        };
+
+        if (mapserverLayer._publicPath) {
+            layer.md = {
+                data: [{
+                    url: mapserverLayer._publicPath
+                }]
+            }
+        }
+
+        layers.push(layer);
     }
 
     return {
         fileName: `${options.group}.yaml`,
+        layers,
         conf: mapproxy.getMapproxyYamlString({
             services: {
                 wms: {
@@ -389,6 +470,7 @@ async function getMapproxyOptions(mapserverOptions, options) {
                     versions: ["1.1.1", "1.3.0"],
                     image_formats: ["image/png", "image/jpeg"]
                 },
+                wmts: {},
                 demo: {}
             },
             sources,
@@ -399,20 +481,30 @@ async function getMapproxyOptions(mapserverOptions, options) {
 }
 
 async function createMapserverMapfile(mapserverOptions) {
-    await fsp.writeFile(`./${mapserverOptions.fileName}`, mapserverOptions.mapfile);
+    await fsp.writeFile(`${config.mapproxy.paths.conf}/${mapserverOptions.fileName}`, mapserverOptions.mapfile);
 }
 
-async function createMapserverTemplateFile(options) {
-    await fsp.writeFile(`./${options.group}.template.html`, options.template);
+async function createMapserverTemplateFile({ group, template }) {
+    await fsp.writeFile(`${config.mapproxy.paths.conf}/${group}.template.html`, template);
 }
 
 async function createMapproxyConfig(mapproxyOptions) {
-    await fsp.writeFile(`./${mapproxyOptions.fileName}`, mapproxyOptions.conf);
+    await fsp.writeFile(`${config.mapproxy.paths.conf}/${mapproxyOptions.fileName}`, mapproxyOptions.conf);
+}
+
+async function clearMapproxyCache(prefix) {
+    const filesToClear = await fsUtils.getFilesAtPathRecursive(`${config.mapproxy.paths.cache}/${prefix}`);
+
+    for (const fileToClear of filesToClear) {
+        await fsp.rm(fileToClear);
+        console.log(`# IMPORT # Cleared tile cache at ${fileToClear}`);
+    }
 }
 
 async function createWmsConfigurationFiles(options, storage) {
     const files = await getFiles(options, storage);
-    let wmsUrls = [];
+
+    let wmsMetadata = [];
 
     for (const group of Object.keys(files)) {
         const mapserverOptions = await getMapserverOptions(files[group], { ...options, group }, storage);
@@ -421,14 +513,28 @@ async function createWmsConfigurationFiles(options, storage) {
         await createMapserverMapfile(mapserverOptions);
         await createMapproxyConfig(mapproxyOptions);
 
-        if (options.template) {
-            await createMapserverTemplateFile({ ...options, group });
+        await createMapserverTemplateFile({ group, template: options.template ? options.template : DEFAULT_TEMPLATE });
+
+        if (options.clearCache) {
+            await clearMapproxyCache(group);
         }
 
-        wmsUrls.push(`./mapproxy/${group}`);
+        wmsMetadata.push({
+            url: `${config.mapproxy.url}/${group}/wms`,
+            capabilities: `${config.mapproxy.url}/${group}/wms?REQUEST=GetCapabilities`,
+            layers: mapserverOptions.layers.map((layer) => {
+                return {
+                    name: layer.name, 
+                    source: layer._publicPath
+                }
+            }),
+            epsg: options.epsg
+        });
     }
 
-    return Promise.resolve(wmsUrls);
+    return Promise.resolve({
+        wms: wmsMetadata
+    });
 }
 
 async function s3(options) {
