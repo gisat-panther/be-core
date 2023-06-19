@@ -1,0 +1,23 @@
+[
+    {
+        "name": "Maximum water extent",
+        "expression": "[pixel] = 1"
+        "style": {
+            "color": "#38acff",
+        }
+    },
+    {
+        "name": "Not water",
+        "expression": "[pixel] = 0",
+        "style": {
+            "color": "#38acff",
+        }
+    },
+    {
+        "name": "Color range",
+        "style": {
+            "colorrange": ["#color1", "#color2"],
+            "datarange": [0, 100]
+        }
+    }
+]
