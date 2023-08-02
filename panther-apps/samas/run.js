@@ -283,7 +283,8 @@ async function createMapserverConfigurationFile(objects) {
                 wms_title: `SAMAS-TIME-${type}`,
                 wms_srs: "EPSG:5514",
                 wms_timeitem: "acquired",
-                wms_timeextent: wmsTimeExtent
+                wms_timeextent: wmsTimeExtent,
+                wms_timedefault: maxTime
             }
         })
     }
