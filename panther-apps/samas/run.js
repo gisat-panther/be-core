@@ -595,7 +595,7 @@ async function checkDataAccessibility(objects) {
 }
 
 async function run() {
-    // await runPreviews();
+    await runPreviews();
     await runSlbHm();
     await runSlbMulticrop();
     // await checkDataAccessibility(await getCurrectObjects());
