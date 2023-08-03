@@ -1,7 +1,7 @@
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
-const { S3Client, ListObjectsCommand } = require('@aws-sdk/client-s3');
+const { S3Client, ListObjectsCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const uuidByString = require('uuid-by-string');
 const moment = require('moment');
 const chp = require('child_process');
@@ -196,7 +196,13 @@ async function createMapserverConfigurationFile(objects) {
         let availableTimes = [];
 
         for (const object of typeIndexes) {
-            const location = `/vsis3/samas-mapservice/${object.Key}`;
+            let location;
+
+            if (object.localPath) {
+                location = object.localPath; 
+            } else {
+                location = `/vsis3/samas-mapservice/${object.Key}`;
+            }
 
             const momentTime = products[type].time(path.parse(object.Key).name);
             let timeString = momentTime.format("YYYY-MM-DD");
@@ -296,42 +302,60 @@ async function createMapserverConfigurationFile(objects) {
 }
 
 
-function getGdalInfo(file) {
+function getGdalInfo({ key, path }) {
     try {
-        const output = execSync(
-            `gdalinfo -json /vsis3/samas-mapservice/${file}`,
-            {
-                env: {
-                    AWS_ACCESS_KEY_ID: config.projects.samas.s3.accessKey,
-                    AWS_SECRET_ACCESS_KEY: config.projects.samas.s3.accessSecret,
-                    AWS_REGION: config.projects.samas.s3.region,
-                    AWS_S3_ENDPOINT: config.projects.samas.s3.endpoint,
-                    AWS_VIRTUAL_HOSTING: "FALSE"
+        let output;
+
+        if (key) {
+            output = execSync(
+                `gdalinfo -json /vsis3/samas-mapservice/${key}`,
+                {
+                    env: {
+                        AWS_ACCESS_KEY_ID: config.projects.samas.s3.accessKey,
+                        AWS_SECRET_ACCESS_KEY: config.projects.samas.s3.accessSecret,
+                        AWS_REGION: config.projects.samas.s3.region,
+                        AWS_S3_ENDPOINT: config.projects.samas.s3.endpoint,
+                        AWS_VIRTUAL_HOSTING: "FALSE"
+                    }
                 }
-            }
-        );
-        return JSON.parse(output);
+            );
+        } else if (path) {
+            output = execSync(
+                `gdalinfo -json ${path}`,
+            );
+        }
+
+        if (output) return JSON.parse(output);
     } catch (e) {
         console.log(e);
         process.exit(1);
     }
 }
 
-async function getSrs(file) {
+async function getSrs({ key, path }) {
     try {
-        const output = execSync(
-            `gdalsrsinfo -o epsg --single-line /vsis3/samas-mapservice/${file}`,
-            {
-                env: {
-                    AWS_ACCESS_KEY_ID: config.projects.samas.s3.accessKey,
-                    AWS_SECRET_ACCESS_KEY: config.projects.samas.s3.accessSecret,
-                    AWS_REGION: config.projects.samas.s3.region,
-                    AWS_S3_ENDPOINT: config.projects.samas.s3.endpoint,
-                    AWS_VIRTUAL_HOSTING: "FALSE"
+        let output;
+
+        if (key) {
+            output = execSync(
+                `gdalsrsinfo -o epsg --single-line /vsis3/samas-mapservice/${key}`,
+                {
+                    env: {
+                        AWS_ACCESS_KEY_ID: config.projects.samas.s3.accessKey,
+                        AWS_SECRET_ACCESS_KEY: config.projects.samas.s3.accessSecret,
+                        AWS_REGION: config.projects.samas.s3.region,
+                        AWS_S3_ENDPOINT: config.projects.samas.s3.endpoint,
+                        AWS_VIRTUAL_HOSTING: "FALSE"
+                    }
                 }
-            }
-        );
-        return output.toString().trim();
+            );
+        } else if (path) {
+            output = execSync(
+                `gdalsrsinfo -o epsg --single-line ${path}`
+            );
+        }
+
+        if (output) return output.toString().trim();
     } catch (e) {
         console.log(e);
         process.exit(1);
@@ -452,8 +476,15 @@ async function saveUpdatedObjects(updatedObjects, currentObjects) {
     };
 
     for (const [key, object] of Object.entries(updatedObjects)) {
-        const srs = await getSrs(object.Key);
-        const gdalInfo = await getGdalInfo(object.Key);
+        let srs, gdalInfo;
+
+        if (object.localPath) {
+            srs = await getSrs({ path: object.localPath });
+            gdalInfo = await getGdalInfo({ path: object.localPath });
+        } else {
+            srs = await getSrs({ key: object.Key });
+            gdalInfo = await getGdalInfo({ key: object.Key });
+        }
 
         const extendedObject = {
             ...object,
@@ -494,6 +525,24 @@ async function runPreviews() {
     }
 }
 
+async function saveObjectsToLocalStorage(objects) {
+    for (const [key, object] of Object.entries(objects)) {
+        object.localPath = `${config.projects.samas.paths.localStorage}/${object.Key}`;
+
+        const getObjectCommand = new GetObjectCommand({
+            Bucket: config.projects.samas.s3.bucket,
+            Key: object.Key
+        })
+
+        await fsp.mkdir(path.parse(object.localPath).dir, { recursive: true });
+
+        const response = await s3Client.send(getObjectCommand);
+        await fsp.writeFile(object.localPath, response.Body);
+    }
+
+    return objects;
+}
+
 async function runSlbHm() {
     process.stdout.write(`#SAMAS# Map service > Checking slb_hm`);
 
@@ -502,7 +551,9 @@ async function runSlbHm() {
     process.stdout.write("Done!\n\r");
 
     const currentObjects = await getCurrectObjects();
-    const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
+    const updatedObjects = await saveObjectsToLocalStorage(
+        await getUpdatedS3Objects(nextObjects, currentObjects)
+    );
 
     if (Object.keys(updatedObjects).length) {
         await saveUpdatedObjects(updatedObjects, currentObjects);
@@ -518,7 +569,9 @@ async function runSlbMulticrop() {
     process.stdout.write("Done!\n\r");
 
     const currentObjects = await getCurrectObjects();
-    const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
+    const updatedObjects = await saveObjectsToLocalStorage(
+        await getUpdatedS3Objects(nextObjects, currentObjects)
+    );
 
     if (Object.keys(updatedObjects).length) {
         await saveUpdatedObjects(updatedObjects, currentObjects);
@@ -532,7 +585,7 @@ async function checkDataAccessibility(objects) {
     for (const [key, object] of Object.entries(objects)) {
         const gdalInfo = await getGdalInfo(object.Key);
         process.stdout.write(".");
-        if(!gdalInfo.bands) {
+        if (!gdalInfo.bands) {
             console.log(object);
             process.exit(1);
         }
@@ -542,7 +595,7 @@ async function checkDataAccessibility(objects) {
 }
 
 async function run() {
-    await runPreviews();
+    // await runPreviews();
     await runSlbHm();
     await runSlbMulticrop();
     // await checkDataAccessibility(await getCurrectObjects());
