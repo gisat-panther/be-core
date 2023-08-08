@@ -10,6 +10,7 @@ function jsonToLineStringArray(json, lineStringArray = [], indentation = 0) {
                     || property.toLowerCase() === "color"
                     || property.toLowerCase() === "offsite"
                     || property.toLowerCase() === "extent"
+                    || property.toLowerCase() === "outlinecolor"
                 ) {
                     const values = json[property].map((value) => {
                         if (value instanceof Array) {

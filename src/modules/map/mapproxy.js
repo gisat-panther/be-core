@@ -1,10 +1,11 @@
 const yaml = require('yaml');
 
-function getMapproxyYamlString({services = {}, grids = {}, sources = {}, caches = {}, layers = []} = {}) {
+function getMapproxyYamlString({ services = {}, grids = {}, sources = {}, caches = {}, layers = [] } = {}) {
     const mapproxyConfig = {
         globals: {
             mapserver: {
-                binary: "/usr/bin/mapserv"
+                binary: "/usr/bin/mapserv",
+                working_dir: "/home/mapproxy/conf"
             }
         }
     };
@@ -41,15 +42,16 @@ function getMapproxyYamlString({services = {}, grids = {}, sources = {}, caches 
         mapproxyConfig.layers = layers;
     }
 
-    return yaml.stringify(mapproxyConfig);
+    return yaml.stringify(mapproxyConfig, { version: '1.1' });
 }
 
-function getMapproxySeedYamlString({seeds = {}, coverages = {}}) {
+function getMapproxySeedYamlString({ seeds = {}, coverages = {}, cleanups = {} }) {
     const mapproxyConfig = {
         seeds,
+        cleanups,
         coverages,
     };
-    
+
     return yaml.stringify(mapproxyConfig);
 }
 

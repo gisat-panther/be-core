@@ -9,6 +9,7 @@ const chp = require('child_process');
 const config = require('../../config');
 const mapserver = require('../../src/modules/map/mapserver');
 const mapproxy = require('../../src/modules/map/mapproxy');
+const { exit } = require('node:process');
 
 const { SAMAS_WMS_ONLINERESOURCE: wmsOnlineresourceUrl } = process.env;
 
@@ -87,6 +88,26 @@ async function getS3Objects(prefix, objects = [], nextMarker) {
     }
 }
 
+async function getNextObjectsLimited(objects, limit) {
+    const sortedObjects = objects.sort((a, b) => {
+        const aFilename = path.parse(a.Key).name;
+        const bFilename = path.parse(b.Key).name;
+
+        const aFilenameParts = aFilename.split("_");
+        const bFilenameParts = bFilename.split("_");
+
+        if (aFilenameParts[0] > bFilenameParts[0]) {
+            return -1;
+        } else if (aFilenameParts[0] < bFilenameParts[0]) {
+            return 1;
+        } else {
+            return 0;
+        }
+    })
+
+    return sortedObjects.slice(0, limit);
+}
+
 async function getCurrectObjects() {
     const statusFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-objects.json`;
 
@@ -139,7 +160,7 @@ async function createMapserverConfigurationFile(objects) {
     const indexes = {};
     const mapserverConf = {
         name: "SAMAS-MapService",
-        units: "DD",
+        units: "meters",
         web: {
             metadata: {
                 "wms_enable_request": "*",
@@ -158,8 +179,35 @@ async function createMapserverConfigurationFile(objects) {
         layer: []
     };
 
+    const mapproxyConf = {
+        services: {
+            demo: {},
+            wms: {
+                srs: ["EPSG:5514"],
+                bbox_srs: ["EPSG:5514"],
+                md: {
+
+                }
+            }
+        },
+        grids: {
+            krovak: {
+                srs: "EPSG:5514",
+                tile_size: [512, 512],
+                res: [256, 128, 64, 32, 16, 8, 4, 2, 1],
+                bbox: [-951499.37, -1353292.51, -159365.31, -911053.67],
+                bbox_srs: "EPSG:5514",
+                origin: "sw"
+            }
+        },
+        sources: {},
+        caches: {},
+        layers: []
+    };
+
     if (wmsOnlineresourceUrl) {
         mapserverConf.web.metadata.wms_onlineresource = wmsOnlineresourceUrl
+        mapproxyConf.services.wms.online_resource = wmsOnlineresourceUrl
     }
 
     for (const [key, object] of Object.entries(objects)) {
@@ -180,6 +228,7 @@ async function createMapserverConfigurationFile(objects) {
         const typeIndexes = indexes[type];
         const tileIndexGeoJson = {
             type: "FeatureCollection",
+            name: `SAMAS-TIME-${type}`,
             crs: {
                 type: "name",
                 properties: {
@@ -189,8 +238,7 @@ async function createMapserverConfigurationFile(objects) {
             features: []
         }
 
-        const tileIndexTempFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-TIME-${type}.geojson`;
-        const tileIndexFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-TIME-${type}.shp`;
+        const tileIndexGeoJSON = `${config.projects.samas.paths.mapproxyConf}/SAMAS-TIME-${type}.geojson`;
 
         let minTime, maxTime, minX, minY, maxX, maxY;
         let availableTimes = [];
@@ -199,13 +247,14 @@ async function createMapserverConfigurationFile(objects) {
             let location;
 
             if (object.localPath) {
-                location = object.localPath; 
+                location = object.localPath;
             } else {
                 location = `/vsis3/samas-mapservice/${object.Key}`;
             }
 
             const momentTime = products[type].time(path.parse(object.Key).name);
-            let timeString = momentTime.format("YYYY-MM-DD");
+            // let timeString = momentTime.format("YYYY-MM-DDT00:00:00");
+            let timeString = momentTime.format();
             if (type.startsWith("slb_")) {
                 timeString = momentTime.format("YYYY-MM");
             }
@@ -261,25 +310,40 @@ async function createMapserverConfigurationFile(objects) {
             })
         }
 
-        await fsp.writeFile(tileIndexTempFile, JSON.stringify(tileIndexGeoJson, null, 2));
-
-        chp.execSync(`ogr2ogr -f "ESRI Shapefile" -overwrite ${tileIndexFile} ${tileIndexTempFile}`);
-        // chp.execSync(`ogrinfo -dialect sqlite -sql 'UPDATE "${path.parse(tileIndexFile).name}" SET acquired = substr(acquired, 2)' ${tileIndexFile}`);
-
-        await fsp.unlink(tileIndexTempFile);
+        await fsp.writeFile(tileIndexGeoJSON, JSON.stringify(tileIndexGeoJson, null, 2));
 
         availableTimes = availableTimes.sort();
 
-        let wmsTimeExtent = `${minTime}/${maxTime}/P1D`;
-        if (type.startsWith("slb_")) {
-            wmsTimeExtent = `${availableTimes.join(",")}`;
-        }
+        // let wmsTimeExtent = `${minTime}/${maxTime}/P1D`;
+        // if (type.startsWith("slb_")) {
+        //     wmsTimeExtent = `${availableTimes.join(",")}`;
+        // }
+        let wmsTimeExtent = `${availableTimes.join(",")}`;
+
+        mapserverConf.layer.push({
+            name: `SAMAS-TIME-${type}-index`,
+            status: "OFF",
+            type: "POLYGON",
+            connectiontype: "OGR",
+            connection: path.parse(tileIndexGeoJSON).base,
+            data: `SAMAS-TIME-${type}`,
+            projection: ["init=EPSG:5514"],
+            class: {
+                style: {
+                    outlinecolor: [0, 0, 0]
+                }
+            },
+            metadata: {
+                wms_title: `SAMAS-TIME-${type}-index`,
+                wms_srs: "EPSG:5514"
+            }
+        })
 
         mapserverConf.layer.push({
             name: `SAMAS-TIME-${type}`,
             status: "ON",
             type: "RASTER",
-            tileindex: tileIndexFile,
+            tileindex: `SAMAS-TIME-${type}-index`,
             tileitem: "location",
             tilesrs: "src_srs",
             projection: ["init=EPSG:5514"],
@@ -293,11 +357,52 @@ async function createMapserverConfigurationFile(objects) {
                 wms_timedefault: maxTime
             }
         })
+
+        mapproxyConf.sources[`source_SAMAS-TIME-${type}`] = {
+            type: "wms",
+            supported_srs: ["EPSG:5514"],
+            forward_req_params: ["TIME"],
+            req: {
+                url: "http://mapserver:80/service",
+                layers: `SAMAS-TIME-${type}`,
+                map: `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.map`,
+                transparent: true
+            }
+        }
+
+        mapproxyConf.caches[`cache_SAMAS-TIME-${type}`] = {
+            format: "mixed",
+            request_format: "image/png",
+            grids: ["krovak"],
+            sources: [`source_SAMAS-TIME-${type}`],
+            link_single_color_images: true,
+            minimize_meta_requests: true,
+            // upscale_tiles: 1,
+            // downscale_tiles: 1,
+            image: {
+                resampling_method: "bicubic"
+            }
+        }
+
+        mapproxyConf.layers.push({
+            name: `SAMAS-TIME-${type}`,
+            title: `SAMAS-TIME-${type}`,
+            sources: [`cache_SAMAS-TIME-${type}`],
+            dimensions: {
+                time: {
+                    values: availableTimes,
+                    default: maxTime
+                }
+            }
+        })
     }
 
     const mapFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.map`;
+    const mapproxyConfFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.yaml`;
 
     await fsp.writeFile(mapFile, mapserver.getMapfileString(mapserverConf));
+    await fsp.writeFile(mapproxyConfFile, mapproxy.getMapproxyYamlString(mapproxyConf));
+
     console.log(`#SAMAS" Map service > WMS definitions updated`);
 }
 
@@ -516,8 +621,14 @@ async function runPreviews() {
 
     process.stdout.write("Done!\n\r");
 
+    const nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.limit || 3);
+
     const currentObjects = await getCurrectObjects();
-    const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
+    // const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
+    const updatedObjects = await saveObjectsToLocalStorage(
+        await getUpdatedS3Objects(nextObjectsLimited, currentObjects)
+    );
+
 
     if (Object.keys(updatedObjects).length) {
         await saveUpdatedObjects(updatedObjects, currentObjects);
@@ -551,6 +662,7 @@ async function runSlbHm() {
     process.stdout.write("Done!\n\r");
 
     const currentObjects = await getCurrectObjects();
+    // const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
     const updatedObjects = await saveObjectsToLocalStorage(
         await getUpdatedS3Objects(nextObjects, currentObjects)
     );
@@ -569,6 +681,7 @@ async function runSlbMulticrop() {
     process.stdout.write("Done!\n\r");
 
     const currentObjects = await getCurrectObjects();
+    // const updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
     const updatedObjects = await saveObjectsToLocalStorage(
         await getUpdatedS3Objects(nextObjects, currentObjects)
     );
