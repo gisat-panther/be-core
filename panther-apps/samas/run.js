@@ -363,7 +363,7 @@ async function createMapserverConfigurationFile(objects) {
             supported_srs: ["EPSG:5514"],
             forward_req_params: ["TIME"],
             req: {
-                url: "http://mapserver:80/service",
+                url: config.projects.samas.sources.mapserverUrl,
                 layers: `SAMAS-TIME-${type}`,
                 map: `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.map`,
                 transparent: true
