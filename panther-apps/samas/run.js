@@ -381,6 +381,11 @@ async function createMapserverConfigurationFile(objects) {
             // downscale_tiles: 1,
             image: {
                 resampling_method: "bicubic"
+            },
+            cache: {
+                type: "file",
+                directory: `${config.projects.samas.paths.mapproxyCache}/SAMAS-TIME-${type}`,
+                tile_lock_dir: `${config.projects.samas.paths.mapproxyCache}/SAMAS-TIME-${type}-locks`,
             }
         }
 
