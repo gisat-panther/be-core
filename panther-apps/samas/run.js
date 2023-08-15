@@ -249,7 +249,7 @@ async function createMapserverConfigurationFile(objects) {
         let availableTimes = [];
 
         for (const object of typeIndexes) {
-            let location;
+            let location, timeString, fid;
 
             if (object.localPath) {
                 location = object.localPath;
@@ -258,11 +258,18 @@ async function createMapserverConfigurationFile(objects) {
             }
 
             const momentTime = products[type].time(path.parse(object.Key).name);
-            // let timeString = momentTime.format("YYYY-MM-DDT00:00:00");
-            let timeString = momentTime.format();
-            if (type.startsWith("slb_")) {
-                timeString = momentTime.format("YYYY-MM");
+
+            if (!config.projects.samas.useLegacyFormat) {
+                timeString = momentTime.format();
+            } else {
+                timeString = momentTime.format("YYYY-MM-DD");
+
+                if (type.startsWith("slb_")) {
+                    timeString = momentTime.format("YYYY-MM");
+                }
             }
+
+            fid = `${type}-${timeString.replace(/:|-/g, "")}`;
 
             availableTimes.push(timeString);
 
@@ -308,6 +315,7 @@ async function createMapserverConfigurationFile(objects) {
                 type: "Feature",
                 geometry: geom,
                 properties: {
+                    fid,
                     location,
                     acquired: timeString,
                     src_srs: object.srs
@@ -319,9 +327,9 @@ async function createMapserverConfigurationFile(objects) {
 
         availableTimes = availableTimes.sort();
 
-        let wmsTimeExtent = [`${minTime}/${maxTime}/P1D`];
-        if (type.startsWith("slb_")) {
-            wmsTimeExtent = availableTimes;
+        let wmsTimeExtent = availableTimes.join(",");
+        if (config.projects.samas.useLegacyFormat && !type.startsWith("slb_")) {
+            wmsTimeExtent = [`${minTime}/${maxTime}/P1D`];
         }
 
         mapserverConf.layer.push({
@@ -405,7 +413,7 @@ async function createMapserverConfigurationFile(objects) {
 
             mapproxySeedConf.coverages[`${type}-${formatedTime}`] = {
                 datasource: tileIndexGeoJSON,
-                where: `acquired = '${time}'`,
+                where: `fid = '${type}-${formatedTime}'`,
                 srs: "EPSG:5514"
             }
 
@@ -459,7 +467,7 @@ async function createMapserverConfigurationFile(objects) {
             sources: [`cache_SAMAS-TIME-${type}`],
             dimensions: {
                 time: {
-                    values: wmsTimeExtent,
+                    values: availableTimes,
                     default: maxTime
                 }
             }
