@@ -188,7 +188,8 @@ async function createMapserverConfigurationFile(objects) {
             wms: {
                 srs: ["EPSG:5514"],
                 bbox_srs: ["EPSG:5514"],
-                image_formats: ["image/png", "image/jpeg", "image/tiff"]
+                image_formats: ["image/png", "image/jpeg", "image/tiff"],
+                md: {}
             }
         },
         grids: {
@@ -211,7 +212,7 @@ async function createMapserverConfigurationFile(objects) {
 
     if (wmsOnlineresourceUrl) {
         mapserverConf.web.metadata.wms_onlineresource = wmsOnlineresourceUrl
-        mapproxyConf.services.wms.online_resource = wmsOnlineresourceUrl
+        mapproxyConf.services.wms.md.online_resource = wmsOnlineresourceUrl
     }
 
     for (const [key, object] of Object.entries(objects)) {
