@@ -404,7 +404,6 @@ async function createMapserverConfigurationFile(objects) {
                 cache: {
                     type: "file",
                     directory_layout: "tms",
-                    use_grid_names: true,
                     directory: `${config.projects.samas.paths.mapproxyCache}/SAMAS-MapService/cache_SAMAS-TIME-${type}/krovak/time-${time}`
                 }
             }
@@ -451,11 +450,10 @@ async function createMapserverConfigurationFile(objects) {
                     quantizer: "fastoctree"
                 }
             },
-            cache_dir: `${config.projects.samas.paths.mapproxyCache}/SAMAS-MapService`,
             cache: {
                 type: "file",
                 directory_layout: "tms",
-                use_grid_names: true
+                directory: `${config.projects.samas.paths.mapproxyCache}/SAMAS-MapService/cache_SAMAS-TIME-${type}/krovak/`
             }
         }
 
