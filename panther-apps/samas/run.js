@@ -183,8 +183,6 @@ async function createMapserverConfigurationFile(objects) {
     const mapproxyConf = {
         services: {
             demo: {},
-            wmts: {
-            },
             wms: {
                 srs: ["EPSG:5514"],
                 bbox_srs: ["EPSG:5514"],
@@ -595,11 +593,11 @@ async function runPreviews() {
     const currentObjects = await getCurrectObjects();
 
     let nextObjectsLimited, updatedObjects;
-    if (config.projects.samas.limit && config.projects.samas.limit != -1) {
-        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.limit || 3);
+    if (config.projects.samas.products.previews.limit && config.projects.samas.products.previews.limit != -1) {
+        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.products.previews.limit || 3);
     }
 
-    if (config.projects.samas.useLocalStorage) {
+    if (config.projects.samas.products.previews.localStorage) {
         updatedObjects = await saveObjectsToLocalStorage(
             await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects)
         );
@@ -626,6 +624,8 @@ async function saveObjectsToLocalStorage(objects) {
 
         const response = await s3Client.send(getObjectCommand);
         await fsp.writeFile(object.localPath, response.Body);
+
+        console.log(`#SAMAS# Map service > ${object.Key} has been saved to local storage.`);
     }
 
     return objects;
@@ -640,13 +640,17 @@ async function runSlbHm() {
 
     const currentObjects = await getCurrectObjects();
 
-    let updatedObjects;
-    if (config.projects.samas.useLocalStorage) {
+    let nextObjectsLimited, updatedObjects;
+    if (config.projects.samas.products.slb_hm.limit && config.projects.samas.products.slb_hm.limit != -1) {
+        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.products.slb_hm.limit || 3);
+    }
+
+    if (config.projects.samas.products.slb_hm.localStorage) {
         updatedObjects = await saveObjectsToLocalStorage(
-            await getUpdatedS3Objects(nextObjects, currentObjects)
+            await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects)
         );
     } else {
-        updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
+        updatedObjects = await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects);
     }
 
     if (Object.keys(updatedObjects).length) {
@@ -664,13 +668,17 @@ async function runSlbMulticrop() {
 
     const currentObjects = await getCurrectObjects();
 
-    let updatedObjects;
-    if (config.projects.samas.useLocalStorage) {
+    let nextObjectsLimited, updatedObjects;
+    if (config.projects.samas.products.slb_multicrop.limit && config.projects.samas.products.slb_multicrop.limit != -1) {
+        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.products.slb_multicrop.limit || 3);
+    }
+
+    if (config.projects.samas.products.slb_multicrop.localStorage) {
         updatedObjects = await saveObjectsToLocalStorage(
-            await getUpdatedS3Objects(nextObjects, currentObjects)
+            await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects)
         );
     } else {
-        updatedObjects = await getUpdatedS3Objects(nextObjects, currentObjects);
+        updatedObjects = await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects);
     }
 
     if (Object.keys(updatedObjects).length) {
@@ -695,9 +703,18 @@ async function checkDataAccessibility(objects) {
 }
 
 async function run() {
-    await runPreviews();
-    await runSlbHm();
-    await runSlbMulticrop();
+    if (config.projects.samas.products.previews.enabled) {
+        await runPreviews();
+    }
+
+    if (config.projects.samas.products.slb_hm.enabled) {
+        await runSlbHm();
+    }
+
+    if (config.projects.samas.products.slb_multicrop.enabled) {
+        await runSlbMulticrop();
+    }
+    
     // await checkDataAccessibility(await getCurrectObjects());
 
     if (updates) {

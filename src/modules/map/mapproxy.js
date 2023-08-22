@@ -49,7 +49,7 @@ function getMapproxySeedYamlString({ seeds = {}, coverages = {}, cleanups = {} }
     const mapproxyConfig = {
         seeds,
         cleanups,
-        coverages,
+        coverages
     };
 
     return yaml.stringify(mapproxyConfig);
