@@ -395,13 +395,9 @@ async function createMapserverConfigurationFile(objects) {
                 link_single_color_images: true,
                 use_direct_from_level: 8,
                 image: {
-                    mode: "RGBA",
+                    mode: "P",
                     colors: 0,
-                    transparent: true,
-                    encoding_options: {
-                        jpeg_quality: 50,
-                        quantizer: "fastoctree"
-                    }
+                    transparent: true
                 },
                 cache: {
                     type: "file",
@@ -447,13 +443,9 @@ async function createMapserverConfigurationFile(objects) {
             link_single_color_images: true,
             use_direct_from_level: 8,
             image: {
-                mode: "RGBA",
+                mode: "P",
                 colors: 0,
-                transparent: true,
-                encoding_options: {
-                    jpeg_quality: 50,
-                    quantizer: "fastoctree"
-                }
+                transparent: true
             },
             cache: {
                 type: "file",
