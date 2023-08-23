@@ -388,16 +388,18 @@ async function createMapserverConfigurationFile(objects) {
             }
 
             mapproxyConf.caches[`cache_SAMAS-TIME-${type}-${formatedTime}`] = {
-                format: "png",
+                format: "mixed",
                 request_format: "image/png",
                 grids: ["krovak"],
                 sources: [`source_SAMAS-TIME-${type}-${formatedTime}`],
                 link_single_color_images: true,
                 use_direct_from_level: 8,
                 image: {
-                    mode: "P",
-                    colors: 0,
-                    transparent: true
+                    transparent: true,
+                    encoding_options: {
+                        jpeg_quality: 50,
+                        quantizer: "fastoctree"
+                    }
                 },
                 cache: {
                     type: "file",
@@ -436,16 +438,18 @@ async function createMapserverConfigurationFile(objects) {
         }
 
         mapproxyConf.caches[`cache_SAMAS-TIME-${type}`] = {
-            format: "png",
+            format: "mixed",
             request_format: "image/png",
             grids: ["krovak"],
             sources: [`source_SAMAS-TIME-${type}`],
             link_single_color_images: true,
             use_direct_from_level: 8,
             image: {
-                mode: "P",
-                colors: 0,
-                transparent: true
+                transparent: true,
+                encoding_options: {
+                    jpeg_quality: 50,
+                    quantizer: "fastoctree"
+                }
             },
             cache: {
                 type: "file",
