@@ -105,7 +105,14 @@ async function getNextObjectsLimited(objects, limit) {
         }
     })
 
-    return sortedObjects.slice(0, limit);
+    const limitDate = moment().subtract(limit, 'days');
+    return sortedObjects.filter((object) => {
+        const filename = path.parse(object.Key).name;
+        const [date, type] = filename.split("_");
+        const fileDate = moment(date);
+
+        return fileDate.isAfter(limitDate) || fileDate.isSame(limitDate);
+    });
 }
 
 async function getCurrectObjects() {
@@ -205,7 +212,8 @@ async function createMapserverConfigurationFile(objects) {
 
     const mapproxySeedConf = {
         coverages: {},
-        seeds: {}
+        seeds: {},
+        cleanups: {}
     }
 
     if (wmsOnlineresourceUrl) {
@@ -269,7 +277,7 @@ async function createMapserverConfigurationFile(objects) {
 
             fid = `${type}-${timeString.replace(/:|-/g, "")}`;
 
-            availableTimes.push(timeString);
+            availableTimes.push({ time: timeString, lastModified: moment().utc(object.lastModified).format("YYYY-MM-DDTHH:mm:ss") });
 
             if (!minTime || moment(minTime).isAfter(momentTime)) {
                 minTime = timeString;
@@ -323,9 +331,17 @@ async function createMapserverConfigurationFile(objects) {
 
         await fsp.writeFile(tileIndexGeoJSON, JSON.stringify(tileIndexGeoJson, null, 2));
 
-        availableTimes = availableTimes.sort();
+        availableTimes = availableTimes.sort((a, b) => {
+            if (a.time > b.time) {
+                return 1;
+            } else if (a.time < b.time) {
+                return -1;
+            } else {
+                return 0;
+            }
+        });
 
-        let wmsTimeExtent = availableTimes.join(",");
+        let wmsTimeExtent = availableTimes.map(({ time, lastModified }) => time).join(",");
         if (config.projects.samas.useLegacyFormat && !type.startsWith("slb_")) {
             wmsTimeExtent = [`${minTime}/${maxTime}/P1D`];
         }
@@ -371,7 +387,7 @@ async function createMapserverConfigurationFile(objects) {
             }
         })
 
-        for (const time of availableTimes) {
+        for (const { time, lastModified } of availableTimes) {
             const formatedTime = time.replace(/:|-/g, "");
             mapproxyConf.sources[`source_SAMAS-TIME-${type}-${formatedTime}`] = {
                 type: "wms",
@@ -418,8 +434,19 @@ async function createMapserverConfigurationFile(objects) {
                 coverages: [`${type}-${formatedTime}`],
                 caches: [`cache_SAMAS-TIME-${type}-${formatedTime}`],
                 grids: ["krovak"],
+                refresh_before: {
+                    time: lastModified
+                },
                 levels: {
                     to: 8
+                }
+            }
+
+            mapproxySeedConf.cleanups[`SAMAS-TIME-${type}-${formatedTime}`] = {
+                caches: [`cache_SAMAS-TIME-${type}-${formatedTime}`],
+                grids: ["krovak"],
+                remove_before: {
+                    time: lastModified
                 }
             }
         }
@@ -464,7 +491,7 @@ async function createMapserverConfigurationFile(objects) {
             sources: [`cache_SAMAS-TIME-${type}`],
             dimensions: {
                 time: {
-                    values: availableTimes,
+                    values: availableTimes.map(({ time }) => time),
                     default: maxTime
                 }
             }

@@ -52,7 +52,7 @@ function getMapproxySeedYamlString({ seeds = {}, coverages = {}, cleanups = {} }
         coverages
     };
 
-    return yaml.stringify(mapproxyConfig);
+    return yaml.stringify(mapproxyConfig, { version: '1.1' });
 }
 
 module.exports = {
