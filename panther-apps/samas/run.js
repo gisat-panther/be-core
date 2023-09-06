@@ -4,12 +4,11 @@ const { execSync } = require('node:child_process');
 const { S3Client, ListObjectsCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const uuidByString = require('uuid-by-string');
 const moment = require('moment');
-const chp = require('child_process');
+const axios = require('axios');
 
 const config = require('../../config');
 const mapserver = require('../../src/modules/map/mapserver');
 const mapproxy = require('../../src/modules/map/mapproxy');
-const { exit } = require('node:process');
 
 const { SAMAS_WMS_ONLINERESOURCE: wmsOnlineresourceUrl } = process.env;
 
@@ -69,7 +68,7 @@ const products = {
     }
 }
 
-let updates = 0;
+let updatedObjectKeys = [];
 
 async function getS3Objects(prefix, objects = [], nextMarker) {
     const command = new ListObjectsCommand({ Bucket: config.projects.samas.s3.bucket, Prefix: prefix, Marker: nextMarker, MaxKeys: 100 });
@@ -163,7 +162,7 @@ async function getUpdatedS3Objects(nextObjects, currentObjects) {
     return updatedObjects
 }
 
-async function createMapserverConfigurationFile(objects) {
+async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
     const indexes = {};
     const mapserverConf = {
         name: "SAMAS-MapService",
@@ -235,6 +234,8 @@ async function createMapserverConfigurationFile(objects) {
         }
     }
 
+    const reCacheTasks = [];
+
     for (const type of Object.keys(products)) {
         const typeIndexes = indexes[type];
         const tileIndexGeoJson = {
@@ -277,7 +278,13 @@ async function createMapserverConfigurationFile(objects) {
 
             fid = `${type}-${timeString.replace(/:|-/g, "")}`;
 
-            availableTimes.push({ time: timeString, lastModified: moment().utc(object.lastModified).format("YYYY-MM-DDTHH:mm:ss") });
+            availableTimes.push(
+                {
+                    time: timeString,
+                    lastModified: moment().utc(object.lastModified).format("YYYY-MM-DDTHH:mm:ss"),
+                    reCache: updatedObjectKeys.includes(object.Key)
+                }
+            );
 
             if (!minTime || moment(minTime).isAfter(momentTime)) {
                 minTime = timeString;
@@ -387,7 +394,7 @@ async function createMapserverConfigurationFile(objects) {
             }
         })
 
-        for (const { time, lastModified } of availableTimes) {
+        for (const { time, lastModified, reCache } of availableTimes) {
             const formatedTime = time.replace(/:|-/g, "");
             mapproxyConf.sources[`source_SAMAS-TIME-${type}-${formatedTime}`] = {
                 type: "wms",
@@ -395,7 +402,7 @@ async function createMapserverConfigurationFile(objects) {
                 forward_req_params: ["TIME"],
                 seed_only: false,
                 req: {
-                    url: config.projects.samas.sources.mapserverUrl,
+                    url: config.projects.samas.paths.mapserverUrl,
                     layers: `SAMAS-TIME-${type}`,
                     map: `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.map`,
                     transparent: true,
@@ -449,6 +456,11 @@ async function createMapserverConfigurationFile(objects) {
                     time: lastModified
                 }
             }
+
+            if (reCache) {
+                reCacheTasks.push(`seed/SAMAS-MapService.yaml/SAMAS-MapService.seed.yaml/SAMAS-TIME-${type}-${formatedTime}`);
+                reCacheTasks.push(`cleanup/SAMAS-MapService.yaml/SAMAS-MapService.seed.yaml/SAMAS-TIME-${type}-${formatedTime}`);
+            }
         }
 
         mapproxyConf.sources[`source_SAMAS-TIME-${type}`] = {
@@ -457,7 +469,7 @@ async function createMapserverConfigurationFile(objects) {
             forward_req_params: ["TIME"],
             seed_only: false,
             req: {
-                url: config.projects.samas.sources.mapserverUrl,
+                url: config.projects.samas.paths.mapserverUrl,
                 layers: `SAMAS-TIME-${type}`,
                 map: `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.map`,
                 transparent: true
@@ -500,15 +512,25 @@ async function createMapserverConfigurationFile(objects) {
 
     const mapFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.map`;
     const mapproxyConfFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.yaml`;
-    const mapproxySeedConfFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.seed.yaml`;
+    const mapproxySeedConfFile = `${config.projects.samas.paths.mapproxySeed || config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.seed.yaml`;
 
     await fsp.writeFile(mapFile, mapserver.getMapfileString(mapserverConf));
     await fsp.writeFile(mapproxyConfFile, mapproxy.getMapproxyYamlString(mapproxyConf));
     await fsp.writeFile(mapproxySeedConfFile, mapproxy.getMapproxySeedYamlString(mapproxySeedConf));
 
-    console.log(`#SAMAS" Map service > WMS definitions updated`);
+    console.log(`#SAMAS# Map service > WMS definitions updated`);
+
+    if (reCacheTasks.length) {
+        await addReCacheTasksToQueue(reCacheTasks);
+    }
 }
 
+async function addReCacheTasksToQueue(reCacheTasks) {
+    for (const task of reCacheTasks) {
+        await axios.get(`${config.projects.samas.paths.mapproxySeedApi}/${task}`).catch((error) => {});
+        console.log(`#SAMAS# Map service > MapProxy api called -> ${task}`);
+    }
+}
 
 function getGdalInfo({ key, path }) {
     try {
@@ -633,7 +655,7 @@ async function runPreviews() {
 
     if (Object.keys(updatedObjects).length) {
         await saveUpdatedObjects(updatedObjects, currentObjects);
-        updates += Object.keys(updatedObjects).length;
+        updatedObjectKeys = updatedObjectKeys.concat(Object.entries(updatedObjects).map(([key, object]) => object.Key));
     }
 }
 
@@ -681,7 +703,7 @@ async function runSlbHm() {
 
     if (Object.keys(updatedObjects).length) {
         await saveUpdatedObjects(updatedObjects, currentObjects);
-        updates += Object.keys(updatedObjects).length;
+        updatedObjectKeys = updatedObjectKeys.concat(Object.entries(updatedObjects).map(([key, object]) => object.Key));
     }
 }
 
@@ -709,7 +731,7 @@ async function runSlbMulticrop() {
 
     if (Object.keys(updatedObjects).length) {
         await saveUpdatedObjects(updatedObjects, currentObjects);
-        updates += Object.keys(updatedObjects).length;
+        updatedObjectKeys = updatedObjectKeys.concat(Object.entries(updatedObjects).map(([key, object]) => object.Key));
     }
 }
 
@@ -743,9 +765,9 @@ async function run() {
 
     // await checkDataAccessibility(await getCurrectObjects());
 
-    if (updates) {
-        console.log(`#SAMAS# Map service > ${updates} products were updated. Recreating mapserver configuration files.`)
-        await createMapserverConfigurationFile(await getCurrectObjects());
+    if (updatedObjectKeys) {
+        console.log(`#SAMAS# Map service > ${updatedObjectKeys.length} products were updated. Recreating mapserver configuration files.`)
+        await createMapserverConfigurationFile(await getCurrectObjects(), updatedObjectKeys);
     }
 }
 
