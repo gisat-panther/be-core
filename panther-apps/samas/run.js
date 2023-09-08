@@ -281,7 +281,7 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
             availableTimes.push(
                 {
                     time: timeString,
-                    lastModified: moment().utc(object.lastModified).format("YYYY-MM-DDTHH:mm:ss"),
+                    lastModified: moment.utc(object.lastModified).format("YYYY-MM-DDTHH:mm:ss"),
                     reCache: updatedObjectKeys.includes(object.Key)
                 }
             );
@@ -348,7 +348,7 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
             }
         });
 
-        let wmsTimeExtent = availableTimes.map(({ time, lastModified }) => time).join(",");
+        let wmsTimeExtent = availableTimes.map(({ time }) => time).join(",");
         if (config.projects.samas.useLegacyFormat && !type.startsWith("slb_")) {
             wmsTimeExtent = [`${minTime}/${maxTime}/P1D`];
         }
@@ -458,8 +458,11 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
             }
 
             if (reCache) {
-                reCacheTasks.push(`seed/SAMAS-MapService.yaml/SAMAS-MapService.seed.yaml/SAMAS-TIME-${type}-${formatedTime}`);
-                reCacheTasks.push(`cleanup/SAMAS-MapService.yaml/SAMAS-MapService.seed.yaml/SAMAS-TIME-${type}-${formatedTime}`);
+                reCacheTasks.push({
+                    time: lastModified,
+                    seed: `seed/SAMAS-MapService.yaml/SAMAS-MapService.seed.yaml/SAMAS-TIME-${type}-${formatedTime}`,
+                    cleanup: `cleanup/SAMAS-MapService.yaml/SAMAS-MapService.seed.yaml/SAMAS-TIME-${type}-${formatedTime}`
+                });
             }
         }
 
@@ -526,9 +529,22 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
 }
 
 async function addReCacheTasksToQueue(reCacheTasks) {
+    reCacheTasks.sort((a, b) => {
+        if (a.time < b.time) {
+            return 1;
+        } else if (a.time > b.time) {
+            return -1;
+        } else {
+            return 0
+        }
+    });
+
     for (const task of reCacheTasks) {
-        await axios.get(`${config.projects.samas.paths.mapproxySeedApi}/${task}`).catch((error) => {});
-        console.log(`#SAMAS# Map service > MapProxy api called -> ${task}`);
+        await axios.get(`${config.projects.samas.paths.mapproxySeedApi}/${task.seed}`).catch((error) => { });
+        console.log(`#SAMAS# Map service > MapProxy api called -> ${task.seed}`);
+
+        await axios.get(`${config.projects.samas.paths.mapproxySeedApi}/${task.cleanup}`).catch((error) => { });
+        console.log(`#SAMAS# Map service > MapProxy api called -> ${task.cleanup}`);
     }
 }
 
