@@ -5,6 +5,7 @@ const { S3Client, ListObjectsCommand, GetObjectCommand } = require('@aws-sdk/cli
 const uuidByString = require('uuid-by-string');
 const moment = require('moment');
 const axios = require('axios');
+const schedule = require('node-schedule');
 
 const config = require('../../config');
 const mapserver = require('../../src/modules/map/mapserver');
@@ -67,8 +68,6 @@ const products = {
         }
     }
 }
-
-let updatedObjectKeys = [];
 
 async function getS3Objects(prefix, objects = [], nextMarker) {
     const command = new ListObjectsCommand({ Bucket: config.projects.samas.s3.bucket, Prefix: prefix, Marker: nextMarker, MaxKeys: 100 });
@@ -459,7 +458,7 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
 
             if (reCache) {
                 reCacheTasks.push({
-                    time: lastModified,
+                    time,
                     seed: `seed/SAMAS-MapService.yaml/SAMAS-MapService.seed.yaml/SAMAS-TIME-${type}-${formatedTime}`,
                     cleanup: `cleanup/SAMAS-MapService.yaml/SAMAS-MapService.seed.yaml/SAMAS-TIME-${type}-${formatedTime}`
                 });
@@ -520,8 +519,6 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
     await fsp.writeFile(mapFile, mapserver.getMapfileString(mapserverConf));
     await fsp.writeFile(mapproxyConfFile, mapproxy.getMapproxyYamlString(mapproxyConf));
     await fsp.writeFile(mapproxySeedConfFile, mapproxy.getMapproxySeedYamlString(mapproxySeedConf));
-
-    console.log(`#SAMAS# Map service > WMS definitions updated`);
 
     if (reCacheTasks.length) {
         await addReCacheTasksToQueue(reCacheTasks);
@@ -671,7 +668,9 @@ async function runPreviews() {
 
     if (Object.keys(updatedObjects).length) {
         await saveUpdatedObjects(updatedObjects, currentObjects);
-        updatedObjectKeys = updatedObjectKeys.concat(Object.entries(updatedObjects).map(([key, object]) => object.Key));
+        return Object.entries(updatedObjects).map(([key, object]) => object.Key);
+    } else {
+        return [];
     }
 }
 
@@ -719,7 +718,9 @@ async function runSlbHm() {
 
     if (Object.keys(updatedObjects).length) {
         await saveUpdatedObjects(updatedObjects, currentObjects);
-        updatedObjectKeys = updatedObjectKeys.concat(Object.entries(updatedObjects).map(([key, object]) => object.Key));
+        return Object.entries(updatedObjects).map(([key, object]) => object.Key);
+    } else {
+        return [];
     }
 }
 
@@ -747,7 +748,9 @@ async function runSlbMulticrop() {
 
     if (Object.keys(updatedObjects).length) {
         await saveUpdatedObjects(updatedObjects, currentObjects);
-        updatedObjectKeys = updatedObjectKeys.concat(Object.entries(updatedObjects).map(([key, object]) => object.Key));
+        return Object.entries(updatedObjects).map(([key, object]) => object.Key);
+    } else {
+        return [];
     }
 }
 
@@ -767,24 +770,48 @@ async function checkDataAccessibility(objects) {
 }
 
 async function run() {
+    let updatedObjectKeys = [];
+
     if (config.projects.samas.products.previews.enabled) {
-        await runPreviews();
+        updatedObjectKeys = updatedObjectKeys.concat(await runPreviews());
     }
 
     if (config.projects.samas.products.slb_hm.enabled) {
-        await runSlbHm();
+        updatedObjectKeys = updatedObjectKeys.concat(await runSlbHm());
     }
 
     if (config.projects.samas.products.slb_multicrop.enabled) {
-        await runSlbMulticrop();
+        updatedObjectKeys = updatedObjectKeys.concat(await runSlbMulticrop());
     }
 
     // await checkDataAccessibility(await getCurrectObjects());
 
-    if (updatedObjectKeys) {
+    if (updatedObjectKeys.length) {
         console.log(`#SAMAS# Map service > ${updatedObjectKeys.length} products were updated. Recreating mapserver configuration files.`)
         await createMapserverConfigurationFile(await getCurrectObjects(), updatedObjectKeys);
     }
 }
 
-run();
+async function init() {
+    console.log(`#SAMAS# Map service > Scheduler set to "${config.projects.samas.schedule || "0 0 * * * *"}".`);
+
+    let running = false;
+    schedule.scheduleJob(config.projects.samas.schedule || "0 0 * * * *", () => {
+        if (running) return;
+
+        console.log(`#SAMAS# Map service > Checking for new products.`);
+
+        running = true;
+        run()
+            .catch((error) => {
+                console.log(error);
+                console.log(`#SAMAS# Map service > Checking for new products failed!`);
+            })
+            .finally(() => {
+                console.log(`#SAMAS# Map service > Checking for new products is done!`)
+                running = false;
+            });
+    })
+}
+
+init();
