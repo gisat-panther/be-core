@@ -30,42 +30,48 @@ const products = {
         time: (filename) => {
             const dateStr = filename.split("_")[0];
             return moment.utc(dateStr).startOf('day');
-        }
+        },
+        config: config.projects.samas.products.previews
     },
     nir_pseudocolor: {
         match: (filename) => filename.endsWith("_nir_pseudocolor"),
         time: (filename) => {
             const dateStr = filename.split("_")[0];
             return moment.utc(dateStr).startOf('day');
-        }
+        },
+        config: config.projects.samas.products.previews
     },
     true_color: {
         match: (filename) => filename.endsWith("_true_color"),
         time: (filename) => {
             const dateStr = filename.split("_")[0];
             return moment.utc(dateStr).startOf('day');
-        }
+        },
+        config: config.projects.samas.products.previews
     },
     slb_hm: {
         match: (filename) => filename.startsWith("SLB_HM"),
         time: (filename) => {
             const dateStr = filename.split("_")[2];
             return moment.utc(dateStr).startOf('day');
-        }
+        },
+        config: config.projects.samas.products.slb_hm
     },
     slb_multict_crop1: {
         match: (filename) => filename.startsWith("SLB_CT") && filename.includes("CROP1"),
         time: (filename) => {
             const dateStr = filename.split("_")[2];
             return moment.utc(dateStr).startOf('day');
-        }
+        },
+        config: config.projects.samas.products.slb_multicrop
     },
     slb_multict_crop2: {
         match: (filename) => filename.startsWith("SLB_CT") && filename.includes("CROP2"),
         time: (filename) => {
             const dateStr = filename.split("_")[2];
             return moment.utc(dateStr).startOf('day');
-        }
+        },
+        config: config.projects.samas.products.slb_multicrop
     }
 }
 
@@ -505,7 +511,7 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
             sources: [`cache_SAMAS-TIME-${type}`],
             dimensions: {
                 time: {
-                    values: availableTimes.map(({ time }) => time),
+                    values: products[type].config.latestOnly ? [maxTime] : availableTimes.map(({ time }) => time),
                     default: maxTime
                 }
             }
