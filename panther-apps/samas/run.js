@@ -242,6 +242,11 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
     const reCacheTasks = [];
 
     for (const type of Object.keys(products)) {
+        if (!products[type].config.enabled) {
+            // Skip iteration
+            continue;
+        }
+
         const typeIndexes = indexes[type];
         const tileIndexGeoJson = {
             type: "FeatureCollection",
