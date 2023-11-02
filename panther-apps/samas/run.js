@@ -1,4 +1,5 @@
 const fsp = require('node:fs/promises');
+const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 const { S3Client, ListObjectsCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
@@ -227,6 +228,8 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
 
     for (const [key, object] of Object.entries(objects)) {
         for (const type of Object.keys(products)) {
+            if (!products[type].config.enabled) continue;
+
             const filename = path.parse(object.Key).name;
 
             if (!indexes[type]) {
@@ -239,15 +242,30 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
         }
     }
 
-    const reCacheTasks = [];
+    for (const [type, typeIndexes] of Object.entries(indexes)) {
+        if (!products[type].config.latestOnly) continue;
 
-    for (const type of Object.keys(products)) {
-        if (!products[type].config.enabled) {
-            // Skip iteration
-            continue;
+        let lastIndex;
+
+        for (const typeIndex of typeIndexes) {
+            if (!lastIndex || lastIndex.Key < typeIndex.Key) {
+                lastIndex = typeIndex;
+            }
         }
 
+        indexes[type] = [lastIndex];
+    }
+
+    const reCacheTasks = [];
+    const cachesToKeep = [];
+
+    for (const type of Object.keys(products)) {
+        if (!products[type].config.enabled) continue;
+
         const typeIndexes = indexes[type];
+
+        if (!typeIndexes.length) continue;
+
         const tileIndexGeoJson = {
             type: "FeatureCollection",
             name: `SAMAS-TIME-${type}`,
@@ -441,6 +459,8 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
                 }
             }
 
+            cachesToKeep.push(`${config.projects.samas.paths.mapproxyCache}/SAMAS-MapService/cache_SAMAS-TIME-${type}/krovak/time-${time}`);
+
             mapproxySeedConf.coverages[`${type}-${formatedTime}`] = {
                 datasource: tileIndexGeoJSON,
                 where: `fid = '${type}-${formatedTime}'`,
@@ -516,7 +536,7 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
             sources: [`cache_SAMAS-TIME-${type}`],
             dimensions: {
                 time: {
-                    values: products[type].config.latestOnly ? [maxTime] : availableTimes.map(({ time }) => time),
+                    values: availableTimes.map(({ time }) => time),
                     default: maxTime
                 }
             }
@@ -531,12 +551,44 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
     await fsp.writeFile(mapproxyConfFile, mapproxy.getMapproxyYamlString(mapproxyConf));
     await fsp.writeFile(mapproxySeedConfFile, mapproxy.getMapproxySeedYamlString(mapproxySeedConf));
 
+    if (cachesToKeep.length) {
+        await clearUnusedCaches(cachesToKeep);
+    }
+
     if (reCacheTasks.length) {
         await addReCacheTasksToQueue(reCacheTasks);
     }
 }
 
+async function clearUnusedCaches(cachesToKeep) {
+    const baseFolders = [];
+    const protected = ["single_color_tiles", "tile_locks"];
+    for (const cacheToKeepPath of cachesToKeep) {
+        const baseFolder = cacheToKeepPath.split(path.sep).slice(0, -1).join(path.sep);
+        if (!baseFolders.includes(baseFolder)) {
+            baseFolders.push(baseFolder);
+        }
+    }
+
+    for (const baseFolder of baseFolders) {
+        const baseFolderContent = fs.readdirSync(baseFolder, { withFileTypes: true });
+        for (const dirent of baseFolderContent) {
+            const contentPath = `${dirent.path}/${dirent.name}`;
+            if (dirent.isDirectory && !protected.includes(dirent.name) && !cachesToKeep.includes(contentPath)) {
+                try {
+                    fs.rmSync(contentPath, {force: true, recursive: true});
+                    console.log(`#SAMAS# Map service > ${contentPath} was removed.`);
+                } catch(e) {
+                    console.log(`#SAMAS# Map service > Failed to remove ${contentPath}.`);
+                }
+            }
+        }
+    }
+}
+
 async function addReCacheTasksToQueue(reCacheTasks) {
+    if (!config.projects.samas.paths.mapproxySeedApi) return;
+
     reCacheTasks.sort((a, b) => {
         if (a.time < b.time) {
             return 1;
