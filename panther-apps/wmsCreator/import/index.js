@@ -8,6 +8,7 @@ const chp = require('child_process');
 const fsp = require('fs/promises');
 const fetch = require('node-fetch');
 const xml2js = require('xml-js');
+const _ = require('lodash');
 
 const mapserver = require('../../../src/modules/map/mapserver');
 const mapproxy = require('../../../src/modules/map/mapproxy');
@@ -17,6 +18,7 @@ const fsUtils = require('../../../src/util/fs');
 const config = require('../../../config');
 
 const DEFAULT_TEMPLATE = `<!-- mapserver template -->\n{\"layer\":\"[cl]\",\"x\":[x],\"y\":[y],\"value_list\":\"[value_list]\",\"class\":\"[class]\"}`;
+const WMS_SRS = ['EPSG:4326', 'EPSG:3857'];
 
 async function getFilesRecursive({ basePath, files = [] }) {
     console.log(basePath);
@@ -188,7 +190,14 @@ async function getJsonStyleFromS3(styleFileMeta, options) {
         return JSON.parse(content);
     } else if (styleFileMeta.key.endsWith(".sld")) {
         const jsonSld = xml2js.xml2js(content, { compact: true });
-        const colorMap = jsonSld.StyledLayerDescriptor.UserLayer['sld:UserStyle']['sld:FeatureTypeStyle']['sld:Rule']['sld:RasterSymbolizer']['sld:ColorMap']['sld:ColorMapEntry'].map((entry) => entry._attributes);
+
+        const colorMapSrc = jsonSld.StyledLayerDescriptor.UserLayer['sld:UserStyle']['sld:FeatureTypeStyle']['sld:Rule']['sld:RasterSymbolizer']['sld:ColorMap']['sld:ColorMapEntry'];
+        let colorMap;
+        if (Array.isArray(colorMapSrc)) {
+            colorMap = colorMapSrc.map((entry) => entry._attributes);
+        } else {
+            colorMap = [colorMapSrc._attributes];
+        }
 
         if (!colorMap) {
             console.log(`Unable to parse color map from ${styleFileMeta.key}`);
@@ -276,7 +285,7 @@ async function getMapserverOptions(s3Files, options, storage) {
 
         mapserverOptions.layers.push(layer)
 
-        console.log(`# IMPORT # ${rasterFile.path} with ${style && path.parse(style.path).name} style.`);
+        console.log(`# IMPORT # ${rasterFile.path} with ${style ? path.parse(style.path).name : "no"} style.`);
     }
 
     for (const vectorFile of vectorFiles) {
@@ -329,10 +338,15 @@ async function getMapserverOptions(s3Files, options, storage) {
         console.log(`# IMPORT # ${vectorFile.path} with ${style ? path.parse(style.path).name : "no"} style.`);
     }
 
+    const groupByEpsg = _.groupBy(mapserverOptions.layers, "_epsg");
+    const mostUsedEpsg = _.maxBy(Object.keys(groupByEpsg), value => groupByEpsg[value].length);
+
+    mapserverOptions.epsg = mostUsedEpsg;
+
     const mapfileOptions = {
         name: options.group,
         units: "dd",
-        projection: [`init=epsg:${options.epsg}`],
+        projection: [`init=epsg:${mostUsedEpsg}`],
         web: {
             metadata: {
                 "wms_enable_request": "*",
@@ -424,7 +438,7 @@ async function getMapproxyOptions(mapserverOptions, options) {
                 bbox: mapserverLayer._bbox,
                 srs: `epsg:${mapserverLayer._epsg}`
             },
-            supported_srs: [`epsg:${mapserverLayer._epsg}`],
+            supported_srs: [`epsg:${mapserverOptions.epsg}`],
             wms_opts
         }
         caches[cacheName] = {
@@ -528,7 +542,7 @@ async function createWmsConfigurationFiles(options, storage) {
                     source: layer._publicPath
                 }
             }),
-            epsg: options.epsg
+            crs: WMS_SRS
         });
     }
 
