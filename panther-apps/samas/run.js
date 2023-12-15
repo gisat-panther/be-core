@@ -14,6 +14,8 @@ const mapproxy = require('../../src/modules/map/mapproxy');
 
 const { SAMAS_WMS_ONLINERESOURCE: wmsOnlineresourceUrl } = process.env;
 
+let running = false;
+
 const s3Client = new S3Client({
     credentials: {
         accessKeyId: config.projects.samas.s3.accessKey,
@@ -145,7 +147,7 @@ async function getUpdatedS3Objects(nextObjects, currentObjects) {
     const updatedObjects = {}
 
     for (const nextObject of nextObjects) {
-        const key = uuidByString(nextObject.Key);
+        const key = nextObject.Key;
         const lastModified = moment(nextObject.LastModified).format();
         if (
             !currentObjects[key]
@@ -258,6 +260,7 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
 
     const reCacheTasks = [];
     const cachesToKeep = [];
+    const localFilesToKeep = [];
 
     for (const type of Object.keys(products)) {
         if (!products[type].config.enabled) continue;
@@ -288,6 +291,7 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
 
             if (object.localPath) {
                 location = object.localPath;
+                localFilesToKeep.push(location);
             } else {
                 location = `/vsis3/samas-mapservice/${object.Key}`;
             }
@@ -544,19 +548,44 @@ async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
     }
 
     const mapFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.map`;
-    const mapproxyConfFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.yaml`;
-    const mapproxySeedConfFile = `${config.projects.samas.paths.mapproxySeed || config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.seed.yaml`;
-
     await fsp.writeFile(mapFile, mapserver.getMapfileString(mapserverConf));
-    await fsp.writeFile(mapproxyConfFile, mapproxy.getMapproxyYamlString(mapproxyConf));
-    await fsp.writeFile(mapproxySeedConfFile, mapproxy.getMapproxySeedYamlString(mapproxySeedConf));
 
-    if (cachesToKeep.length) {
-        await clearUnusedCaches(cachesToKeep);
+    if (config.projects.samas.useMapproxy) {
+        const mapproxyConfFile = `${config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.yaml`;
+        await fsp.writeFile(mapproxyConfFile, mapproxy.getMapproxyYamlString(mapproxyConf));
+
+        const mapproxySeedConfFile = `${config.projects.samas.paths.mapproxySeed || config.projects.samas.paths.mapproxyConf}/SAMAS-MapService.seed.yaml`;
+        await fsp.writeFile(mapproxySeedConfFile, mapproxy.getMapproxySeedYamlString(mapproxySeedConf));
+
+        if (cachesToKeep.length) {
+            await clearUnusedCaches(cachesToKeep);
+        }
+
+        if (reCacheTasks.length) {
+            await addReCacheTasksToQueue(reCacheTasks);
+        }
     }
 
-    if (reCacheTasks.length) {
-        await addReCacheTasksToQueue(reCacheTasks);
+    if (config.projects.samas.removeExcesFiles && localFilesToKeep.length) {
+        await clearExcesLocalFiles(localFilesToKeep)
+    }
+}
+
+async function clearExcesLocalFiles(localFilesToKeep) {
+    const currentLocalFiles = await fsp.readdir(config.projects.samas.paths.localStorage, { withFileTypes: true, recursive: true });
+    for (const dirent of currentLocalFiles) {
+        if (
+            dirent.isFile()
+            && path.parse(dirent.name).ext.toLowerCase() === ".tif"
+            && !localFilesToKeep.includes(`${dirent.path}/${dirent.name}`)
+        ) {
+            try {
+                await fsp.unlink(`${dirent.path}/${dirent.name}`);
+                console.log(`#SAMAS# Map service > Removed exces file ${dirent.path}/${dirent.name}`, e.message);
+            } catch(e) {
+                console.log(`#SAMAS# Map service > Failed to remove exces file ${dirent.path}/${dirent.name}`, e.message);
+            }
+        }
     }
 }
 
@@ -576,9 +605,9 @@ async function clearUnusedCaches(cachesToKeep) {
             const contentPath = `${dirent.path}/${dirent.name}`;
             if (dirent.isDirectory && !protected.includes(dirent.name) && !cachesToKeep.includes(contentPath)) {
                 try {
-                    fs.rmSync(contentPath, {force: true, recursive: true});
+                    fs.rmSync(contentPath, { force: true, recursive: true });
                     console.log(`#SAMAS# Map service > ${contentPath} was removed.`);
-                } catch(e) {
+                } catch (e) {
                     console.log(`#SAMAS# Map service > Failed to remove ${contentPath}.`);
                 }
             }
@@ -684,8 +713,18 @@ async function saveUpdatedObjects(updatedObjects, currentObjects) {
             gdalInfo = await getGdalInfo({ key: object.Key });
         }
 
+        let product;
+        let filename = path.parse(key).name;
+
+        Object.entries(products).forEach(([type, options]) => {
+            if (options.match(filename)) {
+                product = type;
+            }
+        });
+
         const extendedObject = {
             ...object,
+            product,
             srs,
             gdalInfo
         }
@@ -718,10 +757,70 @@ async function runPreviews() {
 
     let nextObjectsLimited, updatedObjects;
     if (config.projects.samas.products.previews.limit && config.projects.samas.products.previews.limit != -1) {
-        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.products.previews.limit || 3);
+        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.products.previews.limit);
     }
 
     if (config.projects.samas.products.previews.localStorage) {
+        updatedObjects = await saveObjectsToLocalStorage(
+            await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects)
+        );
+    } else {
+        updatedObjects = await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects);
+    }
+
+    if (Object.keys(updatedObjects).length) {
+        await saveUpdatedObjects(updatedObjects, currentObjects);
+        return Object.entries(updatedObjects).map(([key, object]) => object.Key);
+    } else {
+        return [];
+    }
+}
+
+async function runSlbHm() {
+    process.stdout.write(`#SAMAS# Map service > Checking slb_hm`);
+
+    const nextObjects = await getS3Objects(config.projects.samas.products.slb_hm.prefix);
+
+    process.stdout.write("Done!\n\r");
+
+    const currentObjects = await getCurrectObjects();
+
+    let nextObjectsLimited, updatedObjects;
+    if (config.projects.samas.products.slb_hm.limit && config.projects.samas.products.slb_hm.limit != -1) {
+        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.products.slb_hm.limit);
+    }
+
+    if (config.projects.samas.products.slb_hm.localStorage) {
+        updatedObjects = await saveObjectsToLocalStorage(
+            await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects)
+        );
+    } else {
+        updatedObjects = await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects);
+    }
+
+    if (Object.keys(updatedObjects).length) {
+        await saveUpdatedObjects(updatedObjects, currentObjects);
+        return Object.entries(updatedObjects).map(([key, object]) => object.Key);
+    } else {
+        return [];
+    }
+}
+
+async function runSlbMulticrop() {
+    process.stdout.write(`#SAMAS# Map service > Checking slb_multicrops`);
+
+    const nextObjects = await getS3Objects(config.projects.samas.products.slb_multicrop.prefix);
+
+    process.stdout.write("Done!\n\r");
+
+    const currentObjects = await getCurrectObjects();
+
+    let nextObjectsLimited, updatedObjects;
+    if (config.projects.samas.products.slb_multicrop.limit && config.projects.samas.products.slb_multicrop.limit != -1) {
+        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.products.slb_multicrop.limit);
+    }
+
+    if (config.projects.samas.products.slb_multicrop.localStorage) {
         updatedObjects = await saveObjectsToLocalStorage(
             await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects)
         );
@@ -755,66 +854,6 @@ async function saveObjectsToLocalStorage(objects) {
     }
 
     return objects;
-}
-
-async function runSlbHm() {
-    process.stdout.write(`#SAMAS# Map service > Checking slb_hm`);
-
-    const nextObjects = await getS3Objects(config.projects.samas.products.slb_hm.prefix);
-
-    process.stdout.write("Done!\n\r");
-
-    const currentObjects = await getCurrectObjects();
-
-    let nextObjectsLimited, updatedObjects;
-    if (config.projects.samas.products.slb_hm.limit && config.projects.samas.products.slb_hm.limit != -1) {
-        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.products.slb_hm.limit || 3);
-    }
-
-    if (config.projects.samas.products.slb_hm.localStorage) {
-        updatedObjects = await saveObjectsToLocalStorage(
-            await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects)
-        );
-    } else {
-        updatedObjects = await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects);
-    }
-
-    if (Object.keys(updatedObjects).length) {
-        await saveUpdatedObjects(updatedObjects, currentObjects);
-        return Object.entries(updatedObjects).map(([key, object]) => object.Key);
-    } else {
-        return [];
-    }
-}
-
-async function runSlbMulticrop() {
-    process.stdout.write(`#SAMAS# Map service > Checking slb_multicrops`);
-
-    const nextObjects = await getS3Objects(config.projects.samas.products.slb_multicrop.prefix);
-
-    process.stdout.write("Done!\n\r");
-
-    const currentObjects = await getCurrectObjects();
-
-    let nextObjectsLimited, updatedObjects;
-    if (config.projects.samas.products.slb_multicrop.limit && config.projects.samas.products.slb_multicrop.limit != -1) {
-        nextObjectsLimited = await getNextObjectsLimited(nextObjects, config.projects.samas.products.slb_multicrop.limit || 3);
-    }
-
-    if (config.projects.samas.products.slb_multicrop.localStorage) {
-        updatedObjects = await saveObjectsToLocalStorage(
-            await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects)
-        );
-    } else {
-        updatedObjects = await getUpdatedS3Objects(nextObjectsLimited || nextObjects, currentObjects);
-    }
-
-    if (Object.keys(updatedObjects).length) {
-        await saveUpdatedObjects(updatedObjects, currentObjects);
-        return Object.entries(updatedObjects).map(([key, object]) => object.Key);
-    } else {
-        return [];
-    }
 }
 
 async function checkDataAccessibility(objects) {
@@ -851,30 +890,65 @@ async function run() {
 
     if (updatedObjectKeys.length) {
         console.log(`#SAMAS# Map service > ${updatedObjectKeys.length} products were updated. Recreating mapserver configuration files.`)
+        await removeExcesObjects();
         await createMapserverConfigurationFile(await getCurrectObjects(), updatedObjectKeys);
     }
 }
 
+async function removeExcesObjects() {
+    const currentObjects = await getCurrectObjects();
+    const currentObjectsByType = {};
+    const nextObjects = {};
+
+    for (const object of Object.values(currentObjects)) {
+        if (!currentObjectsByType[object.product]) {
+            currentObjectsByType[object.product] = [];
+        }
+
+        currentObjectsByType[object.product].push(object);
+    }
+
+    for (const [type, objects] of Object.entries(currentObjectsByType)) {
+        if (products[type].config.enabled && products[type].config.limit && products[type].config.limit != -1) {
+            currentObjectsByType[type] = await getNextObjectsLimited(objects, products[type].config.limit);
+        }
+    }
+
+    for (const objects of Object.values(currentObjectsByType)) {
+        for (const object of objects) {
+            nextObjects[object.Key] = object;
+        }
+    }
+
+    await saveObjects(nextObjects);
+}
+
+async function execute() {
+    console.log(`#SAMAS# Map service > Checking for new products.`);
+
+    running = true;
+    await run()
+        .catch((error) => {
+            console.log(error);
+            console.log(`#SAMAS# Map service > Checking for new products failed!`);
+        })
+        .finally(() => {
+            console.log(`#SAMAS# Map service > Checking for new products is done!`)
+            running = false;
+        });
+}
+
 async function init() {
-    console.log(`#SAMAS# Map service > Scheduler set to "${config.projects.samas.schedule || "0 0 * * * *"}".`);
+    if (config.projects.samas.schedule) {
+        console.log(`#SAMAS# Map service > Scheduler set to "${config.projects.samas.schedule}".`);
 
-    let running = false;
-    schedule.scheduleJob(config.projects.samas.schedule || "0 0 * * * *", () => {
-        if (running) return;
-
-        console.log(`#SAMAS# Map service > Checking for new products.`);
-
-        running = true;
-        run()
-            .catch((error) => {
-                console.log(error);
-                console.log(`#SAMAS# Map service > Checking for new products failed!`);
-            })
-            .finally(() => {
-                console.log(`#SAMAS# Map service > Checking for new products is done!`)
-                running = false;
-            });
-    })
+        schedule.scheduleJob(config.projects.samas.schedule, async () => {
+            if (running) return;
+            await execute();
+        })
+    } else {
+        await execute();
+    }
 }
 
 init();
