@@ -581,7 +581,7 @@ async function clearExcesLocalFiles(localFilesToKeep) {
         ) {
             try {
                 await fsp.unlink(`${dirent.path}/${dirent.name}`);
-                console.log(`#SAMAS# Map service > Removed exces file ${dirent.path}/${dirent.name}`, e.message);
+                console.log(`#SAMAS# Map service > Removed exces file ${dirent.path}/${dirent.name}`);
             } catch(e) {
                 console.log(`#SAMAS# Map service > Failed to remove exces file ${dirent.path}/${dirent.name}`, e.message);
             }
