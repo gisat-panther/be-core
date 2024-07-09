@@ -42,7 +42,7 @@ async function importMetadata({ file, path, user }) {
                 let records = metadata[group][type].slice(i, i + chunkSize);
                 const updateResult = await restHandler.update(group, { user, body: { data: { [type]: records } } });
                 if (updateResult.type === restResult.FORBIDDEN || updateResult.type === restResult.BAD_REQUEST) {
-                    throw new Error(`${updateResult.type} - ${group} - ${type}`);
+                    throw new Error(`Fixtures import error: ${updateResult.type} | Group: ${group} | Type: ${type} | User: ${JSON.stringify(user)}`);
                 }
             }
         }

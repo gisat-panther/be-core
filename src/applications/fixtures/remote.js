@@ -1,10 +1,13 @@
 const axios = require('axios');
+const https = require('https');
 const uuidByString = require('uuid-by-string');
 const path = require('path');
 
 const uuid = require('../../uuid');
 const s3Fixtures = require('./s3');
 const db = require('./db');
+
+const httpsAgent = new https.Agent({ rejectUnauthorized: false });
 
 const {
     createTempLocation,
@@ -53,22 +56,23 @@ async function s3({ s3, user }) {
 
         try {
             if (await db.isFileDifferent({ file, hash })) {
-                const response = await axios(`${s3.host}/${fixturesObject.Key}`, { responseType: "arrayBuffer" });
+                const response = await axios(`${s3.host}/${fixturesObject.Key}`, { responseType: "arrayBuffer", httpsAgent });
 
                 await createTempLocation(processKey);
 
                 try {
                     const localPath = await saveFile({ processKey, name: file, buffer: response.data });
 
-                    console.log(`#IMPORT# Importing file ${file}`);
+                    console.log(`#IMPORT# Importing file ${file} - ${localPath}`);
 
                     await importLocalFile({ file, path: localPath, user });
+
                     await db.saveFileHash({ file, hash });
 
                     console.log(`#IMPORT# File ${file} was imported`);
 
                 } catch (e) {
-                    errors.push(e);
+                    errors.push(e.message);
                 }
 
                 await clearTempLocation(processKey);
