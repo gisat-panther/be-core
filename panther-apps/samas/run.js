@@ -164,6 +164,10 @@ async function getUpdatedS3Objects(nextObjects, currentObjects) {
                 ...nextObject,
                 lastModified
             }
+
+            if (config?.projects?.samas?.maxBatchSize && Object.keys(updatedObjects).length >= config?.projects?.samas?.maxBatchSize) {
+                break;
+            }
         }
     }
 
