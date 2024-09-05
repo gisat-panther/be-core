@@ -28,6 +28,7 @@ module.exports = [
         },
         middlewares: [
             userMiddleware,
+            autoLoginKongHqMiddleware,
             autoLoginMiddleware,
             authMiddleware,
         ],
