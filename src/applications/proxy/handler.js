@@ -105,7 +105,7 @@ function getWmts(request, response) {
             body: {
                 filter: {
                     key: request.params.spatialDataSourceKey,
-                    type: "wmts"
+                    // type: "wmts"
                 }
             }
         })
@@ -122,7 +122,7 @@ function getWmts(request, response) {
 
                         const dataSourceConfiguration = dataSource.data.configuration;
 
-                        http
+                        (config.mapproxy.url.toLowerCase().startsWith("https") ? https : http)
                             .get(
                                 `${config.mapproxy.url}/${dataSourceConfiguration.mapproxy.instance}/wmts/${dataSourceConfiguration.mapproxy.layer}/${dataSourceConfiguration.mapproxy.grid}/${request.params.z}/${request.params.x}/${request.params.y}.${request.params.ext}`,
                                 (subResponse) => {

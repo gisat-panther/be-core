@@ -14,11 +14,11 @@ async function getFilesAtPathRecursive(path, files = []) {
                 files.push(entryPath);
             }
         }
-    } catch (e) {
-        console.log(e);
-    }
 
-    return files;
+        return files;
+    } catch (e) {
+        return [];
+    }
 }
 
 module.exports = {
