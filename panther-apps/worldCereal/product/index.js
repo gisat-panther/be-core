@@ -37,6 +37,7 @@ const STAC_REQUIRED_PROPERTIES = [
     'properties.public',
     'properties.tile_collection_id',
     'properties.proj:epsg',
+    'geometry',
     'assets',
     'assets.product',
     'assets.product.href',
