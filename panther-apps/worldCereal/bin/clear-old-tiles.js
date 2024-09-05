@@ -32,7 +32,17 @@ async function getTimeIndexes(tileIndexes) {
 
 async function getDatabases() {
     const response = await axios.get(`${getCouchDbHost()}/_all_dbs`);
-    return response.data.filter((dbName) => dbName.startsWith('worldcereal_'));
+    let filtered = [];
+
+    if (!config.projects.worldCereal.allowSeed || config.projects.worldCereal.allowSeed === "all") {
+        filtered = response.data.filter((dbName) => dbName.startsWith('worldcereal_'));
+    } else if (config.projects.worldCereal.allowSeed === "confidence") {
+        filtered = response.data.filter((dbName) => dbName.startsWith('worldcereal_') && dbName.endsWith("_confidence"));
+    } else if (config.projects.worldCereal.allowSeed === "product") {
+        filtered = response.data.filter((dbName) => dbName.startsWith('worldcereal_') && dbName.endsWith("_product"));
+    }
+
+    return filtered;
 }
 
 async function getOldTiles(database, timeIndex) {
