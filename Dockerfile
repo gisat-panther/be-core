@@ -1,23 +1,32 @@
 FROM ubuntu
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG NODE_MAJOR=20
 
-RUN apt-get update \
-    && apt-get install -y curl gdal-bin postgresql-client git ca-certificates gnupg
+RUN apt update \
+    && apt upgrade -y \
+    && apt install -y \
+        curl \
+        gdal-bin \
+        postgresql-client \
+        git \
+        ca-certificates \
+        gnupg
 
-RUN mkdir -p /etc/apt/keyrings
+RUN cd /tmp \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh \
+    && /bin/bash nodesource_setup.sh \
+    && apt update \
+    && apt install nodejs
 
-RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN useradd -m -s /bin/bash node
 
-RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+USER node
 
-RUN apt-get update \
-    && apt-get install -y nodejs
+RUN mkdir -pv /home/node/app
 
-WORKDIR /usr/src/app
+WORKDIR /home/node/app
 
-COPY . .
+COPY --chown=node . .
 
 RUN npm ci --production-only
 

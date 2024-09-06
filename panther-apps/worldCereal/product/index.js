@@ -37,6 +37,7 @@ const STAC_REQUIRED_PROPERTIES = [
     'properties.public',
     'properties.tile_collection_id',
     'properties.proj:epsg',
+    'geometry',
     'assets',
     'assets.product',
     'assets.product.href',
@@ -425,8 +426,19 @@ async function createProduct(globalProductKey, productKeys, user) {
 }
 
 function seedAndCleanupLayerCaches(mapproxySeedConf) {
+    const allowSeed = config.projects.worldCereal.allowSeed;
     for (const seed of Object.keys(mapproxySeedConf.seeds)) {
-        if (seed.endsWith("_product") || seed.endsWith("_confidence")) {
+        if ((!allowSeed || allowSeed === "all") && (seed.endsWith("_product") || seed.endsWith("_confidence"))) {
+            axios({
+                method: 'get',
+                url: `${config.mapproxy.seedApiUrl}/seed/${mapproxySeedConf.filename}/${mapproxySeedConf.filename}/${seed}`
+            }).catch((error) => console.log(error.message));
+        } else if (allowSeed === "confidence" && seed.endsWith("_confidence")) {
+            axios({
+                method: 'get',
+                url: `${config.mapproxy.seedApiUrl}/seed/${mapproxySeedConf.filename}/${mapproxySeedConf.filename}/${seed}`
+            }).catch((error) => console.log(error.message));
+        } else if (allowSeed === "product" && seed.endsWith("_product")) {
             axios({
                 method: 'get',
                 url: `${config.mapproxy.seedApiUrl}/seed/${mapproxySeedConf.filename}/${mapproxySeedConf.filename}/${seed}`

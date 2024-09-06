@@ -171,7 +171,7 @@ async function getUpdatedS3Objects(nextObjects, currentObjects) {
         }
     }
 
-    return updatedObjects
+    return updatedObjects;
 }
 
 async function createMapserverConfigurationFile(objects, updatedObjectKeys) {
