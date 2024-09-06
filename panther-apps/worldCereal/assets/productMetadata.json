@@ -1,0 +1,2146 @@
+[
+  {
+    "key": "baa33640-9ec9-483c-980d-5b406927a8ff",
+    "data": {
+      "name": "Argentina",
+      "id": "2020_21HTC_annualcropland_classification_WorldCerealPixelLSTM",
+      "sos": "2020-06-15",
+      "eos": "2020-09-15",
+      "season": "summer1",
+      "aez_id": "1",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -60.787353515625,
+              -34.74612627525939
+            ],
+            [
+              -58.53515625,
+              -34.74612627525939
+            ],
+            [
+              -58.53515625,
+              -32.930318199070534
+            ],
+            [
+              -60.787353515625,
+              -32.930318199070534
+            ],
+            [
+              -60.787353515625,
+              -34.74612627525939
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "21HTC",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/21HTC/2020_21HTC_annualcropland_classification_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_21HTC_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_21HTC_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "567cf8b6-9c92-4909-b906-96b4941558d2",
+    "data": {
+      "name": "Brazil",
+      "id": "2020_22LHQ_annualcropland_classification_WorldCerealPixelLSTM",
+      "sos": "2020-05-01",
+      "eos": "2020-08-12",
+      "season": "summer1",
+      "aez_id": "2",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -48.83422851562499,
+              -10.455401826918385
+            ],
+            [
+              -46.395263671875,
+              -10.455401826918385
+            ],
+            [
+              -46.395263671875,
+              -8.390865416667355
+            ],
+            [
+              -48.83422851562499,
+              -8.390865416667355
+            ],
+            [
+              -48.83422851562499,
+              -10.455401826918385
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "22LHQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/22LHQ/2020_22LHQ_annualcropland_classification_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_22LHQ_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_22LHQ_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "33c00a4d-cae3-48d9-8ea8-76937ed1345c",
+    "data": {
+      "name": "Spain",
+      "id": "2020_30SWJ_annualcropland_classification_WorldCerealPixelLSTM",
+      "sos": "2020-06-01",
+      "eos": "2020-09-22",
+      "season": "summer1",
+      "aez_id": "3",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -3.372802734375,
+              38.7283759182398
+            ],
+            [
+              -1.3787841796874998,
+              38.7283759182398
+            ],
+            [
+              -1.3787841796874998,
+              40.04023218690451
+            ],
+            [
+              -3.372802734375,
+              40.04023218690451
+            ],
+            [
+              -3.372802734375,
+              38.7283759182398
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "30SWJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/30SWJ/2020_30SWJ_annualcropland_classification_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_30SWJ_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_30SWJ_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "366e2b4d-be2a-4267-bd92-f0bdfd27bfba",
+    "data": {
+      "name": "Belgium",
+      "id": "2020_31UFS_annualcropland_classification_WorldCerealPixelLSTM",
+      "sos": "2020-04-22",
+      "eos": "2020-06-15",
+      "season": "summer1",
+      "aez_id": "4",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3.636474609375,
+              50.20151727860476
+            ],
+            [
+              6.6851806640625,
+              50.20151727860476
+            ],
+            [
+              6.6851806640625,
+              51.85953150985473
+            ],
+            [
+              3.636474609375,
+              51.85953150985473
+            ],
+            [
+              3.636474609375,
+              50.20151727860476
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "31UFS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/31UFS/2020_31UFS_annualcropland_classification_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_31UFS_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_31UFS_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "e3c0d8b2-ec03-4e60-9e44-32d1fb35a25c",
+    "data": {
+      "name": "Ukraine",
+      "id": "2020_35UQR_annualcropland_classification_WorldCerealPixelLSTM",
+      "sos": "2020-05-01",
+      "eos": "2020-09-17",
+      "season": "summer1",
+      "aez_id": "5",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              28.0810546875,
+              48.647427805533546
+            ],
+            [
+              32.84912109375,
+              48.647427805533546
+            ],
+            [
+              32.84912109375,
+              51.05520733858494
+            ],
+            [
+              28.0810546875,
+              51.05520733858494
+            ],
+            [
+              28.0810546875,
+              48.647427805533546
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "35UQR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/35UQR/2020_35UQR_annualcropland_classification_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_35UQR_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_35UQR_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "db6a07b9-811c-4eae-9cde-ff90818d6e19",
+    "data": {
+      "name": "Kenya",
+      "id": "2020_37MBV_annualcropland_classification_WorldCerealPixelLSTM",
+      "sos": "2020-06-30",
+      "eos": "2020-08-04",
+      "season": "summer1",
+      "aez_id": "6",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              35.88134765625,
+              -1.7026302136023004
+            ],
+            [
+              38.045654296875,
+              -1.7026302136023004
+            ],
+            [
+              38.045654296875,
+              0.428462803418747
+            ],
+            [
+              35.88134765625,
+              0.428462803418747
+            ],
+            [
+              35.88134765625,
+              -1.7026302136023004
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "37MBV",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/37MBV/2020_37MBV_annualcropland_classification_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_37MBV_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_37MBV_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "5fee9108-9726-4843-914f-d4093167298f",
+    "data": {
+      "name": "China",
+      "id": "2020_50SMF_annualcropland_classification_WorldCerealPixelLSTM",
+      "sos": "2020-04-17",
+      "eos": "2020-06-12",
+      "season": "summer1",
+      "aez_id": "7",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              114.620361328125,
+              34.95799531086792
+            ],
+            [
+              118.114013671875,
+              34.95799531086792
+            ],
+            [
+              118.114013671875,
+              37.274052809979054
+            ],
+            [
+              114.620361328125,
+              37.274052809979054
+            ],
+            [
+              114.620361328125,
+              34.95799531086792
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "50SMF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/50SMF/2020_50SMF_annualcropland_classification_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_50SMF_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_50SMF_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },{
+  "key": "6b15ba98-f971-4140-856e-8f6dca2e208e",
+  "data": {
+    "name": "Argentina summer2",
+    "id": "2020_21HTC_annualcropland_metafeatures_WorldCerealPixelLSTM",
+    "sos": "2020-10-03",
+    "eos": "2020-12-20",
+    "season": "summer2",
+    "aez_id": "1",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -60.787353515625,
+            -34.74612627525939
+          ],
+          [
+            -58.53515625,
+            -34.74612627525939
+          ],
+          [
+            -58.53515625,
+            -32.930318199070534
+          ],
+          [
+            -60.787353515625,
+            -32.930318199070534
+          ],
+          [
+            -60.787353515625,
+            -34.74612627525939
+          ]
+        ]
+      ]
+    },
+    "users": [
+      "guest"
+    ],
+    "meta": [
+      "reference_id"
+    ],
+    "product": "annualcropland",
+    "type": "map",
+    "public": "true",
+    "tiles": [
+      {
+        "tile": "21HTC",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/21HTC/2020_21HTC_annualcropland_metafeatures_WorldCerealPixelLSTM.tif"
+      }
+    ],
+    "related_products": [
+      "2020_21HTC_annualcropland_confidence_WorldCerealPixelLSTM",
+      "2020_21HTC_annualcropland_metafeatures_WorldCerealPixelLSTM"
+    ]
+  }
+},
+  {
+    "key": "ebc7023f-1f53-4331-8dab-ed1154de18ae",
+    "data": {
+      "name": "Brazil summer2",
+      "id": "2020_22LHQ_annualcropland_metafeatures_WorldCerealPixelLSTM",
+      "sos": "2020-08-31",
+      "eos": "2020-10-12",
+      "season": "summer2",
+      "aez_id": "2",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -48.83422851562499,
+              -10.455401826918385
+            ],
+            [
+              -46.395263671875,
+              -10.455401826918385
+            ],
+            [
+              -46.395263671875,
+              -8.390865416667355
+            ],
+            [
+              -48.83422851562499,
+              -8.390865416667355
+            ],
+            [
+              -48.83422851562499,
+              -10.455401826918385
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "22LHQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/22LHQ/2020_22LHQ_annualcropland_metafeatures_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_22LHQ_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_22LHQ_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "50a2a4d9-6622-44a0-ad40-c0dee7d38483",
+    "data": {
+      "name": "Spain summer2",
+      "id": "2020_30SWJ_annualcropland_metafeatures_WorldCerealPixelLSTM",
+      "sos": "2020-10-15",
+      "eos": "2020-11-23",
+      "season": "summer2",
+      "aez_id": "3",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -3.372802734375,
+              38.7283759182398
+            ],
+            [
+              -1.3787841796874998,
+              38.7283759182398
+            ],
+            [
+              -1.3787841796874998,
+              40.04023218690451
+            ],
+            [
+              -3.372802734375,
+              40.04023218690451
+            ],
+            [
+              -3.372802734375,
+              38.7283759182398
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "30SWJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/30SWJ/2020_30SWJ_annualcropland_metafeatures_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_30SWJ_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_30SWJ_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "644cf1ff-c7bd-4c0a-b23c-f016ab007167",
+    "data": {
+      "name": "Belgium summer2",
+      "id": "2020_31UFS_annualcropland_metafeatures_WorldCerealPixelLSTM",
+      "sos": "2020-09-12",
+      "eos": "2020-11-03",
+      "season": "summer2",
+      "aez_id": "4",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3.636474609375,
+              50.20151727860476
+            ],
+            [
+              6.6851806640625,
+              50.20151727860476
+            ],
+            [
+              6.6851806640625,
+              51.85953150985473
+            ],
+            [
+              3.636474609375,
+              51.85953150985473
+            ],
+            [
+              3.636474609375,
+              50.20151727860476
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "31UFS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/31UFS/2020_31UFS_annualcropland_metafeatures_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_31UFS_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_31UFS_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "fc1772ee-096d-4153-9cee-7bd849b58fc4",
+    "data": {
+      "name": "Ukraine summer2",
+      "id": "2020_35UQR_annualcropland_metafeatures_WorldCerealPixelLSTM",
+      "sos": "2020-09-27",
+      "eos": "2020-10-12",
+      "season": "summer2",
+      "aez_id": "5",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              28.0810546875,
+              48.647427805533546
+            ],
+            [
+              32.84912109375,
+              48.647427805533546
+            ],
+            [
+              32.84912109375,
+              51.05520733858494
+            ],
+            [
+              28.0810546875,
+              51.05520733858494
+            ],
+            [
+              28.0810546875,
+              48.647427805533546
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "35UQR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/35UQR/2020_35UQR_annualcropland_metafeatures_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_35UQR_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_35UQR_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "ed1140d0-8f17-4b5c-9aa3-ed79c3485402",
+    "data": {
+      "name": "Kenya summer2",
+      "id": "2020_37MBV_annualcropland_metafeatures_WorldCerealPixelLSTM",
+      "sos": "2020-09-13",
+      "eos": "2020-12-24",
+      "season": "summer2",
+      "aez_id": "6",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              35.88134765625,
+              -1.7026302136023004
+            ],
+            [
+              38.045654296875,
+              -1.7026302136023004
+            ],
+            [
+              38.045654296875,
+              0.428462803418747
+            ],
+            [
+              35.88134765625,
+              0.428462803418747
+            ],
+            [
+              35.88134765625,
+              -1.7026302136023004
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "37MBV",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/37MBV/2020_37MBV_annualcropland_metafeatures_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_37MBV_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_37MBV_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "7e77241c-d777-4f76-9179-770432b91479",
+    "data": {
+      "name": "China summer2",
+      "id": "2020_50SMF_annualcropland_metafeatures_WorldCerealPixelLSTM",
+      "sos": "2020-07-17",
+      "eos": "2020-10-12",
+      "season": "summer2",
+      "aez_id": "7",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              114.620361328125,
+              34.95799531086792
+            ],
+            [
+              118.114013671875,
+              34.95799531086792
+            ],
+            [
+              118.114013671875,
+              37.274052809979054
+            ],
+            [
+              114.620361328125,
+              37.274052809979054
+            ],
+            [
+              114.620361328125,
+              34.95799531086792
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "annualcropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "50SMF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/50SMF/2020_50SMF_annualcropland_metafeatures_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_50SMF_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_50SMF_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },{
+  "key": "bc47c2b3-a604-4e24-99a0-94108d4e219e",
+  "data": {
+    "name": "Argentina",
+    "id": "2020_21HTC_annualcropland_confidence_WorldCerealPixelLSTM",
+    "sos": "2020-06-15",
+    "eos": "2020-09-15",
+    "season": "summer1",
+    "aez_id": "1",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -60.787353515625,
+            -34.74612627525939
+          ],
+          [
+            -58.53515625,
+            -34.74612627525939
+          ],
+          [
+            -58.53515625,
+            -32.930318199070534
+          ],
+          [
+            -60.787353515625,
+            -32.930318199070534
+          ],
+          [
+            -60.787353515625,
+            -34.74612627525939
+          ]
+        ]
+      ]
+    },
+    "users": [
+      "guest"
+    ],
+    "meta": [
+      "reference_id"
+    ],
+    "product": "wheat",
+    "type": "map",
+    "public": "true",
+    "tiles": [
+      {
+        "tile": "21HTC",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/21HTC/2020_21HTC_annualcropland_confidence_WorldCerealPixelLSTM.tif"
+      }
+    ],
+    "related_products": [
+      "2020_21HTC_annualcropland_confidence_WorldCerealPixelLSTM",
+      "2020_21HTC_annualcropland_metafeatures_WorldCerealPixelLSTM"
+    ]
+  }
+},
+  {
+    "key": "65cce091-2023-4218-8f8d-2a95c07815cd",
+    "data": {
+      "name": "Brazil",
+      "id": "2020_22LHQ_annualcropland_confidence_WorldCerealPixelLSTM",
+      "sos": "2020-05-01",
+      "eos": "2020-08-12",
+      "season": "summer1",
+      "aez_id": "2",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -48.83422851562499,
+              -10.455401826918385
+            ],
+            [
+              -46.395263671875,
+              -10.455401826918385
+            ],
+            [
+              -46.395263671875,
+              -8.390865416667355
+            ],
+            [
+              -48.83422851562499,
+              -8.390865416667355
+            ],
+            [
+              -48.83422851562499,
+              -10.455401826918385
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "wheat",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "22LHQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/22LHQ/2020_22LHQ_annualcropland_confidence_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_22LHQ_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_22LHQ_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "99f2d7c5-a558-4855-8447-e5e5a90a5627",
+    "data": {
+      "name": "Spain",
+      "id": "2020_30SWJ_annualcropland_confidence_WorldCerealPixelLSTM",
+      "sos": "2020-06-01",
+      "eos": "2020-09-22",
+      "season": "summer1",
+      "aez_id": "3",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -3.372802734375,
+              38.7283759182398
+            ],
+            [
+              -1.3787841796874998,
+              38.7283759182398
+            ],
+            [
+              -1.3787841796874998,
+              40.04023218690451
+            ],
+            [
+              -3.372802734375,
+              40.04023218690451
+            ],
+            [
+              -3.372802734375,
+              38.7283759182398
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "wheat",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "30SWJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/30SWJ/2020_30SWJ_annualcropland_confidence_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_30SWJ_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_30SWJ_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "399c2b09-fc0e-4209-8140-c88b823c8d96",
+    "data": {
+      "name": "Belgium",
+      "id": "2020_31UFS_annualcropland_confidence_WorldCerealPixelLSTM",
+      "sos": "2020-04-22",
+      "eos": "2020-06-15",
+      "season": "summer1",
+      "aez_id": "4",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              3.636474609375,
+              50.20151727860476
+            ],
+            [
+              6.6851806640625,
+              50.20151727860476
+            ],
+            [
+              6.6851806640625,
+              51.85953150985473
+            ],
+            [
+              3.636474609375,
+              51.85953150985473
+            ],
+            [
+              3.636474609375,
+              50.20151727860476
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "wheat",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "31UFS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/31UFS/2020_31UFS_annualcropland_confidence_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_31UFS_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_31UFS_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "12e2063d-1040-4372-8210-7ead7816b7da",
+    "data": {
+      "name": "Ukraine",
+      "id": "2020_35UQR_annualcropland_confidence_WorldCerealPixelLSTM",
+      "sos": "2020-05-01",
+      "eos": "2020-09-17",
+      "season": "summer1",
+      "aez_id": "5",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              28.0810546875,
+              48.647427805533546
+            ],
+            [
+              32.84912109375,
+              48.647427805533546
+            ],
+            [
+              32.84912109375,
+              51.05520733858494
+            ],
+            [
+              28.0810546875,
+              51.05520733858494
+            ],
+            [
+              28.0810546875,
+              48.647427805533546
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "wheat",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "35UQR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/35UQR/2020_35UQR_annualcropland_confidence_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_35UQR_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_35UQR_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "9b0ed3d7-f2ed-4511-8846-679750f5b0c0",
+    "data": {
+      "name": "Kenya",
+      "id": "2020_37MBV_annualcropland_confidence_WorldCerealPixelLSTM",
+      "sos": "2020-06-30",
+      "eos": "2020-08-04",
+      "season": "summer1",
+      "aez_id": "6",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              35.88134765625,
+              -1.7026302136023004
+            ],
+            [
+              38.045654296875,
+              -1.7026302136023004
+            ],
+            [
+              38.045654296875,
+              0.428462803418747
+            ],
+            [
+              35.88134765625,
+              0.428462803418747
+            ],
+            [
+              35.88134765625,
+              -1.7026302136023004
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "wheat",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "37MBV",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/37MBV/2020_37MBV_annualcropland_confidence_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_37MBV_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_37MBV_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },
+  {
+    "key": "c48b398d-2023-43a3-81d2-bcafd835849b",
+    "data": {
+      "name": "China",
+      "id": "2020_50SMF_annualcropland_confidence_WorldCerealPixelLSTM",
+      "sos": "2020-04-17",
+      "eos": "2020-06-12",
+      "season": "summer1",
+      "aez_id": "7",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              114.620361328125,
+              34.95799531086792
+            ],
+            [
+              118.114013671875,
+              34.95799531086792
+            ],
+            [
+              118.114013671875,
+              37.274052809979054
+            ],
+            [
+              114.620361328125,
+              37.274052809979054
+            ],
+            [
+              114.620361328125,
+              34.95799531086792
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "meta": [
+        "reference_id"
+      ],
+      "product": "wheat",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "50SMF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/50SMF/2020_50SMF_annualcropland_confidence_WorldCerealPixelLSTM.tif"
+        }
+      ],
+      "related_products": [
+        "2020_50SMF_annualcropland_confidence_WorldCerealPixelLSTM",
+        "2020_50SMF_annualcropland_metafeatures_WorldCerealPixelLSTM"
+      ]
+    }
+  },{
+  "key": "48caa50d-87e3-44c2-9220-2f57a2fcb882",
+  "data": {
+    "id": "france_annualcropland",
+    "sos": "2019-05-10",
+    "eos": "2019-10-22",
+    "season": "summer1",
+    "aez_id": "10",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [
+            -5.09,
+            40.51
+          ],
+          [
+            8.87,
+            40.51
+          ],
+          [
+            8.87,
+            51.01
+          ],
+          [
+            -5.09,
+            51.01
+          ],
+          [
+            -5.09,
+            40.51
+          ]
+        ]
+      ]
+    },
+    "users": [
+      "guest"
+    ],
+    "product": "annualcropland",
+    "type": "map",
+    "public": "true",
+    "tiles": [
+      {
+        "tile": "31UDP",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UDP/2019_31UDP_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31UCP",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UCP/2019_31UCP_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TDN",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDN/2019_31TDN_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TDM",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDM/2019_31TDM_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TDL",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDL/2019_31TDL_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TDK",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDK/2019_31TDK_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TDJ",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDJ/2019_31TDJ_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TDH",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDH/2019_31TDH_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TDG",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDG/2019_31TDG_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TDF",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDF/2019_31TDF_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TCN",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCN/2019_31TCN_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TCM",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCM/2019_31TCM_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TCL",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCL/2019_31TCL_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TCK",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCK/2019_31TCK_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TCJ",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCJ/2019_31TCJ_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TCH",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCH/2019_31TCH_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TCG",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCG/2019_31TCG_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TCF",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCF/2019_31TCF_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TBG",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBG/2019_31TBG_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "31TBF",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBF/2019_31TBF_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30UYU",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UYU/2019_30UYU_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30UXU",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UXU/2019_30UXU_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TYT",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYT/2019_30TYT_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TYS",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYS/2019_30TYS_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TYR",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYR/2019_30TYR_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TYQ",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYQ/2019_30TYQ_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TYP",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYP/2019_30TYP_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TYN",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYN/2019_30TYN_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TXT",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXT/2019_30TXT_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TXS",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXS/2019_30TXS_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TXR",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXR/2019_30TXR_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TXQ",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXQ/2019_30TXQ_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TXP",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXP/2019_30TXP_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TXN",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXN/2019_30TXN_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TWT",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWT/2019_30TWT_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      },
+      {
+        "tile": "30TWS",
+        "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWS/2019_30TWS_annualcropland_classification_WorldCerealPixelLSTM.tif"
+      }
+    ],
+    "related_products": []
+  }
+},
+  {
+    "key": "115faab4-eb76-4636-bf43-5606d149dded",
+    "data": {
+      "id": "france_maize_summer1",
+      "sos": "2019-05-01",
+      "eos": "2019-07-12",
+      "season": "summer1",
+      "aez_id": "10",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -5.09,
+              40.51
+            ],
+            [
+              8.87,
+              40.51
+            ],
+            [
+              8.87,
+              51.01
+            ],
+            [
+              -5.09,
+              51.01
+            ],
+            [
+              -5.09,
+              40.51
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "product": "maize",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "31UDP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UDP/2019_31UDP_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31UCP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UCP/2019_31UCP_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDN/2019_31TDN_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDM",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDM/2019_31TDM_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDL",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDL/2019_31TDL_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDK",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDK/2019_31TDK_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDJ/2019_31TDJ_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDH",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDH/2019_31TDH_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDG/2019_31TDG_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDF/2019_31TDF_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCN/2019_31TCN_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCM",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCM/2019_31TCM_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCL",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCL/2019_31TCL_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCK",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCK/2019_31TCK_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCJ/2019_31TCJ_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCH",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCH/2019_31TCH_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCG/2019_31TCG_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCF/2019_31TCF_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TBG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBG/2019_31TBG_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TBF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBF/2019_31TBF_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30UYU",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UYU/2019_30UYU_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30UXU",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UXU/2019_30UXU_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYT/2019_30TYT_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYS/2019_30TYS_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYR/2019_30TYR_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYQ/2019_30TYQ_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYP/2019_30TYP_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYN/2019_30TYN_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXT/2019_30TXT_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXS/2019_30TXS_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXR/2019_30TXR_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXQ/2019_30TXQ_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXP/2019_30TXP_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXN/2019_30TXN_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TWT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWT/2019_30TWT_maize1_classification_springcereals-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TWS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWS/2019_30TWS_maize1_classification_springcereals-PixelLSTM.tif"
+        }
+      ],
+      "related_products": []
+    }
+  },
+  {
+    "key": "fef89273-668d-49bd-b787-8b4a4bfc5b54",
+    "data": {
+      "id": "france_maize_summer2",
+      "sos": "2019-07-20",
+      "eos": "2019-09-25",
+      "season": "summer2",
+      "aez_id": "10",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -5.09,
+              40.51
+            ],
+            [
+              8.87,
+              40.51
+            ],
+            [
+              8.87,
+              51.01
+            ],
+            [
+              -5.09,
+              51.01
+            ],
+            [
+              -5.09,
+              40.51
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "product": "maize",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "31UDP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UDP/2019_31UDP_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31UCP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UCP/2019_31UCP_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDN/2019_31TDN_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDM",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDM/2019_31TDM_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDL",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDL/2019_31TDL_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDK",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDK/2019_31TDK_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDJ/2019_31TDJ_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDH",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDH/2019_31TDH_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDG/2019_31TDG_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TDF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDF/2019_31TDF_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCN/2019_31TCN_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCM",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCM/2019_31TCM_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCL",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCL/2019_31TCL_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCK",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCK/2019_31TCK_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCJ/2019_31TCJ_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCH",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCH/2019_31TCH_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCG/2019_31TCG_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TCF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCF/2019_31TCF_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TBG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBG/2019_31TBG_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "31TBF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBF/2019_31TBF_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30UYU",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UYU/2019_30UYU_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30UXU",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UXU/2019_30UXU_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYT/2019_30TYT_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYS/2019_30TYS_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYR/2019_30TYR_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYQ/2019_30TYQ_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYP/2019_30TYP_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TYN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYN/2019_30TYN_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXT/2019_30TXT_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXS/2019_30TXS_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXR/2019_30TXR_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXQ/2019_30TXQ_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXP/2019_30TXP_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TXN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXN/2019_30TXN_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TWT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWT/2019_30TWT_maize1_classification_maize-PixelLSTM.tif"
+        },
+        {
+          "tile": "30TWS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWS/2019_30TWS_maize1_classification_maize-PixelLSTM.tif"
+        }
+      ],
+      "related_products": []
+    }
+  },
+  {
+    "key": "7a64acd1-58c1-44b9-8104-2af24d5bbb86",
+    "data": {
+      "id": "france_wheat",
+      "sos": "2019-09-24",
+      "eos": "2020-01-15",
+      "season": "winter",
+      "aez_id": "10",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -5.09,
+              40.51
+            ],
+            [
+              8.87,
+              40.51
+            ],
+            [
+              8.87,
+              51.01
+            ],
+            [
+              -5.09,
+              51.01
+            ],
+            [
+              -5.09,
+              40.51
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "product": "wheat",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "31UDP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UDP/2019_31UDP_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31UCP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UCP/2019_31UCP_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TDN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDN/2019_31TDN_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TDM",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDM/2019_31TDM_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TDL",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDL/2019_31TDL_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TDK",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDK/2019_31TDK_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TDJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDJ/2019_31TDJ_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TDH",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDH/2019_31TDH_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TDG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDG/2019_31TDG_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TDF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDF/2019_31TDF_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TCN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCN/2019_31TCN_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TCM",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCM/2019_31TCM_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TCL",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCL/2019_31TCL_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TCK",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCK/2019_31TCK_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TCJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCJ/2019_31TCJ_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TCH",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCH/2019_31TCH_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TCG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCG/2019_31TCG_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TCF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCF/2019_31TCF_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TBG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBG/2019_31TBG_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "31TBF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBF/2019_31TBF_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30UYU",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UYU/2019_30UYU_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30UXU",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UXU/2019_30UXU_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TYT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYT/2019_30TYT_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TYS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYS/2019_30TYS_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TYR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYR/2019_30TYR_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TYQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYQ/2019_30TYQ_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TYP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYP/2019_30TYP_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TYN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYN/2019_30TYN_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TXT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXT/2019_30TXT_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TXS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXS/2019_30TXS_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TXR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXR/2019_30TXR_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TXQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXQ/2019_30TXQ_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TXP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXP/2019_30TXP_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TXN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXN/2019_30TXN_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TWT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWT/2019_30TWT_winterwheat_active-cropland.tif"
+        },
+        {
+          "tile": "30TWS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWS/2019_30TWS_winterwheat_active-cropland.tif"
+        }
+      ],
+      "related_products": []
+    }
+  },
+  {
+    "key": "f0b92c41-64f8-4ce3-8b35-ab3daac03c41",
+    "data": {
+      "id": "france_activecropland",
+      "sos": "2019-03-24",
+      "eos": "2019-08-15",
+      "season": "summer1",
+      "aez_id": "10",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -5.09,
+              40.51
+            ],
+            [
+              8.87,
+              40.51
+            ],
+            [
+              8.87,
+              51.01
+            ],
+            [
+              -5.09,
+              51.01
+            ],
+            [
+              -5.09,
+              40.51
+            ]
+          ]
+        ]
+      },
+      "users": [
+        "guest"
+      ],
+      "product": "activecropland",
+      "type": "map",
+      "public": "true",
+      "tiles": [
+        {
+          "tile": "31UDP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UDP/2019_31UDP_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31UCP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31UCP/2019_31UCP_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TDN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDN/2019_31TDN_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TDM",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDM/2019_31TDM_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TDL",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDL/2019_31TDL_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TDK",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDK/2019_31TDK_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TDJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDJ/2019_31TDJ_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TDH",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDH/2019_31TDH_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TDG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDG/2019_31TDG_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TDF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TDF/2019_31TDF_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TCN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCN/2019_31TCN_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TCM",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCM/2019_31TCM_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TCL",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCL/2019_31TCL_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TCK",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCK/2019_31TCK_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TCJ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCJ/2019_31TCJ_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TCH",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCH/2019_31TCH_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TCG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCG/2019_31TCG_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TCF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TCF/2019_31TCF_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TBG",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBG/2019_31TBG_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "31TBF",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/31TBF/2019_31TBF_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30UYU",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UYU/2019_30UYU_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30UXU",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30UXU/2019_30UXU_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TYT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYT/2019_30TYT_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TYS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYS/2019_30TYS_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TYR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYR/2019_30TYR_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TYQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYQ/2019_30TYQ_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TYP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYP/2019_30TYP_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TYN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TYN/2019_30TYN_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TXT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXT/2019_30TXT_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TXS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXS/2019_30TXS_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TXR",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXR/2019_30TXR_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TXQ",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXQ/2019_30TXQ_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TXP",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXP/2019_30TXP_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TXN",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TXN/2019_30TXN_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TWT",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWT/2019_30TWT_maize1_active-cropland.tif"
+        },
+        {
+          "tile": "30TWS",
+          "path": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/france/30TWS/2019_30TWS_maize1_active-cropland.tif"
+        }
+      ],
+      "related_products": []
+    }
+  }
+]

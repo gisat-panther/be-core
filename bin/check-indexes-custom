@@ -76,7 +76,7 @@ const main = async () => {
 
 	const missingIndexes = await getMissingIndexes(_.uniqBy(indexes, "name"));
 
-	if (missingIndexes) {
+	if (missingIndexes && missingIndexes.length) {
 		return {
 			create: missingIndexes.map(parseIndex),
 			drop: missingIndexes.map(parseIndexDrop),

@@ -12,6 +12,7 @@ const {pgConfig} = require('../config');
 const options = {
     '-h': pgConfig.normal.host,
     '-U': pgConfig.normal.user,
+    '-p': pgConfig.normal.port || 5432,
     '-f': `${__dirname}/../fixtures.sql`,
 };
 

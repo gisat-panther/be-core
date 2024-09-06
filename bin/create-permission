@@ -1,0 +1,42 @@
+#!/usr/bin/env node
+
+/**
+ * This script creates permission.
+ * 
+ * Usage: create-permission <resourceKey> <resourceType> <permission> <resourceGroup>
+ * 
+ * Permission types: view, create, update, delete
+ */
+
+const { SQL } = require('sql-template-strings');
+const db = require('../src/db');
+
+if (process.argv.length < 6) {
+    throw new Error('Script expects exact 6 parameters - <resourceKey> <resourceType> <permission> <resourceGroup>');
+}
+
+const resourceKey = process.argv[2] === "null" ? null : process.argv[2];
+const resourceType = process.argv[3];
+const permission = process.argv[4];
+const resourceGroup = process.argv[5];
+
+async function main() {
+    await db.init();
+
+    await db
+        .query(
+            SQL`
+                INSERT INTO "user"."permissions"
+                    ("resourceKey", "resourceType", "permission", "resourceGroup")
+                VALUES
+                    (${resourceKey}, ${resourceType}, ${permission}, ${resourceGroup})
+                ON CONFLICT DO NOTHING
+                RETURNING key
+                `
+        )
+        .then((queryResponse) => {
+            console.log(queryResponse.rows[0].key);
+        })
+}
+
+main().then(() => process.exit());

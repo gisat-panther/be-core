@@ -1,0 +1,57 @@
+{
+    "request": {
+        "modifiers": {
+            "scopeKey": "",
+            "placeKey": "",
+            "caseKey": "",
+            "scenarioKey": "",
+            "periodKey": {
+                "in": []
+            }
+        },
+        "layerTemplateKey": "uuid",
+        "areaTreeLevelKey": "uuid",
+        
+        "attributeKeys": ["uuid"],
+        
+        "relations": {
+            "offset": 0,
+            "limit": 100
+        },
+
+        "data": {
+            "offset": 0,
+            "limit": 100,
+
+            "order": "ascending|descending",
+            
+            "featureKeys": [],
+        
+            "spatialFilter": {
+                "geoJson": {}
+            },
+            
+            "dataSourceKeys": ["dataSource-uuid"] 
+        }
+    },
+    "response": {
+        "timeSerieRelations": {
+            "total": 124,
+            "offset": 0,
+            "limit": 100,
+            "timeSerieRelations": []
+        },
+        "timeSerieData": {
+            "total": 14756,
+            "offset": 0, 
+            "limit": 100,
+            "timeSerieData": {
+                "timeSerieDataSourceKey1": {
+                    "feature-id1": [{"period": "2021-01", "value": 1}, {"period": "2021-02", "value": "hehe"}],
+                    "feature-id2": [{"period": "2021-10", "value": 1}, {"period": "2021-12", "value": "hehe"}]
+                }
+            },
+            "index": ["feature-id1","feature-id3","feature-id2","feature-id4"]
+        }      
+    }
+}

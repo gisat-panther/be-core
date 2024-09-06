@@ -1,0 +1,216 @@
+{
+    "stac_version": "1.0.0",
+    "stac_extensions": [
+        "https://stac-extensions.github.io/eo/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/projection/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/scientific/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/view/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/remote-data/v1.0.0/schema.json",
+        "https://stac-extensions.github.io/mgrs/v1.0.0/schema.json"
+    ],
+    "type": "Feature",
+    "id": "2019_annual_35191_annualcropland_classification_36MXB",
+    "bbox": [
+        33.899639974853486,
+        -3.707077536872182,
+        34.8890013932567,
+        -2.7126939034046416
+    ],
+    "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+            [
+                34.8890013932567,
+                -3.707077536872182
+            ],
+            [
+                34.8890013932567,
+                -2.7126939034046416
+            ],
+            [
+                33.899639974853486,
+                -2.7126939034046416
+            ],
+            [
+                33.899639974853486,
+                -3.707077536872182
+            ],
+            [
+                34.8890013932567,
+                -3.707077536872182
+            ]
+        ]
+    },
+    "collection": "esa-worldcereal-annualcropland",
+    "links": [
+        {
+            "rel": "self",
+            "href": "s3://world-cereal/EWOC_OUT/36MXB/2019_annual/2019_annual_35191_annualcropland_metadata_36MXB.json"
+        },
+        {
+            "rel": "website",
+            "href": "worldcereal.org"
+        }
+    ],
+    "properties": {
+        "title": "A worldcereal product",
+        "description": "...",
+        "datetime": "2021-11-03T09:20:08.223Z",
+        "created": "2021-11-03T09:20:08.223Z",
+        "updated": "2021-11-03T09:20:08.223Z",
+        "license": "TBD",
+        "rd:sat_id": "Sentinel-2,Sentinel-1",
+        "mgrs:utm_zone": 36,
+        "mgrs:latitude_band": "M",
+        "mgrs:grid_square": "XB",
+        "proj:epsg": 32736,
+        "proj:shape": [
+            10980,
+            10980
+        ],
+        "gsd": 10.0,
+        "instruments": [
+            "Sentinel-2 MSI",
+            "Sentinel-1 C-band SAR"
+        ],
+        "start_datetime": "2018-07-03",
+        "end_datetime": "2019-07-03",
+        "season": "annual",
+        "aez_id": 35191,
+        "aez_group": 35000,
+        "model": "/data/worldcereal/models/WorldCerealPixelCatBoost/cropland_detector_WorldCerealPixelCatBoost_v027/config.json",
+        "users": [
+            "ewoc"
+        ],
+        "training_refids": {
+            "2017_AR_LISTA": 448,
+            "2017_AS_Remelgado": 472,
+            "2017_AT_LPIS": 12879,
+            "2017_BE_LPIS-Flanders": 16120,
+            "2017_BF_JECAM-CIRAD": 2395,
+            "2017_CM_GARDIAN": 28,
+            "2017_FR_LPIS": 9354,
+            "2017_LBN_Rayak": 538,
+            "2017_LBN_WAPOR-3": 189,
+            "2017_LBN_WAPOR-4": 189,
+            "2017_NG_GARDIAN": 351,
+            "2017_SS_ARABLE-LAND": 1840,
+            "2017_SS_OTHER-LAND-USE": 1749,
+            "2017_UG_RadiantEarth-01": 463,
+            "2018_AR_BAGE-01": 4541,
+            "2018_AS_Remelgado": 3522,
+            "2018_AT_LPIS": 12475,
+            "2018_BE_LPIS-Flanders": 15684,
+            "2018_BE_LPIS-Flanders-veggies": 8855,
+            "2018_BF_JECAM-CIRAD": 1671,
+            "2018_ES_SIGPAC-Andalucia": 26157,
+            "2018_ETH_WAPOR-2": 311,
+            "2018_ETH_WAPOR-Koga": 269,
+            "2018_EU_LUCAS": 17802,
+            "2018_FR_LPIS": 8315,
+            "2018_IN_GARDIAN": 293,
+            "2018_MG_JECAM-CIRAD": 4398,
+            "2018_NER_WAPOR": 104,
+            "2018_SN_JECAM-CIRAD": 488,
+            "2018_TZ_AFSIS": 431,
+            "2018_TZ_RadiantEarth-01": 719,
+            "2018_UA_NHI": 1584,
+            "2019_ARG_INTA-BA": 310,
+            "2019_AR_BAGE-01": 3087,
+            "2019_AT_LPIS": 13652,
+            "2019_BE_LPIS-Flanders": 14545,
+            "2019_EG_Zank": 1581,
+            "2019_ES_SIGPAC-Andalucia": 24871,
+            "2019_ES_SIGPAC-Catalunya": 11289,
+            "2019_EWOCO_aez23179-1": 335,
+            "2019_EWOCO_aez26202-1": 702,
+            "2019_EWOCO_aez27177-1": 202,
+            "2019_EWOCO_aez29224-1": 959,
+            "2019_EWOCO_aez38201-1": 236,
+            "2019_EWOCO_aez38201-2": 83,
+            "2019_EWOCO_aez39223-1": 919,
+            "2019_EWOCO_aez40164-1": 63,
+            "2019_EWOCO_aez57226-1": 379,
+            "2019_EWOCO_aez60168-1": 222,
+            "2019_FR_LPIS": 9340,
+            "2019_KEN_WAPOR": 903,
+            "2019_KE_RadiantEarth-01": 65,
+            "2019_LV_LPIS": 10517,
+            "2019_MA_WAPOR": 261,
+            "2019_MG_JECAM-CIRAD": 12020,
+            "2019_SN_JECAM-CIRAD": 57,
+            "2019_TZA_CIMMYT-DM1": 30,
+            "2019_TZA_CIMMYT-DM2": 25,
+            "2019_TZA_OAF": 1154,
+            "2019_TZ_AFSIS": 480,
+            "2019_UA_ARABLE-LAND": 548,
+            "2019_UA_NHI": 2888,
+            "2019_UA_OTHER-LAND-USE": 485,
+            "2019_US_USDA-CDL": 59851,
+            "2020_AR_BAGE-01": 419,
+            "2020_BR_LEM-MAR": 982,
+            "2020_EWOCO_URB-ASC": 128,
+            "2020_EWOCO_URB-CHINA": 70,
+            "2020_EWOCO_URB-DESC": 108,
+            "2020_EWOCO_URB-EU": 146,
+            "2020_EWOCO_aez16220-1": 308,
+            "2020_EWOCO_aez16222-1": 528,
+            "2020_EWOCO_aez19221-1": 420,
+            "2020_EWOCO_aez23159-1": 467,
+            "2020_EWOCO_aez25214-1": 265,
+            "2020_EWOCO_aez28175-1": 313,
+            "2020_EWOCO_aez30141-1": 6,
+            "2020_EWOCO_aez31208-1": 110,
+            "2020_EWOCO_aez36179-1": 1151,
+            "2020_EWOCO_aez43165-1": 63,
+            "2020_EWOCO_aez43165-2": 89,
+            "2020_EWOCO_aez44169-1": 257,
+            "2020_EWOCO_aez46196-1": 485,
+            "2020_EWOCO_aez47176-1": 321,
+            "2020_EWOCO_aez48237-1": 167,
+            "2020_EWOCO_aez54181-1": 227,
+            "2020_EWOCO_aez58178-1": 72,
+            "2020_GLO_NONCROP": 927,
+            "2020_RW_WAPOR-Muvu": 3247,
+            "2020_RW_WAPOR-Ya": 222,
+            "2020_SDN_WAPOR": 518,
+            "2020_SDN_WAPOR-2": 665,
+            "2021_MOZ_WAPOR": 4259,
+            "2021_SRI_frame": 1441,
+            "2021_TZA_COPERNICUS-GEOGLAM": 18717
+        },
+        "product": "annualcropland",
+        "type": "map",
+        "public": "false",
+        "related_products": [
+            "2019_annual_35191_annualcropland_classification_36MXB"
+        ],
+        "tile_collection_id": "2019_annual_35191_annualcropland_EWOC"
+    },
+    "assets": {
+        "product": {
+            "href": "s3://world-cereal/EWOC_OUT/36MXB/2019_annual/2019_annual_35191_annualcropland_classification_36MXB.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "annualcropland classification",
+            "roles": [
+                "data"
+            ]
+        },
+        "metafeatures": {
+            "href": "s3://world-cereal/EWOC_OUT/36MXB/2019_annual/2019_annual_35191_annualcropland_metafeatures_36MXB.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "annualcropland meta-features",
+            "roles": [
+                "data"
+            ]
+        },
+        "confidence": {
+            "href": "s3://world-cereal/EWOC_OUT/36MXB/2019_annual/2019_annual_35191_annualcropland_confidence_36MXB.tif",
+            "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+            "title": "annualcropland confidence",
+            "roles": [
+                "data"
+            ]
+        }
+    }
+}

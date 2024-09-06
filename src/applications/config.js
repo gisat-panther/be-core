@@ -100,9 +100,18 @@ function getExternalApplications() {
  */
 function get() {
     const config = mergeApplications(
-        require('./core/index'),
-        require('./demo/index'),
-        require('./data/index'),
+        {
+            generatedPermissions: function () {
+                return {};
+            },
+        },
+        require('./core'),
+        require('./demo'),
+        require('./data'),
+        require('./timeSerieData'),
+        require('./proxy'),
+        require('./download'),
+        require('./fixtures'),
         ...getExternalApplications()
     );
 
@@ -115,6 +124,8 @@ function get() {
     return config;
 }
 
+const cfg = get();
+
 module.exports = {
-    get,
+    get: () => cfg,
 };

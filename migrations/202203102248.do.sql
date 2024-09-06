@@ -1,0 +1,1 @@
+ALTER TABLE "dataSources".wmts ADD COLUMN "configuration" JSONB;

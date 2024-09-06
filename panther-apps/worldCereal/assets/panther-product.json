@@ -1,0 +1,53 @@
+{
+    "key": "baa33640-9ec9-483c-980d-5b406927a8ff",
+    "data": {
+        "name": "Argentina",
+        "tile_collection_id": "2020_21HTC_annualcropland_classification_WorldCerealPixelLSTM",
+        "sos": "2020-06-15",
+        "eos": "2020-09-15",
+        "season": "summer1",
+        "aez_id": "1",
+        "aez_group": "1",
+        "model": "?",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [
+                [
+                    [
+                        -60.787353515625,
+                        -34.74612627525939
+                    ],
+                    [
+                        -58.53515625,
+                        -34.74612627525939
+                    ],
+                    [
+                        -58.53515625,
+                        -32.930318199070534
+                    ],
+                    [
+                        -60.787353515625,
+                        -32.930318199070534
+                    ],
+                    [
+                        -60.787353515625,
+                        -34.74612627525939
+                    ]
+                ]
+            ]
+        },
+        "training_refids": {},
+        "product": "annualcropland",
+        "public": "true",
+        "tiles": [
+            {
+                "id": "2019_annual_35191_annualcropland_classification_36MXB",
+                "tile": "21HTC",
+                "product": "https://gisat-gis.eu-central-1.linodeobjects.com/worldcereal/example/21HTC/2020_21HTC_annualcropland_classification_WorldCerealPixelLSTM.tif",
+                "metafeatures": "",
+                "confidence": "",
+                "stac": "s3://world-cereal/EWOC_OUT/36MXB/2019_annual/2019_annual_35191_annualcropland_metadata_36MXB.json"
+            }
+        ]
+    }
+}

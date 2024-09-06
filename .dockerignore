@@ -4,3 +4,4 @@ node_modules
 .autorc
 .gitignore
 .dockerignore
+config.js

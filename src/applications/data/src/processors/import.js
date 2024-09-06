@@ -2,6 +2,7 @@ const admZip = require('adm-zip');
 const crypto = require('crypto');
 const fs = require('fs');
 const fse = require('fs-extra');
+const fsp = require('fs/promises');
 const path = require('path');
 const _ = require('lodash');
 const chp = require('child_process');
@@ -13,19 +14,36 @@ const config = require('../../../../../config');
 const cache = require('../../../../cache');
 const db = require('../../../../db');
 const query = require('../../../../modules/rest/query');
+const mapserver = require('../../../../modules/map/mapserver');
 
 const basePath = "/tmp/ptr_import_";
 
-const rasterStaticPath = config.import.raster.paths.static || `/srv/static`;
-const mapFileStaticPath = config.import.raster.paths.mapfile || `/srv/msmaps`;
+const rasterStaticPath = config.mapserver.storagePath || `/srv/static`;
+const mapFileStaticPath = config.mapserver.mapsPath || `/srv/msmaps`;
+
+const validFileExtensions = [".tif", ".style"];
 
 const cleanUp = (importKey) => {
 	return new Promise((resolve, reject) => {
-		fs.rmdir(`${basePath}${importKey}`, { recursive: true }, () => {
+		fs.rm(`${basePath}${importKey}`, { recursive: true }, () => {
 			log(importKey, "cleaned up");
 			resolve();
 		})
 	});
+}
+
+async function inspectFolder(folder, importKey) {
+	await fse.ensureDir(`${basePath}${importKey}`);
+
+	const files = await fse.readdir(folder);
+
+	for (let file of files) {
+		const fileExt = path.extname(file).toLowerCase();
+
+		if (validFileExtensions.includes(fileExt)) {
+			await fse.ensureSymlink(`${folder}/${file}`, `${basePath}${importKey}/${file}`);
+		}
+	}
 }
 
 const extractPackage = (file, importKey) => {
@@ -71,10 +89,10 @@ const importVerifiedFiles = async (importKey, verifiedFiles, options) => {
 }
 
 const importVectorDataToPostgres = (importKey, path) => {
-	let { host, user, password, database } = config.pgConfig.normal;
+	let { host, user, password, database, port = 5432 } = config.pgConfig.normal;
 	return new Promise((resolve, reject) => {
 		chp.exec(
-			`ogr2ogr -f "PostgreSQL" "PG:host=${host} user=${user} password=${password} dbname=${database}" -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -lco GEOMETRY_NAME=geom -lco LAUNDER=NO ${path}`,
+			`ogr2ogr -f "PostgreSQL" "PG:host=${host} user=${user} password=${password} dbname=${database} port=${port}" -nlt PROMOTE_TO_MULTI -lco SPATIAL_INDEX=GIST -lco GEOMETRY_NAME=geom -lco LAUNDER=NO ${path}`,
 			(error, stdout, stderr) => {
 				if (error) {
 					reject(error);
@@ -111,7 +129,12 @@ const ensureRasterFsStructure = () => {
 
 const reProjectRasterFile = (source, output, srid) => {
 	return new Promise((resolve, reject) => {
-		exec(`gdalwarp -t_srs epsg:${srid} -of vrt ${source} ${output}`, (error) => {
+		exec(`gdalwarp -t_srs epsg:${srid} -of vrt ${source} ${output}`, async (error) => {
+			const parsedPath = path.parse(source);
+			const folder = parsedPath.dir;
+			const basename = parsedPath.name;
+			await clearFiles(folder, basename, [parsedPath.ext, path.parse(output).ext]);
+
 			if (error) {
 				reject(error);
 			} else {
@@ -123,7 +146,12 @@ const reProjectRasterFile = (source, output, srid) => {
 
 const optimizeRasterFile = (source, output) => {
 	return new Promise((resolve, reject) => {
-		exec(`gdal_translate -co COMPRESSED=YES -of HFA ${source} ${output}`, (error) => {
+		exec(`gdal_translate -co COMPRESSED=YES -of HFA ${source} ${output}`, async (error) => {
+			const parsedPath = path.parse(source);
+			const folder = parsedPath.dir;
+			const basename = parsedPath.name;
+			await clearFiles(folder, basename, [parsedPath.ext, path.parse(output).ext]);
+
 			if (error) {
 				reject(error);
 			} else {
@@ -133,75 +161,16 @@ const optimizeRasterFile = (source, output) => {
 	})
 }
 
-const moveFinalProductToStaticRepository = (finalProduct) => {
-	let finalProductInStaticRepository = {
+async function clearFiles(folder, basename, exceptionsByExt) {
+	const files = await fsp.readdir(folder);
+	for (const file of files) {
+		const fileBasename = path.parse(file).name;
+		const fileExt = path.parse(file).ext;
+
+		if (fileBasename.startsWith(basename) && !exceptionsByExt.includes(fileExt)) {
+			await fsp.rm(`${folder}/${file}`);
+		}
 	}
-	return Promise
-		.resolve()
-		.then(() => {
-			let fileName = path.basename(finalProduct.source);
-			let destination = `${rasterStaticPath}/${fileName}`;
-
-			finalProductInStaticRepository.source = destination;
-
-			return fse.copy(finalProduct.source, destination);
-		})
-		.then(() => {
-			let fileName = path.basename(finalProduct.optimized);
-			let destination = `${rasterStaticPath}/${fileName}`;
-
-			finalProductInStaticRepository.optimized = destination;
-
-			return fse.copy(finalProduct.optimized, destination);
-		})
-		.then(() => {
-			return finalProductInStaticRepository;
-		});
-}
-
-// TODO this is specific only for world-water project
-const generateMsMapFileForFinalProduct = (finalProduct, srid) => {
-	let layerName = path.basename(finalProduct.source, ".tif");
-	let mapFileTemplate = `MAP
-    NAME "ptr"
-
-    PROJECTION
-        "init=epsg:${srid}"
-    END
-
-    WEB
-        METADATA
-            "wms_title" "ptr"
-            "wms_onlineresource" "${config.urlMapServer}/?map=${mapFileStaticPath}/${layerName}.map&"
-            "wms_enable_request" "*"
-            "wcs_enable_request" "*"
-            "ows_sld_enabled" "true"
-        END
-    END
-
-    LAYER
-    	DATA ${finalProduct.optimized}
-        NAME "ptr_${layerName}"
-        STATUS ON
-        TYPE RASTER
-
-        PROJECTION
-            "init=epsg:${srid}"
-        END
-
-        METADATA
-            wms_title "ptr_${layerName}"
-        END
-
-        INCLUDE "${mapFileStaticPath}/ww-base-style.map"
-    END
-END`
-
-	return Promise
-		.resolve()
-		.then(() => {
-			return fse.outputFile(`${mapFileStaticPath}/${layerName}.map`, mapFileTemplate)
-		})
 }
 
 const processMsMapFile = (importKey, data, options) => {
@@ -250,20 +219,48 @@ const processRaster = (importKey, data, options) => {
 				srid
 			)
 		})
-		.then((vrtFile) => {
-			return optimizeRasterFile(
+		.then(async (vrtFile) => {
+			const optimizedFile = await optimizeRasterFile(
 				vrtFile,
 				`${basePath}${importKey}/${path.basename(data.file, '.tif')}_epsg${srid}.img`
 			)
+
+			return [vrtFile, optimizedFile];
 		})
-		.then((optimizedFile) => {
-			return moveFinalProductToStaticRepository({
-				source: sourcePath,
-				optimized: optimizedFile
-			})
+		.then(async ([vrtFile, optimizedFile]) => {
+			let fileName = path.basename(optimizedFile);
+			let destination = `${rasterStaticPath}/${fileName}`;
+			await fse.copy(optimizedFile, destination);
+			await fse.unlink(optimizedFile);
+			await fse.unlink(vrtFile);
+
+			return destination;
 		})
-		.then((finalProduct) => {
-			return generateMsMapFileForFinalProduct(finalProduct, srid);
+		.then(async (finalFile) => {
+			const name = path.parse(sourcePath).name;
+			const projection = `EPSG:${srid}`;
+
+			let styles = [];
+			if (data.related && data.related.style) {
+				styles = await fse.readJSON(`${basePath}${importKey}/${data.related.style}`);
+			}
+
+			const mapfile = mapserver.getMapfileString({
+				name: `map_${name}`,
+				projection,
+				layers: [{
+					name: `ptr_${name}`,
+					status: true,
+					data: finalFile,
+					type: "RASTER",
+					projection,
+					styles
+				}]
+			});
+
+			await fse.outputFile(`${mapFileStaticPath}/${name}.map`, mapfile);
+
+			log(importKey, `file ${data.file} was processed!`);
 		})
 }
 
@@ -548,6 +545,12 @@ const getLayerNamesFromPath = (path) => {
 	})
 }
 
+function getRelatedFiles(baseName, files) {
+	return _.filter(files, (relatedFile) => {
+		return relatedFile.startsWith(baseName);
+	});
+}
+
 const verifyFiles = (files) => {
 	let verifiedFiles = {};
 	_.each(files, (file) => {
@@ -555,9 +558,7 @@ const verifyFiles = (files) => {
 		let baseName = path.basename(file, extName);
 
 		if (extName.toLowerCase() === ".shp") {
-			let relatedFiles = _.filter(files, (relatedFile) => {
-				return relatedFile.startsWith(baseName);
-			});
+			let relatedFiles = getRelatedFiles(baseName, files);
 
 			let dbf = _.find(relatedFiles, (relatedFile) => {
 				return path.extname(relatedFile).toLowerCase() === ".dbf";
@@ -588,9 +589,18 @@ const verifyFiles = (files) => {
 				file
 			};
 		} else if (extName.toLowerCase() === ".tif") {
+			let relatedFiles = getRelatedFiles(baseName, files);
+
+			let style = _.find(relatedFiles, (relatedFile) => {
+				return path.extname(relatedFile).toLowerCase() === ".style";
+			})
+
 			verifiedFiles[baseName] = {
 				type: "raster",
-				file
+				file,
+				related: {
+					style
+				}
 			};
 		} else if (extName.toLowerCase() === ".map") {
 			verifiedFiles[baseName] = {
@@ -636,6 +646,12 @@ const importFile = (file, user, options) => {
 				&& chp.execSync(`file --mime-type -b "${options.fs}"`).toString().trim() === "application/zip"
 			) {
 				return extractPackage(options.fs, importKey)
+			} else if (
+				options.fs
+				&& fs.existsSync(options.fs)
+				&& chp.execSync(`file --mime-type -b "${options.fs}"`).toString().trim() === "inode/directory"
+			) {
+				return inspectFolder(options.fs, importKey)
 			} else {
 				throw new Error("File not found or has unsupported type!")
 			}

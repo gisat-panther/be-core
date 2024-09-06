@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+
+/**
+This script is used to create all data necessary for application
+*/
+
+const worldCerealInit = require('../init');
+
+worldCerealInit.loadFixtures();
+
+// worldCerealInit.loadS2Tiles();

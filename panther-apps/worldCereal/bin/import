@@ -1,0 +1,199 @@
+#!/usr/bin/env node
+
+/**
+This script is used to import product tiles from given directory
+*/
+const fs = require('fs');
+const path = require('path');
+const _ = require('lodash');
+const fse = require('fs-extra');
+const axios = require('axios').default;
+const https = require('https');
+
+const product = require('../product');
+
+const ADMIN_KEY = 'ba621c03-bc65-4669-8df9-fc621143a99f';
+
+const folder = process.argv[2];
+const api = process.argv[3];
+
+if (!folder) {
+    throw new Error('folder has to be specified')
+}
+
+let API_URL;
+if (!api) {
+    throw new Error('api path has to be specified')
+} else {
+    API_URL = api;
+}
+
+function getStacFiles(dir, stacFiles) {
+    let listFiles = fs.readdirSync(dir, { withFileTypes: true });
+
+    stacFiles = stacFiles || [];
+
+    listFiles.forEach((file) => {
+        if (file.isDirectory()) {
+            getStacFiles(path.resolve(dir, file.name), stacFiles);
+        } else if (path.extname(file.name).toLowerCase() === ".json") {
+            let stacFilePath = path.resolve(dir, file.name);
+            stacFiles.push(stacFilePath);
+        }
+    })
+
+    return stacFiles;
+}
+
+function getUnig(array) {
+    return _.uniq(array);
+}
+
+function getStacFixed(stac) {
+    return {
+        ...stac,
+        geometry: {
+            ...stac.geometry,
+            coordinates: [stac.geometry.coordinates]
+        },
+        properties: {
+            ...stac.properties,
+            public: "true"
+        }
+    };
+}
+
+function getStac(path) {
+    return getStacFixed(fse.readJsonSync(path));
+}
+
+async function createProducts(stacFilePaths) {
+    let createdProductKeys = [];
+
+    console.log(`Creating products from ${stacFilePaths.length} STAC files!`);
+
+    for (let stacFilePath of stacFilePaths) {
+        console.log(stacFilePath);
+
+        let createdProductKey = await createProduct(getStac(stacFilePath));
+        if (createdProductKey) {
+            createdProductKeys.push(createdProductKey);
+        }
+    }
+
+    createdProductKeys = getUnig(createdProductKeys);
+
+    console.log(`${createdProductKeys.length} products was created!`);
+
+    return createdProductKeys;
+}
+
+async function createProduct(stac) {
+    return axios({
+        url: `${API_URL}/rest/project/worldCereal/product`,
+        method: "PUT",
+        headers: {
+            "X-User-Info": ADMIN_KEY
+        },
+        data: stac,
+        httpsAgent: new https.Agent({
+            rejectUnauthorized: false
+        }),
+        auth: {
+            username: 'EOWC_product_viewer',
+            password: '2w7A54TPs4eO'
+        }
+    }).then((response) => {
+        let productKey = product.getKeyByProductId(stac);
+
+        console.log(`Created product with key ${productKey}!`);
+
+        return productKey;
+    }).catch((error) => {
+        console.log(`#ERROR# ${JSON.stringify(error.response.data)}`)
+    })
+}
+
+async function getExistingProducts() {
+    return axios({
+        url: `${API_URL}/rest/project/worldCereal/product/filtered`,
+        method: "POST",
+        headers: {
+            "X-User-Info": ADMIN_KEY
+        },
+        data: {},
+        httpsAgent: new https.Agent({
+            rejectUnauthorized: false
+        }),
+        auth: {
+            username: 'EOWC_product_viewer',
+            password: '2w7A54TPs4eO'
+        }
+    }).then(async (response) => {
+        return response.data.products;
+    }).catch((error) => {
+        console.log(error);
+        throw new Error('Unable to get existing products!');
+    })
+}
+
+async function removeProductByKey(productKey) {
+    return axios({
+        url: `${API_URL}/rest/project/worldCereal/product`,
+        method: "DELETE",
+        headers: {
+            "X-User-Info": ADMIN_KEY
+        },
+        params: {
+            key: productKey
+        },
+        httpsAgent: new https.Agent({
+            rejectUnauthorized: false
+        }),
+        auth: {
+            username: 'EOWC_product_viewer',
+            password: '2w7A54TPs4eO'
+        }
+    }).then(async (response) => {
+        console.log(`Product ${productKey} was removed!`);
+    }).catch((error) => {
+        console.log(`#ERROR# Unable to remove product ${productKey}!`);
+    })
+}
+
+async function removeProducesByKey(productKeys) {
+    for (let productKey of productKeys) {
+        await removeProductByKey(productKey);
+    }
+}
+
+function getProductKeysFromStacFiles(stacFiles) {
+    let productKeys = [];
+
+    for (let stacFile of stacFiles) {
+        let stac = getStac(stacFile);
+        let productKey = product.getKeyByProductId(stac);
+
+        productKeys.push(productKey);
+    }
+
+    return _.uniq(productKeys);
+}
+
+async function init() {
+    let stacFiles = getStacFiles(folder);
+    stacFiles = getUnig(stacFiles);
+
+    let existingProducts = await getExistingProducts();
+    let existingProductKeys = _.map(existingProducts, 'key');
+
+    let createdProductKeys = await createProducts(stacFiles);
+
+    let productToRemoveKeys = _.difference(existingProductKeys, createdProductKeys);
+
+    await removeProducesByKey(productToRemoveKeys);
+
+    process.exit();
+}
+
+init();

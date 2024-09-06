@@ -1,0 +1,42 @@
+#!/usr/bin/env node
+
+/**
+ * This script creates user.
+ * 
+ * Usage: create-user <email> <password>
+ */
+
+const { SQL } = require('sql-template-strings');
+const db = require('../src/db');
+const { hashPassword } = require('../src/security');
+
+if (process.argv.length < 4) {
+    throw new Error('Script expects exact 2 parameters - email password');
+}
+
+const email = process.argv[2];
+const password = process.argv[3];
+
+async function main() {
+    await db.init();
+
+    await hashPassword(password)
+        .then((passwordHash) => {
+            return db.query(
+                SQL`
+                INSERT INTO "user"."users"
+                    ("email", "password")
+                VALUES
+                    (${email}, ${passwordHash})
+                ON CONFLICT (email) DO UPDATE
+                    SET password = ${passwordHash}
+                RETURNING key
+                `
+            )
+        })
+        .then((queryResponse) => {
+            console.log(queryResponse.rows[0].key);
+        })
+}
+
+main().then(() => process.exit());

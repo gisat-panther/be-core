@@ -30,13 +30,28 @@ function apiRouter() {
         ...config.router,
     ];
     const swaggerDocument = swagger.configFromApi(api);
+    const swaggerOptions = {
+        explorer: true,
+        swaggerOptions: {
+            urls: [
+              {
+                url: 'swagger.json',
+                name: 'Core'
+              },
+              {
+                url: 'rest/project/worldCereal/swagger.json',
+                name: 'WorldCereal'
+              }
+            ]
+          }
+    }
     router.get('/swagger.json', function (req, res) {
         res.header('Content-Type', 'application/json')
             .status(200)
             .json(swaggerDocument);
     });
     router.use(routing.routerFromApi(api));
-    router.use('', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+    router.use('', swaggerUi.serve, swaggerUi.setup(null, swaggerOptions));
 
     return router;
 }

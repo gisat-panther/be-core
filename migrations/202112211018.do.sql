@@ -1,0 +1,1 @@
+ALTER TABLE "dataSources"."wms" ADD COLUMN "params" JSONB;

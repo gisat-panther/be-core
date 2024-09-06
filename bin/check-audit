@@ -1,0 +1,109 @@
+#!/usr/bin/env node
+
+/**
+ * Exits with 0 if there are tables that should be audited but are not, 1 otherwise.
+ */
+
+require('../src/applications/index');
+const getPlan = require('../src/applications/plan').get;
+const db = require('../src/db');
+const _ = require('lodash/fp');
+const set = require('../src/set');
+
+const reduceWithKey = _.reduce.convert({cap: false});
+const flatMapWithKey = _.flatMap.convert({cap: false});
+
+async function auditedTablesBySchema() {
+    const res = await db.query(`
+SELECT
+  "tl"."schema",
+  JSON_AGG("tl"."auditedtable") "tables"
+FROM
+  "audit"."tableslist" "tl"
+GROUP BY
+  "tl"."schema"`);
+
+    const schemas = _.map((row) => row.schema, res.rows);
+    const tables = _.map((row) => set.from(row.tables), res.rows);
+
+    return _.zipObj(schemas, tables);
+}
+
+function missingTables(audited, expected) {
+    return reduceWithKey(
+        (missing, tables, schema) => {
+            const auditedTables = _.getOr(set.from([]), schema, audited);
+            const missingTables = set.difference(tables, auditedTables);
+            if (missingTables.size === 0) {
+                return missing;
+            }
+
+            missing[schema] = Array.from(missingTables);
+
+            return missing;
+        },
+        {},
+        expected
+    );
+}
+
+function auditTableQuery(schema, table) {
+    return `SELECT audit.audit_table('"${schema}"."${table}"');`;
+}
+
+function unAuditTableQuery(schema, table) {
+    return `DROP TRIGGER audit_trigger_row ON "${schema}"."${table}";
+DROP TRIGGER audit_trigger_stm ON "${schema}"."${table}";`;
+}
+
+async function main() {
+    await db.init();
+
+    const plan = getPlan();
+
+    // ignore demo apps
+    delete plan.demo;
+    delete plan.app1;
+
+    const expected = _.mapValues((group) => {
+        return set.from(_.map((type) => type.table, group));
+    }, plan);
+    const audited = await auditedTablesBySchema();
+    const missing = missingTables(audited, expected);
+
+    if (_.size(missing) === 0) {
+        return null;
+    }
+
+    return {
+        create: flatMapWithKey(
+            (tables, schema) =>
+                tables.map((table) => auditTableQuery(schema, table)),
+            missing
+        ),
+        drop: flatMapWithKey(
+            (tables, schema) =>
+                tables.map((table) => unAuditTableQuery(schema, table)),
+            missing
+        ),
+    };
+}
+
+main().then((missing) => {
+    if (missing == null) {
+        return process.exit(0);
+    }
+
+    console.error(`Some table audits are missing. Create migration with following contents:
+============================================================================================
+
+do.sql
+------
+${missing.create.join('\n')}
+
+undo.sql:
+---------
+${missing.drop.join('\n')}`);
+
+    process.exit(1);
+});

@@ -1,0 +1,1 @@
+ALTER TABLE "specific"."worldCerealProductMetadata" ADD COLUMN "__customColumns" JSONB NOT NULL DEFAULT '{}';
