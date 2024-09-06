@@ -115,6 +115,9 @@ function colFilterSchema(col) {
                 overlaps: Joi.array().items(itemSchema).min(1),
             });
         }
+        case 'boolean': {
+            return Joi.alternatives().try(Joi.boolean());
+        }
     }
 
     throw new Error(`Type "${type}" is not supported in filter.`);

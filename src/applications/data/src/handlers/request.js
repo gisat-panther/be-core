@@ -12,7 +12,7 @@ module.exports = {
 				response.status(200).send(responsePayload);
 			})
 			.catch((error) => {
-				response.status(500).send({success: false, message: error.message});
+				response.status(500).send({ success: false, message: error.message });
 			})
 	},
 	importMetadata: (request, response, next) => {
@@ -22,7 +22,7 @@ module.exports = {
 				response.status(200).send(responsePayload);
 			})
 			.catch((error) => {
-				response.status(500).send({success: false, message: error.message});
+				response.status(500).send({ success: false, message: error.message });
 			})
 	},
 	data: (request, response, next) => {
@@ -31,17 +31,17 @@ module.exports = {
 				response.status(200).send(responsePayload);
 			})
 			.catch((error) => {
-				response.status(500).send({success: false, message: error.message});
+				response.status(500).send({ success: false, message: error.message });
 			})
 	},
 	attributeData: (request, response, next) => {
 		pAttributeData(filter(request.body), request.user)
 			.then((responsePayload) => {
-				response.status(200).send(responsePayload);
-			})
-			.catch((error) => {
-				response.status(500).send({success: false, message: error.message});
-			})
+					response.status(200).send(responsePayload);
+				})
+				.catch((error) => {
+					response.status(500).send({ success: false, message: error.message });
+				})
 	},
 	status: {
 		import: (request, response, next) => {

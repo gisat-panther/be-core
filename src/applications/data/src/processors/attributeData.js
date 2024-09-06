@@ -171,7 +171,11 @@ async function getDataForRelations(relations, filter) {
 				columns.push(`"${attributeDataSource.columnName}" AS "${attributeDataSource.key}"`);
 			});
 
-			const where = allowedFeatureKeys && allowedFeatureKeys.length ? `WHERE "${fidColumnName}" IN (${allowedFeatureKeys.join(", ")})` : "";
+			let where = "";
+			if (allowedFeatureKeys && allowedFeatureKeys.length) {
+				const inCondition = allowedFeatureKeys.map((allowedFeatureKey) => typeof allowedFeatureKey === "string" ? `'${allowedFeatureKey}'` : allowedFeatureKey);
+				where = `WHERE "${fidColumnName}" IN (${inCondition.join(", ")})`;
+			}
 
 			attributeQueries.push(
 				db.query(

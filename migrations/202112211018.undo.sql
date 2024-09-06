@@ -1,0 +1,1 @@
+ALTER TABLE "dataSources"."wms" DROP COLUMN "params";

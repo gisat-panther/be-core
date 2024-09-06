@@ -2,18 +2,34 @@ FROM ubuntu
 
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update \
-    && apt-get install -y curl gdal-bin
+RUN apt update \
+    && apt upgrade -y \
+    && apt install -y \
+        curl \
+        gdal-bin \
+        postgresql-client \
+        git \
+        ca-certificates \
+        gnupg
 
-RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - \
-    && apt-get install -y nodejs
+RUN cd /tmp \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh \
+    && /bin/bash nodesource_setup.sh \
+    && apt update \
+    && apt install nodejs
 
-WORKDIR /usr/src/app
+RUN useradd -m -s /bin/bash node
 
-COPY . .
+USER node
+
+RUN mkdir -pv /home/node/app
+
+WORKDIR /home/node/app
+
+COPY --chown=node . .
 
 RUN npm ci --production-only
 
-EXPOSE 9850-9859
+EXPOSE 9850
 
 CMD [ "node", "./src/server.js" ]

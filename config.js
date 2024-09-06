@@ -2,6 +2,15 @@ const ptr4 = {
 	url: 'http://localhost/backend', // url on which server is accessible
 	urlMapServer: "http://localhost/mapserver", // url on which MapServer is accessible
 	masterPort: 9850,
+	isBehindKong: false, // allow auto login based on X-User-Info header which is provided by KongHQ, potential security risk if used without KongHQ
+	mapserver: {
+		url: "http://localhost:8050", // url on which MapServer is accessible
+		mapsPath: "/etc/mapserver/maps",
+		storagePath: "/etc/mapserver/storage"
+	},
+	mapproxy: {
+		url: "http://localhost:8051"
+	},
 	pgConfig: {
 		normal: {
 			user: `panther`,
@@ -19,6 +28,16 @@ const ptr4 = {
 			database: `postgres`,
 			host: `localhost`
 		}
+	},
+	redisConfig: {
+		host: 'localhost',
+		port: 6379
+	},
+	couchdb: {
+		user: "panther",
+		password: "panther",
+		host: "couchdb",
+		port: 5984
 	},
 	pgSchema: {
 		analysis: `analysis`,

@@ -40,7 +40,7 @@ function formatData(rawData, filter) {
 			spatialDataSources: [],
 			attributeDataSources: []
 		},
-		spatialData: rawData.data.spatial,
+		spatialData: filter.data.geometry ? rawData.data.spatial : {},
 		attributeData: rawData.data.attribute
 	}
 
@@ -222,6 +222,10 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 				if (dataSource.type === "tiledVector") {
 					sql += ` AND "base"."${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
 				}
+
+				if (filter.data.featureKeys && filter.data.featureKeys.length) {
+					sql += ` ${sql.includes("WHERE") ? "AND" : "WHERE"} "base"."${dataSource.fidColumnName}" IN (${Array(filter.data.featureKeys).map((featureKey) => isNaN(featureKey) ? `"${featureKey}"` : featureKey).join(", ")})`;
+				}
 			} else {
 				sql =
 					`SELECT "${dataSource.fidColumnName}" AS "featureKey", "${dataSource.geometryColumnName}"::JSON AS geometry 
@@ -229,6 +233,10 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 
 				if (dataSource.type === "tiledVector") {
 					sql += ` WHERE "${dataSource.geometryColumnName}" && ST_GeomFromGeoJSON('${JSON.stringify(tileAsPolygon.geometry)}')`;
+				}
+
+				if (filter.data.featureKeys && filter.data.featureKeys.length) {
+					sql += ` ${sql.includes("WHERE") ? "AND" : "WHERE"} "${dataSource.fidColumnName}" IN (${Array(filter.data.featureKeys).map((featureKey) => isNaN(featureKey) ? `"${featureKey}"` : featureKey).join(", ")})`;
 				}
 			}
 
@@ -260,22 +268,30 @@ const getDataForQueryOptionsAndFilter = async (queryOptions, filter) => {
 				return `"${dataSource.columnName}" AS "${key}"`
 			});
 
-			let params = _.map(featureKeys, (value, index) => {
-				return `$${index + 1}`;
-			});
+			const chunkSize = 50000;
+			const featureKeysChunks = [];
+			for (let i = 0; i < featureKeys.length; i += chunkSize) {
+				featureKeysChunks.push(featureKeys.slice(i, i + chunkSize));
+			}			
 
-			let sql = `SELECT "${queryData.fidColumnName}" AS "featureKey", ${columns.join(", ")} FROM "${queryData.tableName}" WHERE "${queryData.fidColumnName}" IN (${params.join(", ")})`
+			for (const featureKeysChunk of featureKeysChunks) {
+				let params = _.map(featureKeysChunk, (value, index) => {
+					return `$${index + 1}`;
+				});
 
-			await db
-				.query(sql, featureKeys)
-				.then((pgResult) => {
-					_.each(queryData.dataSources, (dataSource, key) => {
-						data.attribute[key] = data.attribute[key] || {};
-						_.each(pgResult.rows, (row) => {
-							data.attribute[key][row.featureKey] = row[key];
+				let sql = `SELECT "${queryData.fidColumnName}" AS "featureKey", ${columns.join(", ")} FROM "${queryData.tableName}" WHERE "${queryData.fidColumnName}" IN (${params.join(", ")})`
+
+				await db
+					.query(sql, featureKeysChunk)
+					.then((pgResult) => {
+						_.each(queryData.dataSources, (dataSource, key) => {
+							data.attribute[key] = data.attribute[key] || {};
+							_.each(pgResult.rows, (row) => {
+								data.attribute[key][row.featureKey] = row[key];
+							})
 						})
 					})
-				})
+			}
 		}
 	}
 
@@ -431,7 +447,7 @@ async function getAttributeRelatons(filter, user) {
 								qb.from('"metadata"."style"', '"_t"'),
 								qb.where(qb.expr.eq('"_t"."key"', qb.val.inlineParam(filter.styleKey))),
 							),
-							query.listPermissionsQuery({plan: compiledPlan, group: 'metadata', type: 'styles'}, '_t'),
+							query.listPermissionsQuery({ plan: compiledPlan, group: 'metadata', type: 'styles' }, '_t'),
 						),
 						'"_t1"'
 					)
@@ -441,14 +457,11 @@ async function getAttributeRelatons(filter, user) {
 			qb.where(qb.expr.notNull(qb.val.raw(`"_t2"."style"->>'attributeKey'`)))
 		);
 
-		const updateSqlMap = function(sqlMap, alias) {
+		const updateSqlMap = function (sqlMap, alias) {
 			return qb.append(
 				sqlMap,
 				qb.where(
-					qb.expr.or(
-						qb.expr.not(qb.expr.fn('EXISTS', attributeKeysSqlMap)),
-						qb.expr.in(`"${alias}"."attributeKey"`, attributeKeysSqlMap)
-					)
+					qb.expr.in(`"${alias}"."attributeKey"`, attributeKeysSqlMap)
 				)
 			);
 		};

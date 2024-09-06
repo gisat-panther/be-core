@@ -120,6 +120,7 @@ describe('/rest/metadata', function () {
                                         description: null,
                                         nameDisplay: null,
                                         nameInternal: null,
+                                        scopeKey: null,
                                         tagKeys: [
                                             'ce42e748-16f3-48f5-8152-24f98b4d8fa0',
                                             'ce42e748-16f3-48f5-8152-24f98b4d8fa1',
@@ -147,6 +148,7 @@ describe('/rest/metadata', function () {
                                         description: null,
                                         nameDisplay: null,
                                         nameInternal: null,
+                                        scopeKey: null,
                                         tagKeys: null,
                                     },
                                     permissions: {
@@ -200,6 +202,7 @@ describe('/rest/metadata', function () {
                                         description: null,
                                         nameDisplay: null,
                                         nameInternal: null,
+                                        scopeKey: null,
                                         tagKeys: [
                                             'ce42e748-16f3-48f5-8152-24f98b4d8fa0',
                                             'ce42e748-16f3-48f5-8152-24f98b4d8fa1',
@@ -256,6 +259,7 @@ describe('/rest/metadata', function () {
                                         description: null,
                                         nameDisplay: null,
                                         nameInternal: null,
+                                        scopeKey: null,
                                         tagKeys: [
                                             'ce42e748-16f3-48f5-8152-24f98b4d8fa0',
                                             'ce42e748-16f3-48f5-8152-24f98b4d8fa1',
@@ -336,10 +340,11 @@ describe('/rest/metadata', function () {
                                         description: null,
                                         nameDisplay: null,
                                         nameInternal: null,
+                                        scopeKey: null,
                                         tagKeys: [
                                             'ce42e748-16f3-48f5-8152-24f98b4d8fa0',
                                             'ce42e748-16f3-48f5-8152-24f98b4d8fa1',
-                                        ],
+                                        ]
                                     },
                                     permissions: {
                                         activeUser: {
@@ -363,7 +368,8 @@ describe('/rest/metadata', function () {
                                         description: null,
                                         nameDisplay: null,
                                         nameInternal: null,
-                                        tagKeys: null,
+                                        scopeKey: null,
+                                        tagKeys: null
                                     },
                                     permissions: {
                                         activeUser: {

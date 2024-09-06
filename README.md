@@ -11,3 +11,4 @@ Run permissions generation (should run only once - other running instances would
 ```
 npm run permissions:start
 ```
+(this is currently not necessary as permissions run as part of main app temporarily)

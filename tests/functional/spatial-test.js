@@ -76,6 +76,7 @@ describe('/rest/dataSources', function () {
                                     url: 'localhost',
                                     layers: 'wms_layers',
                                     styles: 'wms_styles',
+                                    params: {k: 'v'},
                                     configuration: {k: 'v'},
                                 },
                             },
@@ -86,6 +87,7 @@ describe('/rest/dataSources', function () {
                                     attribution: 'wmattr',
                                     type: 'wmts',
                                     urls: ['loc1', 'loc2'],
+                                    configuration: {}
                                 },
                             },
                         ],
@@ -148,6 +150,7 @@ describe('/rest/dataSources', function () {
                                         attribution: 'wmattr',
                                         type: 'wmts',
                                         urls: ['loc1', 'loc2'],
+                                        configuration: {}
                                     },
                                     permissions: {
                                         activeUser: {
@@ -199,6 +202,7 @@ describe('/rest/dataSources', function () {
                                         url: 'localhost',
                                         layers: 'wms_layers',
                                         styles: 'wms_styles',
+                                        params: {k: 'v'},
                                         configuration: {k: 'v'},
                                     },
                                     permissions: {
@@ -314,6 +318,7 @@ describe('/rest/dataSources', function () {
                                         attribution: 'wmattr',
                                         type: 'wmts',
                                         urls: ['loc1', 'loc2'],
+                                        configuration: {}
                                     },
                                     permissions: {
                                         activeUser: {
@@ -365,6 +370,7 @@ describe('/rest/dataSources', function () {
                                         url: 'localhost',
                                         layers: 'wms_layers',
                                         styles: 'wms_styles',
+                                        params: {k: 'v'},
                                         configuration: {k: 'v'},
                                     },
                                     permissions: {
@@ -629,6 +635,7 @@ describe('/rest/dataSources', function () {
                                 data: {
                                     type: 'wmts',
                                     urls: ['l1', 'l2'],
+                                    configuration: {}
                                 },
                             },
                         ],
@@ -645,6 +652,7 @@ describe('/rest/dataSources', function () {
                                         attribution: 'wattr',
                                         type: 'wmts',
                                         urls: ['l1', 'l2'],
+                                        configuration: {}
                                     },
                                     permissions: {
                                         activeUser: {

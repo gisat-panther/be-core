@@ -1,11 +1,12 @@
 const userMiddleware = require('../../middlewares/user');
 const authMiddleware = require('../../middlewares/auth');
 const autoLoginMiddleware = require('../../middlewares/auto-login');
+const autoLoginKongHqMiddleware = require('../../middlewares/auto-login-konghq');
 const hashMiddleware = require('../../middlewares/hash');
 const _ = require('lodash/fp');
 const commandResult = require('./result');
 
-const forEachWithKey = _.forEach.convert({cap: false});
+const forEachWithKey = _.forEach.convert({ cap: false });
 
 /**
  * @param {{type: string, data: any}} result
@@ -15,17 +16,17 @@ const forEachWithKey = _.forEach.convert({cap: false});
 function resultToResponse(result) {
     switch (result.type) {
         case commandResult.SUCCESS:
-            return {status: 200, body: result.data};
+            return { status: 200, body: result.data };
         case commandResult.CREATED:
-            return {status: 201, body: result.data};
+            return { status: 201, body: result.data };
         case commandResult.UPDATED:
-            return {status: 200, body: result.data};
+            return { status: 200, body: result.data };
         case commandResult.DELETED:
-            return {status: 200, body: {}};
+            return { status: 200, body: {} };
         case commandResult.BAD_REQUEST:
-            return {status: 400, body: result.data};
+            return { status: 400, body: result.data };
         case commandResult.FORBIDDEN:
-            return {status: 403, body: {success: false}};
+            return { status: 403, body: { success: false } };
     }
 
     throw new Error(`unknown status: ${result.type}`);
@@ -51,9 +52,10 @@ function createGroup(plan, group, commands) {
                 tags: [group],
             },
             parameters: commands.list.parameters,
-            responses: {200: {}},
+            responses: { 200: {} },
             middlewares: [
                 userMiddleware,
+                autoLoginKongHqMiddleware,
                 autoLoginMiddleware,
                 authMiddleware,
                 hashMiddleware,
@@ -73,7 +75,7 @@ function createGroup(plan, group, commands) {
                 tags: [group],
             },
             parameters: commands.create.parameters,
-            responses: {201: {}},
+            responses: { 201: {} },
             middlewares: [userMiddleware, autoLoginMiddleware, authMiddleware],
             handler: async function (request, response) {
                 const responseData = resultToResponse(
@@ -90,7 +92,7 @@ function createGroup(plan, group, commands) {
                 tags: [group],
             },
             parameters: commands.update.parameters,
-            responses: {200: {}},
+            responses: { 200: {} },
             middlewares: [userMiddleware, autoLoginMiddleware, authMiddleware],
             handler: async function (request, response) {
                 const responseData = resultToResponse(
@@ -107,7 +109,7 @@ function createGroup(plan, group, commands) {
                 tags: [group],
             },
             parameters: commands.delete.parameters,
-            responses: {200: {}},
+            responses: { 200: {} },
             middlewares: [userMiddleware, autoLoginMiddleware, authMiddleware],
             handler: async function (request, response) {
                 const responseData = resultToResponse(

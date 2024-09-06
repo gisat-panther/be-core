@@ -1,0 +1,364 @@
+openapi: '3.0.0'
+info:
+  title: Visualization Dissemination Module REST API
+  version: '1.0'
+
+paths:
+  /rest/project/worldCereal/init:
+    get:
+      description: Initialize database and internal structures
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+      tags:
+        - WorldCereal
+      responses:
+        '200':
+          description: Database structure was successfully initialized
+        '403':
+          description: Unauthorized
+  /rest/project/worldCereal/product:
+    post:
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Contains json representation of product metadata
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/product'
+      tags:
+        - Product
+      responses:
+        '201':
+          description: Created
+        '403':
+          description: Unauthorized
+        '500':
+          description: Error
+    put:
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Contains json representation of product metadata
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/product'
+      tags:
+        - Product
+      responses:
+        '200':
+          description: Updated
+        '403':
+          description: Unauthorized
+        '500':
+          description: Error
+    delete:
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: productId
+          required: true
+          schema:
+            type: string
+      tags:
+        - Product
+      responses:
+        '200':
+          description: Deleted
+        '403':
+          description: Unauthorized
+        '500':
+          description: Error
+  /rest/project/worldCereal/product/filtered:
+    post:
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        description: Contains json representation of product filter
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/filter'
+      tags:
+        - Product
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/products-filtered'
+  /rest/project/worldCereal/user:
+    post:
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/user'
+      tags:
+        - User
+      responses:
+        '201':
+            description: Created
+        '403':
+            description: Unauthorized
+        '500':
+            description: Error
+    put:
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/user'
+      tags:
+        - User
+      responses:
+        '200':
+          description: Updated
+        '403':
+          description: Unauthorized
+        '500':
+          description: Error
+    delete:
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: userKey
+          required: true
+          schema:
+            type: string
+      tags:
+        - User
+      responses:
+        '200':
+          description: Deleted
+        '403':
+          description: Unauthorized
+        '500':
+          description: Error
+  /rest/project/worldCereal/user/sessionStart:
+    get:
+      parameters:
+        - in: header
+          name: X-User-Info
+          required: true
+          schema:
+            type: string
+            format: uuid
+      tags:
+        - User
+      responses:
+        '200':
+          description: New session started
+
+components:
+  schemas:
+    product:
+      type: object
+      properties:
+        id:
+          type: string
+        geometry:
+          type: object
+          properties:
+            type:
+              type: string
+            geometry:
+              type: array
+              items:
+                type: array
+                items:
+                  type: array
+                  maxItems: 2
+                  items:
+                    type: number
+          required:
+            - type
+            - geometry
+        properties:
+          type: object
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+            created:
+              type: string
+            updated:
+              type: string
+            mgrs:utm_zone:
+              type: number
+            mgrs:latitude_band:
+              type: string
+            mgrs:grid_square:
+              type: string
+            start_datetime:
+              type: string
+            end_datetype:
+              type: string
+            season:
+              type: string
+            aez_id:
+              oneOf:
+                - type: string
+                - type: number
+            aez_group:
+              oneOf:
+                - type: string
+                - type: number
+            model:
+              type: string
+            users:
+              type: array
+              items: 
+                type: string
+                format: uuid
+            meta:
+              type: array
+              items:
+                oneOf:
+                  - type: string
+                  - type: number
+            public:
+              type: boolean 
+          required:
+            - title
+            - description
+            - created
+            - updated
+            - start_datetime
+            - end_datetype
+            - season
+            - aez_id
+            - model
+            - users
+            - meta
+            - public
+        assets:
+            type: object
+            properties:
+              product:
+                $ref: '#/components/schemas/asset'
+              meta-features:
+                $ref: '#/components/schemas/asset'
+              confidence:
+                $ref: '#/components/schemas/asset'
+      required:
+        - id
+        - geometry
+    asset:
+      type: object
+      properties:
+        href:
+          type: string
+        title:
+          type: string
+      required:
+        - href
+        - title
+    filter:
+      type: object
+      properties:
+        key:
+          type: string
+          format: uuid
+        geometry:
+          type: object
+          description: GeoJSON geometry object
+    products-filtered:
+      type: object
+      properties:
+        products:
+          type: array
+          items: 
+            type: object
+            properties:
+              key:
+                type: string
+                format: uuid
+              data:
+                type: object
+                properties:
+                  data:
+                    $ref:  '#/components/schemas/product'
+        tiles:
+          type: array
+          items:
+            type: string
+    user:
+      type: object
+      properties:
+        key:
+          type: string
+          format: uuid
+        data:
+          type: object
+          properties:
+            email:
+              type: string
+            name:
+              type: string
+          required:
+            - email
+      required:
+        - key
+        - data
+    user-delete:
+      type: object
+      properties:
+        key:
+          type: string
+          format: uuid
+      required:
+        - key
+                
